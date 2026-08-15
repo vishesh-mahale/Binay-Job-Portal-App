@@ -1,0 +1,71 @@
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
+*credentials*.json
+secrets/
+
+# Node.js / Next.js / NestJS
+node_modules/
+.next/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.npm/
+.yarn/cache/
+.pnpm-store/
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+htmlcov/
+
+# Runtime and local generated data
+logs/
+*.log
+tmp/
+temp/
+uploads/
+artifacts/
+*.pid
+
+# Personal candidate files (keep synthetic fixtures under tests/fixtures)
+personal-data/
+personal-resumes/
+private-uploads/
+
+# IDE / OS metadata
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local Supabase state
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Infrastructure local state
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Test and tool caches
+.cache/
+.turbo/
+.eslintcache
+

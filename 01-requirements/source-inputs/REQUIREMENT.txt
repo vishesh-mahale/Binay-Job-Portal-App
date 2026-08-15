@@ -1,0 +1,339 @@
+
+🚀 AI-Powered Recruitment & Job Portal Platform (Master Product Requirement Document)
+1. Product Vision
+Build a scalable recruitment platform similar to leading job portals that combines traditional recruitment workflows
+with AI-powered candidate matching, intelligent resume parsing, automated screening, interview scheduling, referrals,
+  analytics, and real-time collaboration.
+The platform must support multiple user roles, high performance, secure authentication, background document processing,
+intelligent search, and future scalability without over-engineering the initial version.
+
+we want to design an app which can handle the upload of 1000 resume at the same time and does not crash. 
+also aiming to keep the cost minimum for client.
+
+2. User Roles
+Candidate (Job Seeker)
+The candidate should be able to:
+	• Register
+	• Login
+	• Upload resume/CV
+	• Browse jobs
+	• Search jobs
+	• Apply with account
+	• Apply without account (Guest Apply)
+	• Track applications
+	• Receive interview invitations
+	• Schedule interviews
+	• Receive AI-generated screening questions
+	• View profile match score
+	• View missing skills/gap analysis
+	• Submit feedback
+	• Refer other candidates
+
+Employer
+Employer should be able to:
+	• Create company profile
+	• Manage company information
+	• Create multiple HR users
+	• Manage HR permissions
+	• Create jobs
+	• Manage jobs
+	• View applicants
+	• Review shortlisted candidates
+	• Manage interview pipeline
+	• Receive live notifications
+	• View recruitment analytics
+
+HR
+HR works under Employer.
+Permissions are configurable.
+Depending on permissions HR can:
+	• Create jobs
+	• Edit jobs
+	• Delete jobs
+	• View applicants
+	• Shortlist candidates
+	• Forward shortlisted candidates to Employer
+	• Schedule interviews
+	• Manage assigned candidates
+
+
+4. Authorization
+The platform must implement role-based access control.
+Permissions should be configurable.
+Authorization must verify:
+	• User identity
+	• Account status
+	• Assigned role
+	• Resource ownership
+	• Permission level
+
+5. Candidate Onboarding
+Candidate Onboarding should require minimal information.
+Minimum Onboarding:
+	• Name
+	• Mobile Number
+	• Resume Upload
+The platform should avoid lengthy registration forms.
+Identity verification should happen through a secure verification workflow.
+
+6. Resume Upload & Intelligent Parsing : still need to cofirm this.
+The system should implement a dual-stage document processing architecture.
+Fast Track
+Immediately after resume upload:
+	• Extract candidate name
+	• Return response almost instantly
+	• Personalize UI immediately
+Target:
+Very low latency.
+
+Deep Track
+After upload:
+The document should be processed asynchronously.
+The system should extract:
+	• Email
+	• Phone
+	• Skills
+	• Experience
+	• Education
+	• Certifications
+	• Projects
+	• Work history
+	• Resume structure
+	• Additional metadata
+The user interface must remain responsive while background processing continues.
+
+
+7. Background Processing
+Heavy processing tasks should execute asynchronously.
+Examples include:
+	• Resume parsing
+	• AI analysis
+	• Match calculations
+	• Notifications
+	• Email delivery
+	• Analytics updates
+The background system should execute work only when needed rather than continuously consuming resources.
+
+We still need to decide like we should go for sync parsing of resume or async parsing for step 5, 6 and step 7.
+You decide the good appproach for me please.
+
+
+8. AI Recruitment Engine
+The platform should automatically evaluate candidates against job requirements.
+The AI engine should produce:
+	• Overall Match Percentage
+	• Skill Match
+	• Experience Match
+	• Education Match
+	• Location Match
+	• Salary Match
+	• Requirement Gap Analysis
+Example:
+Overall Match:
+87%
+Missing:
+- Docker
+- Kubernetes
+- AWS
+The platform should return structured data representing missing requirements.
+
+9. AI Screening Questions
+If important information cannot be determined automatically, the system should generate contextual screening questions.
+Examples:
+	• Willing to relocate?
+	• Comfortable with night shifts?
+	• Notice period?
+	• Expected salary?
+	• Work authorization?
+	• Remote or onsite preference?
+Questions should be generated dynamically based on:
+	• Resume
+	• Job requirements
+	• Employer preferences
+
+10. Job Search
+The platform must support advanced job discovery.
+Capabilities include:
+	• Full-text search
+	• Auto suggestions
+	• Ranking by relevance
+	• Filters
+Examples:
+	• Location
+	• Salary
+	• Experience
+	• Skills
+	• Company
+	• Job Type
+	• Remote/Hybrid/Onsite
+	• Posted Date
+Search should remain fast even with large datasets.
+
+11. Job Application Flow
+Candidates should be able to apply:
+Logged-in Apply
+Application immediately links to candidate profile.
+Guest Apply
+Guest applications should be stored separately.
+If the guest later creates an account, the system should merge applications after identity verification.
+Possible verification:
+	• Email
+	• Phone
+	• OTP
+	• Other secure verification methods
+
+12. Candidate Shortlisting
+Recruitment workflow:
+Candidate Applies
+↓
+HR Reviews
+↓
+HR Shortlists
+↓
+Employer Reviews
+↓
+Interview
+↓
+Selection
+↓
+Offer
+
+13. Intelligent Recruiter Inbox
+Recruiters should receive a live inbox that updates automatically.
+Updates include:
+	• Resume parsing completed
+	• New applications
+	• Candidate status
+	• Match score
+	• Screening completed
+	• Interview booked
+	• Offer accepted
+The interface should update without manual refresh whenever possible.
+
+14. Interview Scheduling
+The platform should provide an interactive scheduling interface.
+Features:
+	• Available interview slots
+	• Rolling availability window
+	• Slot locking
+	• Conflict prevention
+	• Automatic notifications
+When a slot is booked:
+	• Candidate schedule updates
+	• Recruiter schedule updates
+	• Availability refreshes immediately
+
+15. Referral System
+Users should be able to refer candidates.
+The system should:
+	• Track referrals
+	• Prevent duplicates
+	• Attribute successful hires
+	• Support configurable reward mechanisms
+Rewards may include:
+	• Points
+	• Cash
+	• Other incentives
+
+16. Feedback System
+Feedback should be available for:
+	• Logged-in users
+	• Guest users
+Feedback categories may include:
+	• Platform experience
+	• Recruitment process
+	• Bug reports
+	• Suggestions
+
+17. Analytics
+The platform should collect business analytics including:
+	• Job views
+	• Job applications
+	• Conversion rates
+	• User registrations
+	• Referral performance
+	• Recruiter activity
+	• Candidate activity
+	• Hiring funnel
+	• Interview metrics
+Analytics should support future integration with external reporting platforms.
+
+18. Notifications
+The platform should notify users about:
+	• Job applications
+	• Resume processing completion
+	• Interview invitations
+	• Interview reminders
+	• Shortlisting
+	• Selection
+	• Rejection
+	• Messages
+	• Referral updates
+	• Employer actions
+Notifications may be delivered through multiple communication channels.
+
+19. Data Management
+The platform should manage multiple categories of data including:
+Transactional Data
+Examples:
+	• Users
+	• Jobs
+	• Applications
+	• Companies
+	• Interviews
+	• Referrals
+Search Index
+Maintain optimized searchable representations of jobs and resumes.
+Semantic Data
+Maintain contextual representations that enable intelligent similarity matching between resumes and job descriptions.
+The architecture should allow these capabilities to evolve independently as the platform scales.
+
+20. Security
+The platform must implement enterprise-grade security.
+Requirements include:
+	• Secure authentication
+	• Secure session management
+	• Encrypted communication
+	• Permission-based authorization
+	• Protection against common web attacks
+	• Rate limiting
+	• Audit logging
+	• Secure password handling
+	• Secure document storage
+	• Sensitive data protection
+
+21. Scalability
+The architecture should support future growth.
+The system should allow:
+	• Independent scaling of major services
+	• Background processing
+	• High-volume search
+	• Large document processing
+	• High concurrent users
+	• Real-time communication
+	• Modular feature expansion
+The MVP should remain simple while allowing gradual evolution toward enterprise scale.
+
+22. High-Level Functional Workflow
+	1. Candidate uploads resume with minimal details.
+	2. The platform immediately extracts the candidate's name and personalizes the interface.
+	3. Full resume parsing continues asynchronously in the background.
+	4. Candidate data is enriched automatically.
+	5. AI evaluates the resume against active job requirements.
+	6. The system generates a match percentage and detailed gap analysis.
+	7. If additional clarification is required, contextual screening questions are presented.
+	8. Candidates browse and apply for jobs (with or without an account).
+	9. HR reviews applications, shortlists suitable candidates, and forwards them to the employer.
+	10. Qualified candidates schedule interviews through the platform.
+	11. Recruiters receive real-time updates throughout the hiring process.
+	12. Analytics, referrals, notifications, and feedback operate continuously in the background.
+
+23. Core Product Principles
+	• Prioritize user experience with fast and minimal onboarding.
+	• Keep the UI responsive by offloading heavy processing to background workflows.
+	• Build modular components with loose coupling.
+	• Use AI to assist, not replace, recruiter decision-making.
+	• Support secure, scalable, and maintainable architecture.
+	• Design for incremental evolution from MVP to enterprise scale.
+	• Remain technology-agnostic so implementation details can be chosen based on project needs.
+
