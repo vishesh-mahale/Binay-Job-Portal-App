@@ -28,8 +28,9 @@ RUN pip install --upgrade pip setuptools wheel && \
 
 FROM python:3.11-slim
 
-# Install runtime dependencies only (no build tools)
+# Install runtime dependencies only (curl for healthcheck, tesseract for OCR)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     tesseract-ocr \
     libtesseract5 \
     postgresql-client \
@@ -55,7 +56,7 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Health check
+# Health check using curl
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health/liveness || exit 1
 

@@ -1,423 +1,240 @@
 # 07-fastapi-ai-worker — FastAPI AI Background Worker
 
-> Production-grade private Cloud Run service for AI-powered resume parsing, candidate search projections, and job enrichment within the Binay Job Portal ecosystem.
+> **Production-grade private Cloud Run service for AI-powered resume parsing, candidate search projections, and job enrichment within the Binay Job Portal ecosystem.**
 
-## Quick Links
-
-- [Main Project README](../README.md)
-- [Phase 1: Core Foundation & Infrastructure](#phase-1-complete)
-- [Phase 2: Resume Parsing](./docs/PHASE_2_RESUME_PARSING.md) (upcoming)
-- [Phase 3: Candidate Projections](./docs/PHASE_3_PROJECTIONS.md) (upcoming)
-- [Database Schema](../02-database/README.md)
-- [Implementation Contract](../01-requirements/future/FAST-API%20PROMPT.md)
+[← Main Project README](../README.md) · [Requirements](../01-requirements/README.md) · [Database](../02-database/README.md) · [Shared Contracts](../contracts/README.md)
 
 ---
 
-## 1. What Is This Service?
+## 1. Executive Summary & Component Purpose
 
-This is a **private, trusted background worker** deployed on Google Cloud Run. It processes asynchronous events (via Cloud Tasks) from the NestJS API to perform expensive, AI-heavy operations:
+`07-fastapi-ai-worker` is a **private, zero-trust, asynchronous background worker** deployed on Google Cloud Run. It executes resource-intensive AI and vector-embedding workloads dispatched via Google Cloud Tasks by the NestJS core backend.
 
-1. **Resume Parsing** — Extract text, OCR, and structured candidate data from uploaded documents
-2. **Candidate Search Projections** — Rebuild semantic embeddings for candidate search
-3. **Job AI Enrichment** — Generate ideal candidate profiles and embeddings for jobs
-4. **Match Analysis** — Calculate candidate-job fit scores
-5. **Interview Summaries** — AI-powered feedback synthesis
-
-**Key Characteristics:**
-- ✅ Private: No public REST API; invoked only by Cloud Tasks via OIDC
-- ✅ Zero-trust: Every request validates Google OIDC bearer token
-- ✅ Async: Never blocks on external AI/storage calls
-- ✅ Idempotent: Processed events + processing leases prevent duplicate work
-- ✅ Observable: Structured JSON logging with trace IDs
-- ✅ Secure: PII redaction, prompt injection defense, hostile document handling
+### Primary Responsibilities:
+1. **Resume Parsing (PD-001)**: Extracts unstructured text, performs OCR fallback, runs structured candidate data extraction via LLM, and persists immutable parsing results and artifacts.
+2. **Candidate Search Projection (PD-002)**: Rebuilds search profiles by merging canonical profile facts with active resume data, generating symmetric semantic text, and producing 768-dimensional vector embeddings stored in `candidate_search_profiles`.
+3. **Job AI Enrichment (JD-001)**: Enriches job descriptions into structured `ai_ideal_candidate_profile` JSONB (contract v1) and generates 768-dimensional semantic embeddings stored directly in `jobs`.
 
 ---
 
-## 2. System Topology
+## 2. Architecture & End-to-End System Topology
 
 ```
-┌─ NestJS Main API ─────────────────┐
-│ - Business logic & authorization  │
-│ - Inserts outbox events + results │
-└───────────────┬───────────────────┘
-                │
-                ▼
-        Supabase PostgreSQL
-                │
-                │ INSERT webhook
-                ▼
-    Outbox Dispatcher (separate Cloud Run)
-                │
-                ▼
-        Google Cloud Tasks Queue
-                │
-                ▼
-    THIS SERVICE (FastAPI AI Worker)
-                │
-                ├─ Download document
-                ├─ Extract text/OCR
-                ├─ Call AI provider
-                ├─ Generate embeddings
-                │
-                ▼
-        Insert results + processed_events
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            NESTJS CORE API (04)                            │
+│  - User authentication & tenant business logic                              │
+│  - Inserts state changes + records transactional outbox_events              │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+                       Supabase PostgreSQL Database
+                                       │
+                                       │ Realtime CDC / Polling
+                                       ▼
+                      Outbox Dispatcher (Cloud Run)
+                                       │
+                                       │ Creates Tasks with OIDC Token
+                                       ▼
+                          Google Cloud Tasks Queue
+                                       │
+                                       │ POST with Bearer OIDC Token
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                  FASTAPI AI WORKER (07-fastapi-ai-worker)                  │
+│                                                                             │
+│   1. Validate Google OIDC Bearer Token                                      │
+│   2. Idempotency Check on processed_events (dual guard)                    │
+│   3. Acquire 5-Minute Atomic Lease (event_processing_leases)                │
+│   4. Download Document / Read DB Aggregate                                 │
+│   5. Execute LLM Structured Extraction / 768-dim Embedding (Outside DB TX)  │
+│   6. Optimistic Stale Concurrency Check (Coalescing Protection)            │
+│   7. Atomic DB Commit (UPSERT + processed_events + outbox_events)           │
+│   8. Release Lease & Return HTTP 200 OK                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Architecture Components (Phase 1)
+## 3. Task Endpoints & Workloads
 
-### Core Infrastructure
+All endpoints are hosted under the `/internal` prefix and expect structured task payloads:
 
-| Module | Purpose | Key Classes |
-|--------|---------|-------------|
-| `app/core/config.py` | Pydantic settings | `Settings`, `get_settings()` |
-| `app/core/logging.py` | Structured JSON logging + PII redaction | `PIIRedactor`, `configure_logging()` |
-| `app/core/security.py` | Google OIDC token validation | `OIDCTokenValidator` |
-| `app/core/database.py` | Async PostgreSQL connection pool | `DatabaseManager` |
-| `app/core/exceptions.py` | Custom exception hierarchy | `WorkerException`, subclasses |
+| Route | Payload Contract | DB Constraint / Baseline | Chained Outbox Event |
+|---|---|---|---|
+| `POST /internal/tasks/resume/parse` | `contracts/tasks/resume-parse-task.v1.json` | `07_resume_processing.sql` | `candidate.resume.parsed` |
+| `POST /internal/tasks/candidate/projection` | `contracts/tasks/candidate-projection-task.v1.json` | `08_candidates.sql` | `candidate.projection.rebuilt` |
+| `POST /internal/tasks/job/enrich` | `contracts/tasks/job-enrich-task.v1.json` | `05_jobs.sql` | `job.enriched` |
 
-### Providers (Pluggable AI)
-
-| Module | Purpose |
-|--------|---------|
-| `app/providers/base.py` | Abstract base classes: `LLMProvider`, `EmbeddingProvider` |
-| `app/providers/mock.py` | Mock implementations for deterministic testing |
-
-### Domain Models
-
-| Module | Purpose |
-|--------|---------|
-| `app/domain/enums.py` | Enum definitions mirroring baseline SQL |
-
-### API Routes
-
-| Module | Purpose |
-|--------|---------|
-| `app/api/health.py` | `/health/liveness`, `/health/readiness` |
-| `app/main.py` | FastAPI app factory with lifespan management |
-
-### Testing
-
-| Module | Purpose |
-|--------|---------|
-| `tests/conftest.py` | Shared pytest fixtures (mock providers, test DB, etc.) |
-
-### Shared Contracts
-
-| File | Purpose |
-|------|---------|
-| `contracts/tasks/resume-parse-task.v1.json` | Cloud Task payload schema |
-| `contracts/tasks/candidate-projection-task.v1.json` | Candidate projection task schema |
-| `contracts/tasks/job-enrich-task.v1.json` | Job enrichment task schema |
-| `contracts/events/candidate-projection-rebuilt.v1.json` | Emitted event schema |
+### Health Probes:
+- `GET /health/liveness` — Returns HTTP 200 if ASGI process is alive.
+- `GET /health/readiness` — Tests PostgreSQL connectivity and connection pool readiness.
 
 ---
 
-## 4. Local Development Setup
+## 4. Zero-Trust Security & Google OIDC Verification
 
-### Prerequisites
+The worker implements defense-in-depth security:
+1. **Cloud Run IAM Ingress**: Configured with `--ingress=internal` to reject public traffic at the infrastructure perimeter.
+2. **Application-Level OIDC Verification**: [`OIDCTokenValidator`](app/core/security.py) fetches Google's public JWKS (`https://www.googleapis.com/oauth2/v1/certs`), checks RS256 signature, validates issuer (`https://accounts.google.com`), verifies expected audience, and enforces strict service account allowlisting (`GCP_ALLOWED_SERVICE_ACCOUNTS`).
+3. **Non-Root Container Execution**: Runs as non-root user `appuser` (UID 1000).
 
-- Python 3.11+
-- Tesseract OCR (`sudo apt-get install tesseract-ocr` on Linux)
-- PostgreSQL 14+ (or use Docker)
+---
 
-### Installation
+## 5. Dual Idempotency & Concurrency Model
 
-```bash
-# Clone project & navigate to worker directory
+To prevent redundant AI API expenses and race conditions:
+
+### Dual Guard Architecture:
+1. **Committed Idempotency (`processed_events`)**:
+   - Every completed task records `(consumer_name, event_id)` inside the final atomic transaction.
+   - If a duplicate task arrives after completion, it immediately returns `HTTP 200 OK (skipped=True)`.
+2. **In-Flight Concurrency Lease (`event_processing_leases`)**:
+   - Before starting expensive AI processing, the worker attempts an atomic `INSERT INTO event_processing_leases (lease_key, expires_at) ... ON CONFLICT DO NOTHING`.
+   - If 0 rows are inserted, another concurrent worker is already handling the item. The task skips and returns `HTTP 200 OK (reason="lease_held")`.
+3. **Optimistic Concurrency & Stale Revision Guard**:
+   - For candidate search projections: If `candidate_profiles.profile_revision` or active resume ID changed during LLM/Embedding calls, the update aborts and returns `HTTP 200 OK (coalesced=True)`.
+   - For jobs: `WHERE id = :job_id AND updated_at = :stored_updated_at` guarantees recent HR edits are never overwritten by stale background AI tasks.
+
+---
+
+## 6. Symmetric Semantic Search Architecture
+
+Search symmetry ensures cosine distance in `pgvector` accurately reflects candidate-job fit:
+
+- **Candidate Builder**: [`CandidateSemanticTextBuilder`](app/services/semantic_builders.py)
+  - Assembles: Title, Headline, Location, Total Experience, Canonical Skills, Active Resume Skills, Experience Summary, Education, Certifications.
+- **Job Builder**: [`JobSemanticTextBuilder`](app/services/semantic_builders.py)
+  - Assembles: Title, Category, Employment Type, Work Mode, Experience Required, Location, Required Skills, Responsibilities, Requirements, AI Domain & Concepts.
+- **Embedding Dimensions**: Exact **768-dimensional float vectors** matching `vector(768)` in `08_candidates.sql` and `05_jobs.sql`.
+
+---
+
+## 7. Pluggable AI Providers
+
+AI provider architecture is decoupled via [`LLMProvider`](app/providers/base.py) and [`EmbeddingProvider`](app/providers/base.py):
+
+| Provider | LLM Implementation | Embedding Model | 768-dim Check |
+|---|---|---|---|
+| **Gemini** (Default) | `GeminiLLMProvider` (`gemini-2.0-flash`) | `GeminiEmbeddingProvider` (`text-embedding-004`) | Native 768-dim |
+| **OpenAI** | `OpenAILLMProvider` (`gpt-4o-mini`) | `OpenAIEmbeddingProvider` (`text-embedding-3-small`) | 768 via `dimensions=768` |
+| **Mock** | `MockLLMProvider` | `MockEmbeddingProvider` | Deterministic 768-dim test vector |
+
+---
+
+## 8. Document Processing & Security
+
+- **Allowed Formats**: PDF (`application/pdf`), DOCX (`application/vnd.openxmlformats-officedocument.wordprocessingml.document`), TXT (`text/plain`).
+- **Magic Bytes Validation**: Verifies `%PDF` and `PK` ZIP archive signatures regardless of file extension.
+- **Hostile Input Defense**: Untrusted text is strictly wrapped in `<untrusted_resume_content>` XML tags in the LLM prompt to prevent prompt injection attacks.
+- **Limits**: Maximum file size 10MB, maximum PDF pages 15, text truncation cap 100,000 characters.
+
+---
+
+## 9. Database Alignment & Transactional Outbox
+
+All writes occur in a single atomic `db_manager.transaction()`:
+- `jobs`: Updates `ai_ideal_candidate_profile`, `ai_profile_model`, `ai_profile_version`, `ai_generated_at`, `embedding`, `embedding_status = 'completed'`, `embedding_model`, `embedding_version`, `embedding_generated_at`.
+- `candidate_search_profiles`: Revision-guarded UPSERT with `search_vector`, `embedding`, `fact_sources`.
+- `processed_events`: Inserts consumer tracking record.
+- `outbox_events`: Emits downstream domain events (`job.enriched`, `candidate.projection.rebuilt`, `candidate.resume.parsed`).
+
+---
+
+## 10. Error Classification & Cloud Tasks Retry Matrix
+
+| Outcome | HTTP Status | Cloud Tasks Action | Reason |
+|---|---|---|---|
+| Success | `200 OK` | Acknowledge (No Retry) | Completed normally |
+| Duplicate / Lease Collision | `200 OK` | Acknowledge (No Retry) | Idempotently skipped |
+| Stale Source Coalesced | `200 OK` | Acknowledge (No Retry) | Coalesced with newer state |
+| Security Scan Pending | `503 Service Unavailable` | Retry with Backoff | Document being scanned by antivirus |
+| AI Rate Limit / Timeout | `503 Service Unavailable` | Retry with Backoff | Transient provider error |
+| DB Connection Timeout | `503 Service Unavailable` | Retry with Backoff | Transient infrastructure error |
+| Fatal Bug / Unhandled | `500 Internal Server Error` | Retry → Dead Letter | Unexpected exception |
+
+---
+
+## 11. Local Development & Setup
+
+### Prerequisites:
+- Python `>=3.11`
+- PostgreSQL with `pgvector` extension (optional for unit tests; mock mode requires zero DB)
+
+### Setup Instructions:
+```powershell
+# Navigate to worker directory
 cd 07-fastapi-ai-worker
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Create virtual environment and install dependencies
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -e .[dev]
 
-# Install dependencies
-pip install -e ".[dev]"
-
-# Copy environment template
+# Configure environment variables
 cp .env.example .env
 
-# Edit .env with your values (especially DATABASE_URL, AI API keys)
+# Run development server
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
-### Running Locally
+---
 
+## 12. Containerization & Production Cloud Run Deployment
+
+### Docker Multi-Stage Build:
+- **Base Image**: `python:3.11-slim`
+- **Builder Stage**: Installs `build-essential`, `libpq-dev`, creates virtualenv.
+- **Runtime Stage**: Copies `/opt/venv`, installs `curl`, `tesseract-ocr`, `libtesseract5`, `postgresql-client`.
+- **User**: `appuser` (UID 1000).
+- **Healthcheck**: `HEALTHCHECK --interval=30s --timeout=10s CMD curl -f http://localhost:8000/health/liveness || exit 1`.
+
+### Cloud Run Deployment Command:
 ```bash
-# Start development server
-uvicorn app.main:app --reload --port 8000
-
-# Server will be available at http://localhost:8000
-# Health checks: http://localhost:8000/health/liveness
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app --cov-report=html
-
-# Run specific test file
-pytest tests/unit/test_oidc_security.py -v
-
-# Run async tests
-pytest -m asyncio
-```
-
----
-
-## 5. Configuration (Environment Variables)
-
-See `.env.example` for complete list. Key variables:
-
-```bash
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/binay
-
-# Google Cloud
-GOOGLE_CLOUD_PROJECT_ID=binay-job-portal-prod
-GOOGLE_OIDC_ALLOWED_SERVICE_ACCOUNTS=cloud-tasks@project.iam.gserviceaccount.com
-OIDC_AUTH_ENABLED=true
-
-# AI Provider
-AI_PROVIDER=gemini  # or openai, mock
-GEMINI_API_KEY=your-key
-GEMINI_MODEL=gemini-2.5-flash
-
-# Logging
-LOG_LEVEL=INFO
-LOG_FORMAT=json
-LOG_REDACT_PII=true
-```
-
----
-
-## 6. OIDC Authentication (Zero-Trust)
-
-Every task request must include a valid Google OIDC bearer token:
-
-```
-POST /internal/tasks/resume/parse HTTP/1.1
-Authorization: Bearer eyJhbGciOiJSUzI1NiIsI...
-```
-
-**Validation Pipeline:**
-1. Extract Bearer token from Authorization header
-2. Verify RS256 signature using Google JWKS (cached, auto-rotating)
-3. Check issuer: `https://accounts.google.com`
-4. Check audience: configured URL
-5. Check service account email: must be in `ALLOWED_SERVICE_ACCOUNTS`
-6. Check expiration: token must be recent (< 1 hour old)
-
-**Result:**
-- ✅ Valid → Request proceeds with authenticated claims
-- ❌ Invalid → HTTP 401 Unauthorized
-- ❌ Unauthorized → HTTP 403 Forbidden
-
----
-
-## 7. Database Interactions
-
-### Key Tables (Read-Only Audit)
-
-| Table | Purpose | Worker Access |
-|-------|---------|----------------|
-| `outbox_events` | Event queue | SELECT only |
-| `processed_events` | Idempotency records | INSERT only |
-| `event_processing_leases` | Concurrent duplicate prevention | INSERT, DELETE |
-| `resume_parsing_jobs` | Parse job lifecycle | SELECT, UPDATE (status/lock columns) |
-| `resume_parsed_data` | Immutable parse results | INSERT only |
-| `candidate_search_profiles` | Search projection cache | UPSERT (with revision guards) |
-| `jobs` | Job AI enrichment | UPDATE (ai_ideal_candidate_profile, embedding) |
-
-### Idempotency Strategy (Dual Guard)
-
-**Phase 1 (Resume Parsing):**
-```sql
--- Atomic job claim (single operator)
-UPDATE resume_parsing_jobs
-SET status = 'processing', locked_by = WORKER_ID, locked_at = NOW()
-WHERE id = aggregate_id AND status NOT IN ('completed', 'cancelled')
-RETURNING ...;
-```
-
-**Phases 2+ (Other Pipelines):**
-```sql
--- Atomic lease acquisition (prevents concurrent duplicates)
-INSERT INTO event_processing_leases (lease_key, consumer_name, event_id, expires_at)
-VALUES ('pipeline:' || aggregate_id, 'pipeline_name', event_id, NOW() + 5 min)
-ON CONFLICT (lease_key) DO NOTHING;  -- Fail if another worker holds lease
-```
-
-**Final Commit:**
-```sql
-INSERT INTO processed_events (consumer_name, event_id, result_metadata)
-VALUES (...) ON CONFLICT (consumer_name, event_id) DO NOTHING;
-```
-
----
-
-## 8. Error Handling & HTTP Status Codes
-
-| Scenario | HTTP Status | Cloud Tasks Action |
-|----------|-------------|-------------------|
-| Task already processed (duplicate) | `200 OK` | No retry |
-| Stale data (coalesced) | `200 OK` | No retry |
-| Document validation failed (terminal) | `200 OK` | No retry; dead-letter |
-| Document pending security scan | `503 Service Unavailable` | Retry with backoff |
-| AI provider rate limit | `503 Service Unavailable` | Retry with backoff |
-| Database unavailable | `503 Service Unavailable` | Retry with backoff |
-| Bug / unhandled exception | `500 Internal Server Error` | Retry (then dead-letter) |
-
----
-
-## 9. Logging & Observability
-
-### Structured JSON Format
-
-```json
-{
-  "timestamp": "2026-08-16T10:30:45.123Z",
-  "level": "INFO",
-  "logger": "app.services.resume_service",
-  "message": "Resume parsing completed",
-  "trace_id": "550e8400-e29b-41d4-a716-446655440000",
-  "worker_id": "worker-123",
-  "parsing_job_id": "660e8400-e29b-41d4-a716-446655440000",
-  "duration_ms": 2345
-}
-```
-
-### PII Redaction
-
-Sensitive data is automatically redacted:
-- Emails → `[EMAIL_REDACTED]`
-- Phone numbers → `(555) XXX-XXXX`
-- Tokens/Keys → `[BEARER_REDACTED]`, `[API_KEY_REDACTED]`
-- Resume text → `[REDACTED]` (raw extracted text never logged)
-
----
-
-## 10. Testing Strategy
-
-### Unit Tests (`tests/unit/`)
-- Config validation
-- OIDC token parsing
-- Enum definitions
-- Mock AI provider
-
-### Integration Tests (`tests/integration/`)
-- End-to-end resume parsing flow
-- Idempotency guards (duplicate suppression)
-- Database transactions
-- Error scenarios
-
-### Test Fixtures (`tests/conftest.py`)
-- Mock AI providers
-- In-memory SQLite database
-- TestClient for HTTP requests
-- Sample Cloud Task payloads
-
----
-
-## 11. Deployment (Cloud Run)
-
-### Dockerfile
-
-Multi-stage build:
-1. **Builder stage:** Install system deps, create venv, pip install
-2. **Runtime stage:** Copy venv, non-root user, minimal footprint
-
-### Build & Deploy
-
-```bash
-# Build image
-docker build -t gcr.io/PROJECT/fastapi-ai-worker:latest .
-
-# Push to GCP
-docker push gcr.io/PROJECT/fastapi-ai-worker:latest
-
-# Deploy to Cloud Run (replace PROJECT, REGION, etc.)
 gcloud run deploy fastapi-ai-worker \
-  --image gcr.io/PROJECT/fastapi-ai-worker:latest \
-  --region REGION \
-  --service-account cloud-tasks-invoker@PROJECT.iam.gserviceaccount.com \
+  --image gcr.io/$PROJECT_ID/fastapi-ai-worker:latest \
+  --platform managed \
+  --region asia-south1 \
   --no-allow-unauthenticated \
-  --port 8000 \
+  --ingress internal \
+  --service-account fastapi-worker-sa@$PROJECT_ID.iam.gserviceaccount.com \
   --memory 2Gi \
-  --timeout 540 \
-  --env-file .env.production
-```
-
-### IAM Setup
-
-```bash
-# Grant Cloud Tasks permission to invoke this service
-gcloud run services add-iam-policy-binding fastapi-ai-worker \
-  --member=serviceAccount:cloud-tasks@PROJECT.iam.gserviceaccount.com \
-  --role=roles/run.invoker
+  --cpu 2 \
+  --concurrency 10 \
+  --min-instances 1 \
+  --max-instances 10 \
+  --set-env-vars OIDC_AUTH_ENABLED=true,AI_PROVIDER=gemini,EMBEDDING_PROVIDER=gemini
 ```
 
 ---
 
-## 12. Roadmap: Phases 2-7
+## 13. Automated Test Suite & Coverage Verification
 
-| Phase | Deliverables | Timeline |
-|-------|--------------|----------|
-| **Phase 2** | Resume parsing pipeline, document extraction, OCR | Week 2 |
-| **Phase 3** | Candidate search projections, semantic builders | Week 3 |
-| **Phase 4** | Job AI enrichment, embeddings | Week 3 |
-| **Phase 5** | Match analysis, analytics events | Week 4 |
-| **Phase 6** | Interview summaries, screening questions | Week 4 |
-| **Phase 7** | Containerization, full test coverage, hardening | Week 5 |
-
----
-
-## 13. Troubleshooting
-
-### Database Connection Fails
+Run all unit and integration tests with pytest coverage:
+```powershell
+.venv\Scripts\python.exe -m pytest -v --cov=app --cov-report=term-missing
 ```
-Error: could not connect to server: Connection refused
+
+### Test Suite Structure:
 ```
-- Check `DATABASE_URL` in `.env`
-- Verify PostgreSQL is running: `pg_isready -h localhost`
-- Ensure SSL mode matches: `sslmode=require` for production
-
-### OIDC Token Invalid
+tests/
+├── conftest.py                             # Async client fixtures & test configuration
+├── mocks/
+│   └── mock_llm_responses.py              # Synthetic LLM JSON fixtures
+├── unit/
+│   ├── test_oidc_security.py              # OIDC signature, audience & allowlist checks
+│   ├── test_document_extractor.py         # PDF, DOCX, TXT magic bytes & limits
+│   ├── test_prompt_injection_defense.py   # Untrusted XML tagging & prompt defense
+│   ├── test_schemas.py                    # Unified task payloads & validation
+│   ├── test_semantic_builders.py          # Symmetric text templates & formatting
+│   ├── test_health.py                     # Liveness and readiness endpoints
+│   ├── test_repositories.py               # DB repository methods & transactions
+│   ├── test_job_ai_service.py             # Job enrichment domain service
+│   ├── test_job_schemas.py                # Job JSONB contract v1
+│   ├── test_candidate_schemas.py          # Candidate projection & fact sources
+│   └── test_projection_service.py         # Candidate fact merging & ranking
+└── integration/
+    ├── test_resume_parsing_flow.py        # Complete resume parsing pipeline (PD-001)
+    ├── test_candidate_projection_flow.py  # Complete candidate projection pipeline (PD-002)
+    ├── test_job_enrichment_flow.py        # Complete job enrichment pipeline (JD-001)
+    ├── test_idempotency_dual_guard.py     # processed_events + leases dual guard
+    └── test_stale_revision_coalescing.py  # Optimistic concurrency & stale update protection
 ```
-401 Unauthorized: Invalid issuer
-```
-- Verify `OIDC_AUTH_ENABLED=true`
-- Check `GOOGLE_OIDC_ALLOWED_SERVICE_ACCOUNTS` (comma-separated list)
-- Ensure token is fresh (< 1 hour old)
-
-### Tests Fail with "EventLoop"
-```
-RuntimeError: Event loop is closed
-```
-- Ensure `pytest-asyncio` is installed
-- Use `pytest.mark.asyncio` on async test functions
-- Run: `pytest --co -q` to verify test discovery
-
----
-
-## Contributing
-
-1. Follow Python PEP-8 style (enforced by Black)
-2. Add type hints to all functions
-3. Write tests for new features
-4. Document changes in commit messages
-5. Never commit `.env` or secrets
-
----
-
-## License
-
-Proprietary — Binay Inc.
-
----
-
-**Last Updated:** 2026-08-16 | **Phase:** 1 (Core Foundation) | **Status:** ✅ Complete
