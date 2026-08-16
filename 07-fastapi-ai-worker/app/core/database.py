@@ -52,12 +52,11 @@ class DatabaseManager:
             # Using NullPool because Cloud Run is ephemeral; no persistent connections
             self.engine = create_async_engine(
                 self.settings.DATABASE_URL,
-                echo=False,  # Set to True for SQL query logging
+                echo=False,
                 pool_size=self.settings.DATABASE_MAX_POOL_SIZE,
                 max_overflow=10,
-                pool_pre_ping=True,  # Verify connection before using
-                pool_recycle=3600,  # Recycle connections after 1 hour
-                poolclass=NullPool,  # Ephemeral pool for serverless
+                pool_pre_ping=True,
+                pool_recycle=3600,
                 connect_args={
                     "server_settings": {
                         "application_name": "fastapi-ai-worker",
@@ -117,6 +116,33 @@ class DatabaseManager:
             except Exception as e:
                 await session.rollback()
                 logger.error("Database session error", error=str(e), exc_info=True)
+                raise
+            finally:
+                await session.close()
+
+    async def transaction(self) -> AsyncGenerator[AsyncSession, None]:
+        """
+        Get async database session with automatic commit/rollback.
+        
+        Usage:
+            async with db_manager.transaction() as session:
+                await session.execute(...)
+                await session.execute(...)
+            # auto-commits on success, rollback on exception
+        
+        Yields:
+            AsyncSession
+        """
+        if not self.session_maker:
+            raise RuntimeError("Database not initialized; call initialize() first")
+        
+        async with self.session_maker() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                logger.error("Database transaction error", error=str(e), exc_info=True)
                 raise
             finally:
                 await session.close()
@@ -204,7 +230,7 @@ class DatabaseManager:
         """
         query = """
         INSERT INTO event_processing_leases (lease_key, consumer_name, event_id, expires_at, worker_id)
-        VALUES (:lease_key, :consumer_name, :event_id, NOW() + INTERVAL ':duration seconds', :worker_id)
+        VALUES (:lease_key, :consumer_name, :event_id, NOW() + make_interval(secs => :duration), :worker_id)
         ON CONFLICT (lease_key) DO NOTHING
         """
         

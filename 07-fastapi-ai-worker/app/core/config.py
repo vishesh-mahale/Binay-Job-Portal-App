@@ -163,8 +163,8 @@ class Settings(BaseSettings):
     @classmethod
     def validate_database_url(cls, v: str) -> str:
         """Validate PostgreSQL connection string format."""
-        if not v.startswith(("postgresql://", "postgres://")):
-            raise ValueError("DATABASE_URL must start with postgresql:// or postgres://")
+        if not v.startswith(("postgresql://", "postgres://", "postgresql+asyncpg://")):
+            raise ValueError("DATABASE_URL must start with postgresql://, postgres://, or postgresql+asyncpg://")
         return v
 
     @field_validator("GOOGLE_OIDC_ALLOWED_SERVICE_ACCOUNTS")

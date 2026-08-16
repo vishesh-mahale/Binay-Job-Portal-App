@@ -37,7 +37,7 @@ dependencies = [
     # Document processing
     "pdfplumber>=0.10.3",
     "python-docx>=0.8.11",
-    "PyPDF2>=3.17.0",
+    "PyPDF2>=3.0.0,<4.0.0",
     "pytesseract>=0.3.10",
     "Pillow>=10.1.0",
 
@@ -159,3 +159,6 @@ ignore = ["E501"]  # line-length handled by black
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

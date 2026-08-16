@@ -187,9 +187,9 @@ def create_app() -> FastAPI:
     # Health check endpoints
     app.include_router(health.router)
     
-    # Task handlers (Phase 2+)
-    # from app.api.v1 import task_handlers
-    # app.include_router(task_handlers.router)
+    # Task handlers
+    from app.api.v1 import task_handlers
+    app.include_router(task_handlers.router)
     
     # ====== Root Endpoint ======
     

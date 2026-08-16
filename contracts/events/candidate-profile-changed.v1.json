@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Candidate Profile Changed Event",
+  "description": "Emitted when a candidate profile is updated.",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_id", "trace_id"],
+  "properties": {
+    "schema_version": {"type": "integer", "enum": [1]},
+    "event_id": {"type": "string", "format": "uuid"},
+    "aggregate_id": {"type": "string", "format": "uuid"},
+    "trace_id": {"type": "string", "format": "uuid"},
+    "change_type": {"type": "string", "enum": ["profile_updated", "document_linked", "document_unlinked"]},
+    "active_document_id": {"type": ["string", "null"], "format": "uuid"}
+  },
+  "additionalProperties": false
+}
