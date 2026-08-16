@@ -130,7 +130,17 @@ Binay-Job-Portal-App/
 │           └── AI-MODEL-VS-PARSER-LIBRARY-RESEARCH.md
 │
 ├── 📝 contracts/
-│   └── README.md
+│   ├── README.md
+│   ├── events/
+│   │   ├── candidate-profile-changed.v1.json
+│   │   ├── candidate-projection-rebuilt.v1.json
+│   │   ├── job-ai-enrichment-requested.v1.json
+│   │   ├── job-enriched.v1.json
+│   │   └── resume-parse-requested.v1.json
+│   └── tasks/
+│       ├── candidate-projection-task.v1.json
+│       ├── job-enrich-task.v1.json
+│       └── resume-parse-task.v1.json
 │
 └── 🔍 Agent_review/
     ├── copilotk.md
@@ -260,6 +270,19 @@ Binay-Job-Portal-App/
   - [AI Hub](docs/research/ai/README.md)
   - [AI Pipeline Architecture](docs/research/ai/AI-PIPELINE-ARCHITECTURE-INPUT.md)
   - [Model vs Parser Library](docs/research/ai/AI-MODEL-VS-PARSER-LIBRARY-RESEARCH.md)
+
+📝 **CONTRACTS**
+- [Contracts README](contracts/README.md)
+- Events
+  - [candidate-profile-changed.v1.json](contracts/events/candidate-profile-changed.v1.json)
+  - [candidate-projection-rebuilt.v1.json](contracts/events/candidate-projection-rebuilt.v1.json)
+  - [job-ai-enrichment-requested.v1.json](contracts/events/job-ai-enrichment-requested.v1.json)
+  - [job-enriched.v1.json](contracts/events/job-enriched.v1.json)
+  - [resume-parse-requested.v1.json](contracts/events/resume-parse-requested.v1.json)
+- Tasks
+  - [candidate-projection-task.v1.json](contracts/tasks/candidate-projection-task.v1.json)
+  - [job-enrich-task.v1.json](contracts/tasks/job-enrich-task.v1.json)
+  - [resume-parse-task.v1.json](contracts/tasks/resume-parse-task.v1.json)
 
 🔍 **AUDIT**
 - [Comprehensive Audit Report](Agent_review/MERGED_COMPREHENSIVE_AUDIT.md)
