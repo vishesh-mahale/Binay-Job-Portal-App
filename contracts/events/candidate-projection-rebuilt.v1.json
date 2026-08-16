@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "contracts/events/candidate-projection-rebuilt.v1.json",
+  "title": "Candidate Projection Rebuilt Event",
+  "description": "Event emitted when candidate search profile is rebuilt",
+  "type": "object",
+  "required": ["schema_version", "aggregate_type", "aggregate_id", "event_type", "payload"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "aggregate_type": {
+      "type": "string",
+      "const": "candidate",
+      "description": "Aggregate type"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Candidate UUID"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "candidate.projection.rebuilt"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["candidate_id", "projection_revision"],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "projection_revision": {
+          "type": "integer",
+          "description": "New projection revision"
+        },
+        "fact_sources": {
+          "type": "object",
+          "description": "Fact sources tracking"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["profile_changed", "resume_parsed", "manual_trigger"]
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

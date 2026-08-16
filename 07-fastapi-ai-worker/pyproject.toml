@@ -1,0 +1,161 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "binay-fastapi-ai-worker"
+version = "0.1.0"
+description = "Private Cloud Run FastAPI AI worker for Binay Job Portal — resume parsing, candidate projections, job enrichment, match analysis"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Binay Engineering", email = "engineering@binay.ai"}
+]
+
+dependencies = [
+    # FastAPI & ASGI
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+
+    # Database
+    "asyncpg>=0.29.0",
+    "sqlalchemy>=2.0.23",
+    "psycopg2-binary>=2.9.9",
+
+    # Vector storage (pgvector)
+    "pgvector>=0.2.1",
+
+    # Authentication & Security
+    "python-jose[cryptography]>=3.3.0",
+    "cryptography>=41.0.7",
+    "google-auth>=2.25.0",
+    "google-auth-httplib2>=0.2.0",
+
+    # Document processing
+    "pdfplumber>=0.10.3",
+    "python-docx>=0.8.11",
+    "PyPDF2>=3.17.0",
+    "pytesseract>=0.3.10",
+    "Pillow>=10.1.0",
+
+    # AI & LLM providers
+    "google-generativeai>=0.3.0",
+    "openai>=1.3.0",
+
+    # HTTP client
+    "httpx>=0.25.0",
+    "aiohttp>=3.9.0",
+
+    # Logging & Observability
+    "structlog>=23.2.0",
+    "python-json-logger>=2.0.7",
+
+    # Utilities
+    "python-dateutil>=2.8.2",
+    "pytz>=2023.3",
+    "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "pytest-xdist>=3.5.0",
+    "black>=23.12.0",
+    "isort>=5.13.0",
+    "flake8>=6.1.0",
+    "mypy>=1.7.0",
+    "types-python-dateutil>=2.8.20",
+    "types-pytz>=2023.3.0",
+    "ruff>=0.1.11",
+]
+
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --strict-markers --cov=app --cov-report=term-missing"
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "**/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "^\\s*@(abc\\.)?abstractmethod",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | migrations
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+known_first_party = ["app"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = ["E501"]  # line-length handled by black
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]

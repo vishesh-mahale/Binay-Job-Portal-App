@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "contracts/tasks/candidate-projection-task.v1.json",
+  "title": "Candidate Projection Task",
+  "description": "Cloud Task payload for candidate search profile rebuild",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_id", "trace_id"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Contract schema version"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Outbox event UUID (idempotency key)"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Candidate profile UUID"
+    },
+    "trace_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Distributed tracing ID"
+    }
+  },
+  "additionalProperties": false
+}
