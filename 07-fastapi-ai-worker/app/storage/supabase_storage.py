@@ -7,8 +7,9 @@ from typing import Optional
 
 from app.core.config import get_settings
 from app.core.exceptions import StorageError
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SupabaseStorageClient:

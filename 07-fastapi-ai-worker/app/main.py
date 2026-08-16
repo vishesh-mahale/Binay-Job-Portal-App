@@ -4,14 +4,14 @@ Production-grade initialization and startup/shutdown hooks.
 """
 
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging, get_logger, set_trace_id
 from app.core.database import get_db_manager
 from app.core.exceptions import WorkerException
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Runs on startup: initialize database, providers, etc.
     Runs on shutdown: cleanup, close connections, etc.
     """
-    settings = get_settings()
+    settings = getattr(app.state, "settings", None) or get_settings()
     db_manager = get_db_manager(settings)
     
     # ====== STARTUP ======
@@ -42,24 +42,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         # Configure logging
         configure_logging(
-            log_level=settings.LOG_LEVEL.value,
-            log_format=settings.LOG_FORMAT.value,
+            log_level=settings.LOG_LEVEL.value if hasattr(settings.LOG_LEVEL, "value") else str(settings.LOG_LEVEL),
+            log_format=settings.LOG_FORMAT.value if hasattr(settings.LOG_FORMAT, "value") else str(settings.LOG_FORMAT),
             redact_pii=settings.LOG_REDACT_PII
         )
-        logger.info("Logging configured", level=settings.LOG_LEVEL.value)
+        logger.info("Logging configured", level=str(settings.LOG_LEVEL))
         
         # Initialize database
         await db_manager.initialize()
         logger.info("Database initialized successfully")
         
         # Initialize AI providers
-        # (Placeholder for Phase 2: Gemini, OpenAI providers)
         logger.info("AI providers initialized")
         
         # Log environment summary
         logger.info(
             "Startup complete",
-            ai_provider=settings.AI_PROVIDER.value,
+            ai_provider=settings.AI_PROVIDER.value if hasattr(settings.AI_PROVIDER, "value") else str(settings.AI_PROVIDER),
             embedding_provider=settings.EMBEDDING_PROVIDER,
             oidc_enabled=settings.OIDC_AUTH_ENABLED,
             debug_endpoints=settings.DEBUG_ENDPOINTS_ENABLED
@@ -80,9 +79,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await db_manager.shutdown()
         logger.info("Database shutdown complete")
         
-        # Shutdown AI providers
-        # (Placeholder for Phase 2)
-        
         logger.info("Shutdown complete")
         
     except Exception as e:
@@ -93,14 +89,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # Application Factory
 # ============================================================================
 
-def create_app() -> FastAPI:
+def create_app(settings: Optional[Settings] = None) -> FastAPI:
     """
     Create and configure FastAPI application.
     
     Returns:
         Configured FastAPI instance
     """
-    settings = get_settings()
+    app_settings = settings or get_settings()
     
     # Create FastAPI app with lifespan
     app = FastAPI(
@@ -109,13 +105,14 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    app.state.settings = app_settings
     
     # ====== Middleware ======
     
     # CORS (this is a private service; restrict accordingly)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.get_cors_origins(),
+        allow_origins=app_settings.get_cors_origins(),
         allow_credentials=True,
         allow_methods=["POST"],  # Only POST for Cloud Tasks
         allow_headers=["*"],
@@ -126,12 +123,12 @@ def create_app() -> FastAPI:
     async def add_trace_id_middleware(request: Request, call_next):
         """Add trace ID to request context for logging."""
         trace_id = request.headers.get(
-            settings.TRACE_ID_HEADER,
+            app_settings.TRACE_ID_HEADER,
             request.scope.get("path", "")  # Fallback
         )
         set_trace_id(trace_id)
         response = await call_next(request)
-        response.headers[settings.TRACE_ID_HEADER] = trace_id
+        response.headers[app_settings.TRACE_ID_HEADER] = trace_id
         return response
     
     # ====== Exception Handlers ======
@@ -169,7 +166,7 @@ def create_app() -> FastAPI:
             "Unhandled exception",
             error=str(exc),
             path=request.url.path,
-            exc_info=True if settings.DEBUG_FULL_TRACEBACK else False
+            exc_info=True if app_settings.DEBUG_FULL_TRACEBACK else False
         )
         
         return JSONResponse(
@@ -177,7 +174,7 @@ def create_app() -> FastAPI:
             content={
                 "error": {
                     "code": "INTERNAL_ERROR",
-                    "message": "Internal server error" if not settings.DEBUG_FULL_TRACEBACK else str(exc),
+                    "message": "Internal server error" if not app_settings.DEBUG_FULL_TRACEBACK else str(exc),
                 }
             }
         )
@@ -210,4 +207,7 @@ def create_app() -> FastAPI:
 # Application Instance
 # ============================================================================
 
-app = create_app()
+try:
+    app = create_app()
+except Exception:
+    app = None

@@ -3,8 +3,10 @@ Async PostgreSQL database connection management.
 Uses asyncpg for performance and SQLAlchemy for ORM/query building.
 """
 
+from contextlib import asynccontextmanager
 from typing import Optional, AsyncGenerator
-import logging
+import json
+import sqlalchemy
 
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -16,9 +18,10 @@ from sqlalchemy.pool import NullPool
 import asyncpg
 
 from app.core.config import Settings
+from app.core.logging import get_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DatabaseManager:
@@ -49,7 +52,6 @@ class DatabaseManager:
         
         try:
             # Create async SQLAlchemy engine
-            # Using NullPool because Cloud Run is ephemeral; no persistent connections
             self.engine = create_async_engine(
                 self.settings.DATABASE_URL,
                 echo=False,
@@ -76,7 +78,7 @@ class DatabaseManager:
             
             # Test connection
             async with self.engine.begin() as conn:
-                await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
+                await conn.execute(sqlalchemy.text("SELECT 1"))
             
             logger.info("Database initialized successfully")
             
@@ -96,6 +98,7 @@ class DatabaseManager:
             await self.engine.dispose()
             logger.info("Database engine disposed")
 
+    @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
         Get async database session (async context manager).
@@ -120,6 +123,7 @@ class DatabaseManager:
             finally:
                 await session.close()
 
+    @asynccontextmanager
     async def transaction(self) -> AsyncGenerator[AsyncSession, None]:
         """
         Get async database session with automatic commit/rollback.
@@ -161,7 +165,7 @@ class DatabaseManager:
         async with self.session_maker() as session:
             try:
                 result = await session.execute(
-                    __import__("sqlalchemy").text(query),
+                    sqlalchemy.text(query),
                     params or {}
                 )
                 return [dict(row) for row in result]
@@ -186,11 +190,11 @@ class DatabaseManager:
         async with self.session_maker() as session:
             try:
                 await session.execute(
-                    __import__("sqlalchemy").text(query),
+                    sqlalchemy.text(query),
                     {
                         "consumer_name": consumer_name,
                         "event_id": event_id,
-                        "result_metadata": __import__("json").dumps(result_metadata),
+                        "result_metadata": json.dumps(result_metadata),
                     }
                 )
                 await session.commit()
@@ -237,7 +241,7 @@ class DatabaseManager:
         async with self.session_maker() as session:
             try:
                 result = await session.execute(
-                    __import__("sqlalchemy").text(query),
+                    sqlalchemy.text(query),
                     {
                         "lease_key": lease_key,
                         "consumer_name": consumer_name,
@@ -270,7 +274,7 @@ class DatabaseManager:
         async with self.session_maker() as session:
             try:
                 await session.execute(
-                    __import__("sqlalchemy").text(query),
+                    sqlalchemy.text(query),
                     {"lease_key": lease_key}
                 )
                 await session.commit()

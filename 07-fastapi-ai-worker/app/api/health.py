@@ -11,8 +11,9 @@ from pydantic import BaseModel
 from app.core.database import DatabaseManager, get_db_manager
 from app.core.config import Settings, get_settings
 
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/health", tags=["health"])
 
 

@@ -1,10 +1,9 @@
-"""Internal Cloud Task handlers for resume parsing and related workloads."""
+"""Internal Cloud Task handlers for resume parsing, candidate projection, and related workloads."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -21,6 +20,7 @@ from app.core.exceptions import (
     LockAcquisitionError,
     TaskValidationError,
 )
+from app.core.logging import get_logger
 from app.core.security import get_oidc_validator
 from app.providers.base import LLMProvider, EmbeddingProvider
 from app.providers.gemini import GeminiLLMProvider, GeminiEmbeddingProvider
@@ -29,35 +29,40 @@ from app.repositories.parsing_job_repo import ResumeParsingJobRepository
 from app.repositories.resume_parsed_repo import ResumeParsedRepository
 from app.repositories.processed_events_repo import ProcessedEventsRepository
 from app.repositories.outbox_repo import OutboxRepository
+from app.repositories.projection_repo import CandidateProjectionRepository
+from app.schemas.tasks import (
+    ResumeParseTaskPayload,
+    CandidateProjectionTaskPayload,
+    JobEnrichTaskPayload,
+)
 from app.services.document_extractor import DocumentExtractor
+from app.services.projection_service import CandidateProjectionService
 from app.storage.supabase_storage import SupabaseStorageClient
 
 router = APIRouter(prefix="/internal")
-logger = logging.getLogger(__name__)
-
-
-class ResumeParseTaskPayload(BaseModel):
-    schema_version: int = Field(1, ge=1)
-    event_id: str
-    aggregate_id: str
-    trace_id: Optional[str] = None
+logger = get_logger(__name__)
 
 
 def _get_llm_provider(settings) -> LLMProvider:
-    provider = (settings.AI_PROVIDER or "mock").lower()
-    if provider == "gemini":
+    ai_provider = settings.AI_PROVIDER.value if hasattr(settings.AI_PROVIDER, "value") else str(settings.AI_PROVIDER or "mock")
+    if settings.MOCK_AI_PROVIDER or ai_provider.lower() == "mock":
+        return MockLLMProvider()
+    if ai_provider.lower() == "gemini":
         return GeminiLLMProvider()
-    if provider == "openai":
+    if ai_provider.lower() == "openai":
         from app.providers.openai import OpenAILLMProvider
         return OpenAILLMProvider()
     return MockLLMProvider()
 
 
 def _get_embedding_provider(settings) -> EmbeddingProvider:
-    provider = (settings.EMBEDDING_PROVIDER or "mock").lower()
-    if provider == "gemini":
+    ai_provider = settings.AI_PROVIDER.value if hasattr(settings.AI_PROVIDER, "value") else str(settings.AI_PROVIDER or "mock")
+    if settings.MOCK_AI_PROVIDER or ai_provider.lower() == "mock":
+        return MockEmbeddingProvider()
+    emb_provider = str(settings.EMBEDDING_PROVIDER or "mock").lower()
+    if emb_provider == "gemini":
         return GeminiEmbeddingProvider()
-    if provider == "openai":
+    if emb_provider == "openai":
         from app.providers.openai import OpenAIEmbeddingProvider
         return OpenAIEmbeddingProvider()
     return MockEmbeddingProvider()
@@ -69,6 +74,16 @@ async def handle_resume_parse_task(
     request: Request,
     authorization: Optional[str] = Header(default=None, alias="Authorization"),
 ):
+    """
+    Handle resume parsing Cloud Task (PD-001).
+    
+    1. Validate OIDC token.
+    2. Idempotency pre-check.
+    3. Claim job atomically.
+    4. Download & validate document.
+    5. Extract structured data via LLM.
+    6. Atomic DB commit (events, artifacts, parsed_data, processed_events, outbox).
+    """
     settings = get_settings()
     validator = get_oidc_validator(settings)
 
@@ -239,6 +254,149 @@ async def handle_resume_parse_task(
     except Exception as exc:
         await repo.mark_failed(payload.aggregate_id, {"error": str(exc)})
         raise HTTPException(status_code=200, detail={"status": "failed", "error": str(exc)})
+
+
+@router.post("/tasks/candidate/projection", status_code=200)
+async def handle_candidate_projection_task(
+    payload: CandidateProjectionTaskPayload,
+    request: Request,
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+):
+    """
+    Handle candidate search projection rebuild Cloud Task (PD-002).
+    
+    10-Step Pipeline:
+    1. Parse and validate task payload.
+    2. Validate OIDC token.
+    3. Idempotency pre-check on processed_events.
+    4. Acquire atomic processing lease (TTL: 5m).
+    5. Load canonical profile aggregate & active resume state.
+    6. Merge & deduplicate facts, build semantic text, generate 768-dim vector embedding.
+    7. Check stale revision guard (coalesce if newer source state exists).
+    8. Single atomic DB commit (candidate_search_profiles UPSERT + processed_events + outbox).
+    9. Release processing lease.
+    10. Return HTTP 200 OK.
+    """
+    settings = get_settings()
+    validator = get_oidc_validator(settings)
+
+    if settings.OIDC_AUTH_ENABLED:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Missing bearer token")
+        await validator.validate_token(authorization.replace("Bearer ", "", 1))
+
+    db_manager = get_db_manager(settings)
+    if not db_manager.session_maker:
+        await db_manager.initialize()
+
+    processed_repo = ProcessedEventsRepository(db_manager)
+    projection_repo = CandidateProjectionRepository(db_manager)
+    outbox_repo = OutboxRepository(db_manager)
+    embedding_provider = _get_embedding_provider(settings)
+    service = CandidateProjectionService(embedding_provider, settings)
+
+    candidate_id = payload.aggregate_id
+
+    # Step 3: Idempotency pre-check
+    if await processed_repo.is_processed("candidate_projection", payload.event_id):
+        logger.info("Event already processed; skipping", event_id=payload.event_id, candidate_id=candidate_id)
+        return {"status": "success", "candidate_id": candidate_id, "skipped": True}
+
+    # Step 3.5: Acquire atomic processing lease
+    lease_key = f"candidate_projection:{candidate_id}"
+    lease_acquired = await db_manager.acquire_processing_lease(
+        lease_key=lease_key,
+        consumer_name="candidate_projection",
+        event_id=payload.event_id,
+        worker_id="fastapi-worker",
+        lease_duration_seconds=300,
+    )
+
+    if not lease_acquired:
+        logger.info("Processing lease already held; skipping task", lease_key=lease_key, event_id=payload.event_id)
+        return {"status": "success", "candidate_id": candidate_id, "skipped": True, "reason": "lease_held"}
+
+    try:
+        # Step 4: Load canonical profile & active resume state (read-only)
+        aggregate = await projection_repo.load_candidate_aggregate(candidate_id)
+        if not aggregate:
+            logger.warning("Candidate profile not found or deleted", candidate_id=candidate_id)
+            return {"status": "success", "candidate_id": candidate_id, "skipped": True, "reason": "profile_not_found"}
+
+        stored_revision = aggregate.profile_revision
+        stored_doc_id = aggregate.active_resume_document_id
+        stored_result_id = aggregate.active_resume_parsing_result_id
+
+        # Step 5 & 6: Merge facts, build symmetric semantic text, generate 768-dim embedding
+        upsert_data = await service.generate_projection(aggregate)
+
+        # Step 7: Stale Revision Guard (Concurrency & Coalescing Protection)
+        is_stale = await projection_repo.check_stale_source_state(
+            candidate_id=candidate_id,
+            stored_revision=stored_revision,
+            stored_document_id=stored_doc_id,
+            stored_parsing_result_id=stored_result_id,
+        )
+
+        if is_stale:
+            logger.info(
+                "Stale projection detected (newer source state exists); skipping write to coalesce.",
+                candidate_id=candidate_id,
+            )
+            return {"status": "success", "candidate_id": candidate_id, "coalesced": True}
+
+        # Step 8: Final Atomic DB Commit
+        async with db_manager.transaction() as session:
+            # 8a: Revision-guarded UPSERT into candidate_search_profiles
+            await projection_repo.upsert_search_profile(upsert_data, session=session)
+
+            # 8b: Record processed event for idempotency
+            await processed_repo.record_processed(
+                consumer_name="candidate_projection",
+                event_id=payload.event_id,
+                result_metadata={
+                    "candidate_id": candidate_id,
+                    "projection_revision": upsert_data.projection_revision,
+                    "trace_id": payload.trace_id,
+                },
+                session=session,
+            )
+
+            # 8c: Emit chained outbox event
+            await outbox_repo.emit_event(
+                aggregate_type="candidate",
+                aggregate_id=candidate_id,
+                event_type="candidate.projection.rebuilt",
+                payload={
+                    "candidate_id": candidate_id,
+                    "projection_revision": upsert_data.projection_revision,
+                    "fact_sources": upsert_data.fact_sources,
+                    "reason": "profile_changed",
+                },
+                session=session,
+            )
+
+        logger.info(
+            "Candidate search projection rebuilt successfully",
+            candidate_id=candidate_id,
+            revision=upsert_data.projection_revision,
+        )
+        return {
+            "status": "success",
+            "candidate_id": candidate_id,
+            "projection_revision": upsert_data.projection_revision,
+        }
+
+    except Exception as exc:
+        logger.error("Candidate projection rebuild failed", candidate_id=candidate_id, error=str(exc), exc_info=True)
+        raise HTTPException(status_code=500, detail={"status": "failed", "error": str(exc)})
+
+    finally:
+        # Step 9: Release processing lease
+        try:
+            await db_manager.release_processing_lease(lease_key)
+        except Exception as release_err:
+            logger.warning("Failed to release processing lease", lease_key=lease_key, error=str(release_err))
 
 
 async def _resolve_candidate_id(session, document_id: str) -> Optional[str]:

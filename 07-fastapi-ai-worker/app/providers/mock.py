@@ -10,8 +10,9 @@ import logging
 from app.providers.base import LLMProvider, EmbeddingProvider, LLMRequest, LLMResponse, EmbeddingResponse
 from app.core.exceptions import AIResponseValidationError
 
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MockLLMProvider(LLMProvider):

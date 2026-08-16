@@ -13,8 +13,9 @@ import jwt
 
 from app.core.config import Settings
 
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class OIDCTokenValidator:
