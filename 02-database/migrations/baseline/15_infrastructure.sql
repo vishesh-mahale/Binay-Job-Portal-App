@@ -1,5 +1,5 @@
 -- ============================================================================
--- Infrastructure: Transactional Outbox and Consumer Idempotency
+-- Infrastructure: Transactional Outbox, Consumer Idempotency, and Worker Leases
 --
 -- Final flow:
 --   NestJS/FastAPI transaction + outbox_events INSERT
@@ -12,8 +12,12 @@
 -- Recovery Cron only checks whether due/stale work exists and wakes Dispatcher.
 -- Webhook/Cron payload is never business truth; Dispatcher rereads the DB.
 --
--- Inventory: 2 tables, 6 lifecycle/dispatch functions, 2 triggers and 6 indexes.
+-- Inventory: 3 tables, 6 lifecycle/dispatch functions, 2 triggers and 7 indexes.
 -- RLS/grants and function EXECUTE permissions are finalized in 17_rls.sql.
+--
+-- Worker lease table:
+--   event_processing_leases provides atomic in-flight duplicate prevention
+--   for non-resume pipelines (candidate projection, job enrichment, match analysis).
 -- ============================================================================
 
 CREATE TABLE outbox_events (
@@ -344,6 +348,26 @@ CREATE INDEX idx_outbox_aggregate
 
 CREATE INDEX idx_processed_events_retention
     ON processed_events(processed_at);
+
+-- ============================================================================
+-- Worker In-Flight Execution Leases (Prevents Concurrent Duplicate AI Work)
+-- ============================================================================
+-- Non-resume pipelines (candidate projection, job enrichment, match analysis)
+-- use this table for atomic lease acquisition before expensive AI work.
+-- Resume parsing uses resume_parsing_jobs claim/lease instead.
+
+CREATE TABLE event_processing_leases (
+    lease_key       VARCHAR(255) PRIMARY KEY,
+    consumer_name   VARCHAR(100) NOT NULL,
+    event_id        UUID NOT NULL REFERENCES outbox_events(id) ON DELETE CASCADE,
+    locked_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ NOT NULL,
+    worker_id       VARCHAR(255),
+    result_metadata JSONB DEFAULT '{}'::JSONB
+);
+
+CREATE INDEX idx_worker_leases_expiry
+    ON event_processing_leases(expires_at);
 
 -- SECURITY DEFINER functions are closed by default. Exact Dispatcher/Cron role
 -- grants are added only in the reviewed 17_rls.sql authorization pass.
