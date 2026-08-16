@@ -1,4 +1,4 @@
-"""Internal Cloud Task handlers for resume parsing, candidate projection, and related workloads."""
+"""Internal Cloud Task handlers for resume parsing, candidate projection, and job enrichment workloads."""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ from app.repositories.resume_parsed_repo import ResumeParsedRepository
 from app.repositories.processed_events_repo import ProcessedEventsRepository
 from app.repositories.outbox_repo import OutboxRepository
 from app.repositories.projection_repo import CandidateProjectionRepository
+from app.repositories.job_repo import JobRepository
 from app.schemas.tasks import (
     ResumeParseTaskPayload,
     CandidateProjectionTaskPayload,
@@ -37,6 +38,7 @@ from app.schemas.tasks import (
 )
 from app.services.document_extractor import DocumentExtractor
 from app.services.projection_service import CandidateProjectionService
+from app.services.job_ai_service import JobAIService
 from app.storage.supabase_storage import SupabaseStorageClient
 
 router = APIRouter(prefix="/internal")
@@ -397,6 +399,141 @@ async def handle_candidate_projection_task(
             await db_manager.release_processing_lease(lease_key)
         except Exception as release_err:
             logger.warning("Failed to release processing lease", lease_key=lease_key, error=str(release_err))
+
+
+@router.post("/tasks/job/enrich", status_code=200)
+async def handle_job_enrich_task(
+    payload: JobEnrichTaskPayload,
+    request: Request,
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+):
+    """
+    Handle Job AI Profile & 768-dim Embedding Enrichment Cloud Task (JD-001).
+    
+    11-Step Pipeline:
+    1. Parse and validate task payload.
+    2. Validate OIDC token.
+    3. Idempotency pre-check on processed_events ('job_enrichment', event_id).
+    4. Acquire atomic processing lease ('job_enrichment:{job_id}', TTL 5m).
+    5. Load canonical job data, skills, category, and locations (read-only).
+    6. Generate Job AI Profile JSONB (extracted & inferred facts) via LLM.
+    7. Assemble symmetric semantic text and generate 768-dim vector embedding.
+    8. Optimistic concurrency check (verify job updated_at has not drifted).
+    9. Single atomic DB commit (UPDATE jobs + INSERT processed_events + INSERT outbox_events).
+    10. Release processing lease.
+    11. Return HTTP 200 OK.
+    """
+    settings = get_settings()
+    validator = get_oidc_validator(settings)
+
+    if settings.OIDC_AUTH_ENABLED:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Missing bearer token")
+        await validator.validate_token(authorization.replace("Bearer ", "", 1))
+
+    db_manager = get_db_manager(settings)
+    if not db_manager.session_maker:
+        await db_manager.initialize()
+
+    processed_repo = ProcessedEventsRepository(db_manager)
+    job_repo = JobRepository(db_manager)
+    outbox_repo = OutboxRepository(db_manager)
+    llm = _get_llm_provider(settings)
+    embedding_provider = _get_embedding_provider(settings)
+    service = JobAIService(llm, embedding_provider, settings)
+
+    job_id = payload.aggregate_id
+
+    # Step 3: Idempotency pre-check
+    if await processed_repo.is_processed("job_enrichment", payload.event_id):
+        logger.info("Job enrichment event already processed; skipping", event_id=payload.event_id, job_id=job_id)
+        return {"status": "success", "job_id": job_id, "skipped": True}
+
+    # Step 4: Acquire atomic processing lease
+    lease_key = f"job_enrichment:{job_id}"
+    lease_acquired = await db_manager.acquire_processing_lease(
+        lease_key=lease_key,
+        consumer_name="job_enrichment",
+        event_id=payload.event_id,
+        worker_id="fastapi-worker",
+        lease_duration_seconds=300,
+    )
+
+    if not lease_acquired:
+        logger.info("Processing lease already held for job; skipping task", lease_key=lease_key, event_id=payload.event_id)
+        return {"status": "success", "job_id": job_id, "skipped": True, "reason": "lease_held"}
+
+    try:
+        # Step 5: Load job aggregate (read-only)
+        job_aggregate = await job_repo.load_job_aggregate(job_id)
+        if not job_aggregate:
+            logger.warning("Job not found or deleted", job_id=job_id)
+            return {"status": "success", "job_id": job_id, "skipped": True, "reason": "job_not_found"}
+
+        stored_updated_at = job_aggregate.updated_at
+
+        # Step 6 & 7: Generate AI Profile JSONB & 768-dim Vector Embedding (outside DB transaction)
+        enrichment_result = await service.enrich_job(job_aggregate)
+
+        # Step 8: Optimistic Concurrency Guard (check if job was edited during AI processing)
+        is_stale = await job_repo.check_stale_job(job_id, stored_updated_at)
+        if is_stale:
+            logger.info("Stale job enrichment detected (job modified during AI processing); skipping write.", job_id=job_id)
+            return {"status": "success", "job_id": job_id, "coalesced": True}
+
+        # Step 9: Single Atomic DB Commit
+        async with db_manager.transaction() as session:
+            # 9a: Update jobs table
+            updated = await job_repo.update_job_ai_enrichment(enrichment_result, session=session)
+            if not updated:
+                logger.warning("Job update condition failed (concurrency race); skipping commit", job_id=job_id)
+                return {"status": "success", "job_id": job_id, "coalesced": True}
+
+            # 9b: Record processed event
+            await processed_repo.record_processed(
+                consumer_name="job_enrichment",
+                event_id=payload.event_id,
+                result_metadata={
+                    "job_id": job_id,
+                    "embedding_model": enrichment_result.embedding_model,
+                    "trace_id": payload.trace_id,
+                },
+                session=session,
+            )
+
+            # 9c: Emit chained outbox event
+            await outbox_repo.emit_event(
+                aggregate_type="job",
+                aggregate_id=job_id,
+                event_type="job.enriched",
+                payload={
+                    "job_id": job_id,
+                    "embedding_model": enrichment_result.embedding_model,
+                    "embedding_version": enrichment_result.embedding_version,
+                    "ai_profile_model": enrichment_result.ai_profile.metadata.model,
+                    "ai_profile_version": 1,
+                    "trace_id": payload.trace_id,
+                },
+                session=session,
+            )
+
+        logger.info("Job AI enrichment completed successfully", job_id=job_id)
+        return {
+            "status": "success",
+            "job_id": job_id,
+            "embedding_model": enrichment_result.embedding_model,
+        }
+
+    except Exception as exc:
+        logger.error("Job AI enrichment failed", job_id=job_id, error=str(exc), exc_info=True)
+        raise HTTPException(status_code=500, detail={"status": "failed", "error": str(exc)})
+
+    finally:
+        # Step 10: Release processing lease
+        try:
+            await db_manager.release_processing_lease(lease_key)
+        except Exception as release_err:
+            logger.warning("Failed to release job processing lease", lease_key=lease_key, error=str(release_err))
 
 
 async def _resolve_candidate_id(session, document_id: str) -> Optional[str]:

@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "contracts/events/job-enriched.v1.json",
+  "title": "Job Enriched Event",
+  "description": "Event emitted when a job has been enriched with AI profile and 768-dim vector embedding",
+  "type": "object",
+  "required": ["schema_version", "aggregate_type", "aggregate_id", "event_type", "payload"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Contract schema version"
+    },
+    "aggregate_type": {
+      "type": "string",
+      "const": "job",
+      "description": "Aggregate type"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Job UUID"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "job.enriched",
+      "description": "Event type identifier"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["job_id", "embedding_model", "embedding_version"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Job UUID"
+        },
+        "embedding_model": {
+          "type": "string",
+          "description": "Embedding model used"
+        },
+        "embedding_version": {
+          "type": "integer",
+          "description": "Embedding model version"
+        },
+        "ai_profile_model": {
+          "type": "string",
+          "description": "AI profile generation model used"
+        },
+        "ai_profile_version": {
+          "type": "integer",
+          "description": "AI profile contract version"
+        },
+        "trace_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Distributed trace ID"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
