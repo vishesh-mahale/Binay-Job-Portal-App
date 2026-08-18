@@ -1,0 +1,24 @@
+Priya Patel
+Email: priya.patel.ai@example.com | Phone: +91-9123456780
+Location: Hyderabad, Telangana, India
+
+PROFESSIONAL SUMMARY
+Senior Machine Learning Engineer with 5+ years of experience in NLP, LLM fine-tuning, embeddings, and high-throughput vector search systems.
+
+SKILLS
+- Machine Learning & AI: PyTorch, TensorFlow, HuggingFace Transformers, LangChain, OpenAI API, Gemini API
+- Vector Databases: pgvector, Pinecone, Qdrant, Milvus
+- Backend & Data: Python, FastAPI, Pandas, NumPy, Scikit-learn, SQL, Spark
+- MLOps & Cloud: Docker, Kubernetes, MLflow, AWS SageMaker, GCP Vertex AI
+
+WORK EXPERIENCE
+Lead Machine Learning Engineer | DataMind AI (2022 - Present)
+- Designed and deployed semantic search and retrieval-augmented generation (RAG) system using 768-dim embeddings.
+- Fine-tuned open-source LLMs (Llama, Mistral) for domain-specific information extraction with 94% F1-score.
+
+Data Scientist | Analytics Matrix (2020 - 2022)
+- Built automated candidate-to-job matching ranking model improving interview conversion rates by 35%.
+
+EDUCATION
+Master of Science in Data Science | IIIT Hyderabad (2020)
+Bachelor of Technology in Information Technology | VJTI Mumbai (2018)

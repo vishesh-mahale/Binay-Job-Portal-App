@@ -1,9 +1,9 @@
 """
 Custom exception hierarchy for FastAPI AI Worker.
-Provides structured error handling and HTTP status code mapping.
+Includes standard HTTP status codes, error details, and log formatting.
 """
 
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
 
 class WorkerException(Exception):
@@ -16,40 +16,31 @@ class WorkerException(Exception):
         internal_code: str = "INTERNAL_ERROR",
         details: Optional[Dict[str, Any]] = None
     ):
-        """
-        Initialize exception.
-        
-        Args:
-            message: User-friendly error message
-            http_status: HTTP status code to return
-            internal_code: Internal error code for logging
-            details: Additional error details (redacted in responses)
-        """
         super().__init__(message)
         self.message = message
         self.http_status = http_status
         self.internal_code = internal_code
-        self.details = details or {}
-
+        self.details = details if details is not None else {}
+        
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to JSON response dict."""
+        """Convert exception to API error response dict."""
         return {
             "error": {
                 "code": self.internal_code,
                 "message": self.message,
-                "details": self.details if self.details else None,
+                "details": self.details if bool(self.details) else None
             }
         }
 
 
 # ============================================================================
-# Task Processing Errors
+# Task & Workflow Errors
 # ============================================================================
 
 class TaskValidationError(WorkerException):
-    """Invalid task payload or schema."""
+    """Task payload failed schema validation."""
     
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Task payload validation failed", details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
             http_status=400,
@@ -59,57 +50,72 @@ class TaskValidationError(WorkerException):
 
 
 class OIDCAuthenticationError(WorkerException):
-    """OIDC token validation failed."""
+    """Google Cloud Tasks OIDC token validation failed."""
     
-    def __init__(self, message: str = "Authentication failed"):
+    def __init__(self, message: str = "OIDC Authentication failed"):
         super().__init__(
-            message=message,
+            message=f"OIDC Authentication failed: {message}" if not message.startswith("OIDC Authentication failed") else message,
             http_status=401,
             internal_code="OIDC_AUTH_ERROR"
         )
 
 
 class OIDCAuthorizationError(WorkerException):
-    """OIDC token valid but service account not authorized."""
+    """Service account not authorized."""
     
-    def __init__(self, message: str = "Not authorized"):
+    def __init__(self, service_account: str = "unknown"):
         super().__init__(
-            message=message,
+            message=f"Service account '{service_account}' is not authorized to invoke worker tasks",
             http_status=403,
             internal_code="OIDC_AUTHZ_ERROR"
         )
 
 
 class DuplicateTaskError(WorkerException):
-    """Task already processed (idempotent skip)."""
+    """Task has already been processed (idempotency guard)."""
     
-    def __init__(self, message: str = "Task already processed"):
+    def __init__(self, event_id: str = ""):
         super().__init__(
-            message=message,
-            http_status=200,  # Return 200 OK for idempotent skip
-            internal_code="DUPLICATE_TASK"
+            message=f"Event {event_id} has already been processed" if event_id else "Event has already been processed",
+            http_status=200,
+            internal_code="DUPLICATE_TASK",
+            details={"event_id": event_id, "skipped": True} if event_id else None
         )
 
 
 class LockAcquisitionError(WorkerException):
-    """Failed to acquire processing lease (concurrent duplicate suppressed)."""
+    """Failed to acquire processing lease/lock (another instance is working)."""
     
-    def __init__(self, lease_key: str):
+    def __init__(self, resource_id: str = ""):
         super().__init__(
-            message=f"Processing lease already held for {lease_key}",
-            http_status=200,  # Return 200 OK; task will be skipped
-            internal_code="LEASE_NOT_ACQUIRED"
+            message=f"Resource {resource_id} is currently being processed by another worker" if resource_id else "Processing lease already held",
+            http_status=200,
+            internal_code="LEASE_NOT_ACQUIRED",
+            details={"resource_id": resource_id, "skipped": True} if resource_id else None
         )
 
 
 class StaleDataError(WorkerException):
-    """Source data has been updated; projection coalesced."""
+    """Revision guard check failed; a newer revision already exists."""
     
-    def __init__(self, message: str = "Stale data; projection coalesced"):
+    def __init__(
+        self,
+        entity_type: str = "entity",
+        entity_id: str = "",
+        stored_rev: int = 0,
+        current_rev: int = 0
+    ):
         super().__init__(
-            message=message,
-            http_status=200,  # Return 200 OK; coalescing is intentional
-            internal_code="STALE_DATA_COALESCED"
+            message=f"{entity_type} {entity_id} has newer revision ({current_rev} > {stored_rev}); skipping stale processing" if entity_id else "Stale data coalesced",
+            http_status=200,
+            internal_code="STALE_DATA_COALESCED",
+            details={
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "stored_revision": stored_rev,
+                "current_revision": current_rev,
+                "discarded": True
+            } if entity_id else None
         )
 
 
@@ -118,24 +124,23 @@ class StaleDataError(WorkerException):
 # ============================================================================
 
 class DocumentValidationError(WorkerException):
-    """Document failed validation (hostile, corrupt, or invalid)."""
+    """Document failed validation (e.g., magic bytes check)."""
     
-    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, reason: str = ""):
         super().__init__(
-            message=f"Document validation failed: {reason}",
-            http_status=200,  # Return 200; terminal error for this task
-            internal_code="DOCUMENT_VALIDATION_ERROR",
-            details=details
+            message=f"Document validation failed: {reason}" if reason else "Document validation failed",
+            http_status=200,
+            internal_code="DOCUMENT_VALIDATION_ERROR"
         )
 
 
 class DocumentExtractionError(WorkerException):
     """Document text extraction failed."""
     
-    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, reason: str = "", details: Optional[Dict[str, Any]] = None):
         super().__init__(
-            message=f"Document extraction failed: {reason}",
-            http_status=200,  # Return 200; terminal error
+            message=f"Document extraction failed: {reason}" if reason else "Document extraction failed",
+            http_status=200,
             internal_code="DOCUMENT_EXTRACTION_ERROR",
             details=details
         )
@@ -144,10 +149,10 @@ class DocumentExtractionError(WorkerException):
 class DocumentSizeLimitError(WorkerException):
     """Document exceeds size limits."""
     
-    def __init__(self, size_mb: float, limit_mb: float):
+    def __init__(self, size_mb: float = 0.0, limit_mb: float = 0.0):
         super().__init__(
             message=f"Document size {size_mb:.2f} MB exceeds limit {limit_mb:.2f} MB",
-            http_status=200,  # Return 200; terminal error
+            http_status=200,
             internal_code="DOCUMENT_SIZE_LIMIT"
         )
 
@@ -155,10 +160,10 @@ class DocumentSizeLimitError(WorkerException):
 class DocumentSecurityError(WorkerException):
     """Document failed security scan (malware, etc)."""
     
-    def __init__(self, reason: str):
+    def __init__(self, reason: str = ""):
         super().__init__(
-            message=f"Document failed security check: {reason}",
-            http_status=200,  # Return 200; terminal error
+            message=f"Document failed security check: {reason}" if reason else "Document failed security check",
+            http_status=200,
             internal_code="DOCUMENT_SECURITY_ERROR"
         )
 
@@ -170,7 +175,10 @@ class DocumentSecurityError(WorkerException):
 class AIProviderError(WorkerException):
     """AI provider call failed."""
     
-    def __init__(self, provider: str, reason: str, retryable: bool = False):
+    def __init__(self, provider: str = "ai_provider", reason: str = "", retryable: bool = False):
+        if not reason and provider:
+            reason = provider
+            provider = "ai_provider"
         super().__init__(
             message=f"AI provider ({provider}) error: {reason}",
             http_status=503 if retryable else 200,
@@ -181,10 +189,10 @@ class AIProviderError(WorkerException):
 class AIResponseValidationError(WorkerException):
     """AI provider returned invalid/unparseable response."""
     
-    def __init__(self, reason: str):
+    def __init__(self, reason: str = ""):
         super().__init__(
-            message=f"AI response validation failed: {reason}",
-            http_status=200,  # Return 200; terminal error
+            message=f"AI response validation failed: {reason}" if reason else "AI response validation failed",
+            http_status=200,
             internal_code="AI_RESPONSE_INVALID"
         )
 
@@ -192,37 +200,11 @@ class AIResponseValidationError(WorkerException):
 class RateLimitError(WorkerException):
     """AI provider rate limit exceeded."""
     
-    def __init__(self, provider: str, retry_after_seconds: Optional[int] = None):
+    def __init__(self, provider: str = "ai_provider", retry_after_seconds: Optional[int] = None):
         super().__init__(
             message=f"{provider} rate limit exceeded",
-            http_status=503,  # Retryable
+            http_status=503,
             internal_code="RATE_LIMIT_ERROR"
-        )
-
-
-# ============================================================================
-# Database Errors
-# ============================================================================
-
-class DatabaseError(WorkerException):
-    """Database operation failed."""
-    
-    def __init__(self, operation: str, reason: str, retryable: bool = True):
-        super().__init__(
-            message=f"Database {operation} failed: {reason}",
-            http_status=503 if retryable else 500,
-            internal_code="DATABASE_ERROR"
-        )
-
-
-class ConstraintViolationError(WorkerException):
-    """Database constraint violation."""
-    
-    def __init__(self, constraint: str):
-        super().__init__(
-            message=f"Constraint violation: {constraint}",
-            http_status=500,
-            internal_code="CONSTRAINT_VIOLATION"
         )
 
 
@@ -231,22 +213,23 @@ class ConstraintViolationError(WorkerException):
 # ============================================================================
 
 class StorageError(WorkerException):
-    """Cloud Storage operation failed."""
+    """Supabase storage operation failed."""
     
-    def __init__(self, operation: str, reason: str, retryable: bool = True):
+    def __init__(self, operation: str = "operation", error: str = "", retryable: bool = True):
         super().__init__(
-            message=f"Storage {operation} failed: {reason}",
+            message=f"Storage operation '{operation}' failed: {error}",
             http_status=503 if retryable else 500,
-            internal_code="STORAGE_ERROR"
+            internal_code="STORAGE_ERROR",
+            details={"operation": operation, "retryable": retryable}
         )
 
 
-class TimeoutError(WorkerException):
-    """Operation timeout (document extraction, AI call, etc)."""
+class DatabaseConnectionError(WorkerException):
+    """Database connection failed."""
     
-    def __init__(self, operation: str, timeout_seconds: int):
+    def __init__(self, message: str = "Database connection failed"):
         super().__init__(
-            message=f"{operation} exceeded timeout of {timeout_seconds}s",
-            http_status=503,  # Retryable
-            internal_code="TIMEOUT"
+            message=message,
+            http_status=503,
+            internal_code="DB_CONNECTION_ERROR"
         )

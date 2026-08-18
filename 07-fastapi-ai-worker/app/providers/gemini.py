@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import google.generativeai as genai
 
+from app.core.circuit_breaker import get_circuit_breaker
 from app.core.config import get_settings
 from app.core.exceptions import AIProviderError, RateLimitError
 from app.providers.base import EmbeddingProvider, LLMProvider, LLMRequest, LLMResponse
@@ -23,6 +24,7 @@ class GeminiLLMProvider(LLMProvider):
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY is required")
         genai.configure(api_key=self._api_key)
+        self._cb = get_circuit_breaker("gemini_llm")
 
     @property
     def provider_name(self) -> str:
@@ -57,7 +59,7 @@ class GeminiLLMProvider(LLMProvider):
                 text = getattr(response, "text", "") or ""
                 return text
 
-            text = await self._run_sync(_generate)
+            text = await self._cb.call(self._run_sync, _generate)
             return LLMResponse(
                 text=text,
                 model=self._model,

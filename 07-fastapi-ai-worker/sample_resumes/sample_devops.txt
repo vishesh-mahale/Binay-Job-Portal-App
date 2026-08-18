@@ -1,0 +1,24 @@
+Rahul Verma
+Email: rahul.verma.ops@example.com | Phone: +91-9988776655
+Location: Pune, Maharashtra, India
+
+PROFESSIONAL SUMMARY
+DevOps & Site Reliability Engineer with 7+ years of experience managing Kubernetes clusters, CI/CD automation pipelines, and multi-region cloud infrastructure on AWS and GCP.
+
+SKILLS
+- Container Orchestration: Kubernetes, Docker, Helm, ArgoCD
+- Cloud Platforms: AWS, Google Cloud Platform (GCP)
+- Infrastructure as Code: Terraform, Ansible, CloudFormation
+- Observability: Prometheus, Grafana, OpenTelemetry, Datadog, ELK Stack
+- Languages: Python, Bash, Go
+
+WORK EXPERIENCE
+Staff Site Reliability Engineer | ScaleOps Global (2021 - Present)
+- Maintained 99.99% uptime SLA across 40+ microservices in production Kubernetes clusters.
+- Configured automated horizontal pod autoscaling (HPA) and Prometheus alert pipelines.
+
+Cloud Infrastructure Engineer | InfraSolutions (2018 - 2021)
+- Automated deployment of multi-region AWS infrastructure with Terraform and GitHub Actions.
+
+EDUCATION
+Bachelor of Engineering in Electronics & Telecommunication | Pune University (2017)

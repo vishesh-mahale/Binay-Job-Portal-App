@@ -7,7 +7,8 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -118,18 +119,49 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         allow_headers=["*"],
     )
     
-    # Request tracing middleware
+    # Request tracing & metrics & size limits middleware
     @app.middleware("http")
-    async def add_trace_id_middleware(request: Request, call_next):
-        """Add trace ID to request context for logging."""
+    async def request_lifecycle_middleware(request: Request, call_next):
+        """Add trace ID, enforce content size, and record Prometheus metrics."""
+        from app.core.metrics import get_metrics_collector
+        import time
+
+        collector = get_metrics_collector()
+        start_time = time.monotonic()
+
+        # Enforce Request Size Limit
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > app_settings.MAX_DOCUMENT_SIZE_BYTES:
+            logger.warning("Request payload too large", content_length=content_length, max_size=app_settings.MAX_DOCUMENT_SIZE_BYTES)
+            return JSONResponse(
+                status_code=413,
+                content={
+                    "error": {
+                        "code": "PAYLOAD_TOO_LARGE",
+                        "message": f"Payload exceeds maximum allowed size of {app_settings.MAX_DOCUMENT_SIZE_BYTES} bytes",
+                    }
+                },
+            )
+
         trace_id = request.headers.get(
             app_settings.TRACE_ID_HEADER,
             request.scope.get("path", "")  # Fallback
         )
         set_trace_id(trace_id)
-        response = await call_next(request)
-        response.headers[app_settings.TRACE_ID_HEADER] = trace_id
-        return response
+
+        status_code = 500
+        try:
+            response = await call_next(request)
+            if response is not None and hasattr(response, "headers"):
+                response.headers[app_settings.TRACE_ID_HEADER] = trace_id
+                status_code = response.status_code
+            return response
+        finally:
+            duration = time.monotonic() - start_time
+            endpoint = request.url.path
+            method = request.method
+            collector.inc_counter("http_requests_total", labels={"method": method, "endpoint": endpoint, "status": str(status_code)})
+            collector.observe_duration("http_request_duration_seconds", duration, labels={"method": method, "endpoint": endpoint})
     
     # ====== Exception Handlers ======
     
@@ -161,7 +193,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
-        """Handle unexpected exceptions."""
+        """Handle unexpected exceptions and pass-through HTTPExceptions."""
+        if isinstance(exc, (HTTPException, StarletteHTTPException)):
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=exc.detail if isinstance(exc.detail, dict) else {"error": {"message": str(exc.detail)}},
+                headers=getattr(exc, "headers", None),
+            )
         logger.error(
             "Unhandled exception",
             error=str(exc),
@@ -198,6 +236,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             "version": "0.1.0",
             "status": "running"
         }
+
+    @app.get("/metrics", tags=["metrics"])
+    async def root_metrics():
+        """Root Prometheus metrics exposition endpoint."""
+        from fastapi.responses import Response
+        from app.core.metrics import get_metrics_collector
+        return Response(content=get_metrics_collector().generate_metrics_text(), media_type="text/plain; version=0.0.4")
     
     logger.debug("FastAPI application created and configured")
     return app

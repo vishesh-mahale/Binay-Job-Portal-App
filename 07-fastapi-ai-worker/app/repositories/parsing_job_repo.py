@@ -37,6 +37,7 @@ class ResumeParsingJobRepository:
                 locked_by = :worker_id,
                 locked_at = NOW(),
                 started_at = COALESCE(started_at, NOW()),
+                attempt_number = attempt_number + 1,
                 updated_at = NOW()
             WHERE id = :job_id
               AND status NOT IN ('completed', 'cancelled')
@@ -91,6 +92,24 @@ class ResumeParsingJobRepository:
                 locked_by = NULL,
                 updated_at = NOW()
             WHERE id = :job_id
+        """
+
+        async for s in self._with_session(session):
+            try:
+                await s.execute(text(query), {"job_id": job_id})
+            except Exception:
+                if session is None:
+                    await s.rollback()
+                raise
+
+    async def release_claim(self, job_id: str, session: Optional[AsyncSession] = None) -> None:
+        """Release an in-progress claim without marking terminal."""
+        query = """
+            UPDATE resume_parsing_jobs
+            SET locked_at = NULL,
+                locked_by = NULL,
+                updated_at = NOW()
+            WHERE id = :job_id AND status = 'processing'
         """
 
         async for s in self._with_session(session):

@@ -97,6 +97,7 @@ async def test_candidate_projection_task_end_to_end(test_app):
         patch("app.repositories.projection_repo.CandidateProjectionRepository.upsert_search_profile", new_callable=AsyncMock) as mock_upsert,
         patch("app.repositories.processed_events_repo.ProcessedEventsRepository.record_processed", new_callable=AsyncMock) as mock_record,
         patch("app.repositories.outbox_repo.OutboxRepository.emit_event", new_callable=AsyncMock) as mock_emit,
+        patch("app.repositories.analytics_repo.AnalyticsRepository.emit", new_callable=AsyncMock) as mock_analytics,
         patch("app.core.database.DatabaseManager.transaction", side_effect=_mock_tx),
     ):
         mock_is_processed.return_value = False
@@ -106,6 +107,7 @@ async def test_candidate_projection_task_end_to_end(test_app):
         mock_upsert.return_value = True
         mock_record.return_value = True
         mock_emit.return_value = "outbox-event-id-123"
+        mock_analytics.return_value = True
 
         response = client.post("/internal/tasks/candidate/projection", json=payload)
         assert response.status_code == 200
@@ -122,3 +124,4 @@ async def test_candidate_projection_task_end_to_end(test_app):
         mock_upsert.assert_awaited_once()
         mock_record.assert_awaited_once()
         mock_emit.assert_awaited_once()
+        mock_analytics.assert_awaited_once()

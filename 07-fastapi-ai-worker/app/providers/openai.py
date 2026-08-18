@@ -10,6 +10,9 @@ from app.core.exceptions import AIProviderError, RateLimitError
 from app.providers.base import EmbeddingProvider, LLMProvider, LLMRequest, LLMResponse
 
 
+from app.core.circuit_breaker import get_circuit_breaker
+
+
 class OpenAILLMProvider(LLMProvider):
     """OpenAI provider for structured resume parsing."""
 
@@ -19,6 +22,7 @@ class OpenAILLMProvider(LLMProvider):
         self._model = model or settings.OPENAI_MODEL
         if not self._api_key:
             raise ValueError("OPENAI_API_KEY is required")
+        self._cb = get_circuit_breaker("openai_llm")
 
     @property
     def provider_name(self) -> str:

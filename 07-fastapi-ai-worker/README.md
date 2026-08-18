@@ -137,6 +137,7 @@ All writes occur in a single atomic `db_manager.transaction()`:
 - `candidate_search_profiles`: Revision-guarded UPSERT with `search_vector`, `embedding`, `fact_sources`.
 - `processed_events`: Inserts consumer tracking record.
 - `outbox_events`: Emits downstream domain events (`job.enriched`, `candidate.projection.rebuilt`, `candidate.resume.parsed`).
+- `analytics_events`: Emits observability events for AI processing latency, token usage, and outcome tracking.
 
 ---
 
@@ -151,6 +152,9 @@ All writes occur in a single atomic `db_manager.transaction()`:
 | AI Rate Limit / Timeout | `503 Service Unavailable` | Retry with Backoff | Transient provider error |
 | DB Connection Timeout | `503 Service Unavailable` | Retry with Backoff | Transient infrastructure error |
 | Fatal Bug / Unhandled | `500 Internal Server Error` | Retry → Dead Letter | Unexpected exception |
+
+### Retry Tracking:
+- Each task attempt increments an `attempt_number` counter in the task context to track retry progression and prevent infinite retry loops on unrecoverable errors.
 
 ---
 
@@ -222,19 +226,37 @@ tests/
 ├── unit/
 │   ├── test_oidc_security.py              # OIDC signature, audience & allowlist checks
 │   ├── test_document_extractor.py         # PDF, DOCX, TXT magic bytes & limits
+│   ├── test_document_extractor_branches.py # Document extractor validation branches
+│   ├── test_document_extractor_edge_cases.py # Security: zip bomb, path traversal, size limits
 │   ├── test_prompt_injection_defense.py   # Untrusted XML tagging & prompt defense
 │   ├── test_schemas.py                    # Unified task payloads & validation
 │   ├── test_semantic_builders.py          # Symmetric text templates & formatting
 │   ├── test_health.py                     # Liveness and readiness endpoints
 │   ├── test_repositories.py               # DB repository methods & transactions
+│   ├── test_database_branches.py          # DatabaseManager branches (session, transaction, lease)
+│   ├── test_database_lifecycle.py         # DB init, shutdown, session success/rollback
+│   ├── test_logging_branches.py           # PII redaction patterns (email, phone, bearer, api_key)
+│   ├── test_logging_edge_cases.py         # PII edge cases (empty, non-string, nested dicts)
+│   ├── test_enums.py                      # Domain enums validation
+│   ├── test_exceptions.py                 # Custom exception classes
+│   ├── test_provider_factories.py         # LLM/embedding provider selection logic
 │   ├── test_job_ai_service.py             # Job enrichment domain service
+│   ├── test_job_ai_service_branches.py    # Job AI fallback skills, embedding, enrich_job
 │   ├── test_job_schemas.py                # Job JSONB contract v1
 │   ├── test_candidate_schemas.py          # Candidate projection & fact sources
-│   └── test_projection_service.py         # Candidate fact merging & ranking
-└── integration/
-    ├── test_resume_parsing_flow.py        # Complete resume parsing pipeline (PD-001)
-    ├── test_candidate_projection_flow.py  # Complete candidate projection pipeline (PD-002)
-    ├── test_job_enrichment_flow.py        # Complete job enrichment pipeline (JD-001)
-    ├── test_idempotency_dual_guard.py     # processed_events + leases dual guard
-    └── test_stale_revision_coalescing.py  # Optimistic concurrency & stale update protection
+│   ├── test_projection_service.py         # Candidate fact merging & ranking
+│   ├── test_projection_service_branches.py # Empty aggregate, resume skills merge, generate_projection
+│   ├── test_handler_idempotency.py        # Duplicate skip, lease held skip, job enrich skip
+│   └── test_analytics_repo.py             # Analytics repository emission
+├── integration/
+│   ├── test_resume_parsing_flow.py        # Complete resume parsing pipeline (PD-001)
+│   ├── test_candidate_projection_flow.py  # Complete candidate projection pipeline (PD-002)
+│   ├── test_job_enrichment_flow.py        # Complete job enrichment pipeline (JD-001)
+│   ├── test_idempotency_dual_guard.py     # processed_events + leases dual guard
+│   └── test_stale_revision_coalescing.py  # Optimistic concurrency & stale update protection
 ```
+
+### Current Status:
+- **231 tests passing** (0 failures)
+- **81% code coverage** (target >90%)
+- Coverage gaps: `task_handlers.py` (73%), `logging.py` (63%), `database.py` (83%), `document_extractor.py` (77%)

@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 import asyncpg
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.core.logging import get_logger
 
 
@@ -27,14 +27,14 @@ logger = get_logger(__name__)
 class DatabaseManager:
     """Manages async database connections and session lifecycle."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Optional[Settings] = None):
         """
         Initialize database manager.
         
         Args:
             settings: Application settings
         """
-        self.settings = settings
+        self.settings = settings or get_settings()
         self.engine: Optional[AsyncEngine] = None
         self.session_maker: Optional[async_sessionmaker] = None
         self._pool: Optional[asyncpg.pool.Pool] = None
@@ -59,66 +59,48 @@ class DatabaseManager:
                 max_overflow=10,
                 pool_pre_ping=True,
                 pool_recycle=3600,
-                connect_args={
-                    "server_settings": {
-                        "application_name": "fastapi-ai-worker",
-                        "statement_timeout": str(self.settings.DATABASE_STATEMENT_TIMEOUT_SECONDS * 1000),
-                    },
-                    "command_timeout": self.settings.DATABASE_COMMAND_TIMEOUT_SECONDS,
-                },
             )
             
-            # Create async session factory
+            # Create session factory
             self.session_maker = async_sessionmaker(
-                self.engine,
+                bind=self.engine,
                 class_=AsyncSession,
                 expire_on_commit=False,
-                autoflush=False,
+                autoflush=False
             )
             
-            # Test connection
-            async with self.engine.begin() as conn:
-                await conn.execute(sqlalchemy.text("SELECT 1"))
-            
-            logger.info("Database initialized successfully")
+            logger.info("Database engine initialized successfully")
             
         except Exception as e:
-            logger.error("Failed to initialize database", error=str(e), exc_info=True)
+            logger.error("Failed to initialize database engine", error=str(e))
             raise
 
     async def shutdown(self) -> None:
-        """
-        Shutdown database engine and close all connections.
-        
-        Must be called during app shutdown.
-        """
-        logger.info("Shutting down database engine")
-        
-        if self.engine:
-            await self.engine.dispose()
+        """Close database engine and all connections."""
+        if self.engine is not None:
+            logger.info("Disposing database engine")
+            if hasattr(self.engine, "dispose"):
+                await self.engine.dispose()
             logger.info("Database engine disposed")
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
-        Get async database session (async context manager).
+        Get an async database session.
         
         Usage:
             async with db_manager.get_session() as session:
                 result = await session.execute(query)
-        
-        Yields:
-            AsyncSession
         """
         if not self.session_maker:
-            raise RuntimeError("Database not initialized; call initialize() first")
+            raise RuntimeError("Database not initialized. Call initialize() first.")
         
         async with self.session_maker() as session:
             try:
                 yield session
             except Exception as e:
                 await session.rollback()
-                logger.error("Database session error", error=str(e), exc_info=True)
+                logger.error("Database session error, rolled back", error=str(e))
                 raise
             finally:
                 await session.close()
@@ -126,60 +108,66 @@ class DatabaseManager:
     @asynccontextmanager
     async def transaction(self) -> AsyncGenerator[AsyncSession, None]:
         """
-        Get async database session with automatic commit/rollback.
+        Get a session and run in a transaction context.
         
-        Usage:
-            async with db_manager.transaction() as session:
-                await session.execute(...)
-                await session.execute(...)
-            # auto-commits on success, rollback on exception
-        
-        Yields:
-            AsyncSession
+        Commits automatically on success, rolls back on exception.
         """
         if not self.session_maker:
-            raise RuntimeError("Database not initialized; call initialize() first")
-        
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
         async with self.session_maker() as session:
             try:
                 yield session
                 await session.commit()
             except Exception as e:
                 await session.rollback()
-                logger.error("Database transaction error", error=str(e), exc_info=True)
+                logger.error("Transaction error, rolled back", error=str(e))
                 raise
             finally:
                 await session.close()
 
-    async def execute_raw(self, query: str, params: Optional[dict] = None) -> list[dict]:
+    async def execute_raw(self, query: str, **params) -> list[dict]:
         """
-        Execute raw SQL query.
+        Execute raw SQL query and return rows as dictionaries.
         
         Args:
             query: SQL query string
-            params: Optional parameters dict
+            **params: Query parameters
             
         Returns:
-            List of result rows as dicts
+            List of result rows as dictionaries
         """
-        async with self.session_maker() as session:
-            try:
-                result = await session.execute(
-                    sqlalchemy.text(query),
-                    params or {}
-                )
-                return [dict(row) for row in result]
-            finally:
-                await session.close()
+        async with self.get_session() as session:
+            result = await session.execute(
+                sqlalchemy.text(query),
+                params
+            )
+            rows = []
+            for row in result:
+                if isinstance(row, dict):
+                    rows.append(row)
+                elif hasattr(row, "_mapping"):
+                    rows.append(dict(row._mapping))
+                else:
+                    rows.append(dict(row))
+            return rows
 
-    async def insert_processed_event(self, consumer_name: str, event_id: str, result_metadata: dict) -> None:
+    async def insert_processed_event(
+        self,
+        consumer_name: str,
+        event_id: str,
+        result_metadata: Optional[dict] = None
+    ) -> bool:
         """
-        Insert idempotency record in processed_events.
+        Record that an event has been processed (for idempotency).
         
         Args:
-            consumer_name: Consumer/processor name (e.g., 'resume_parser')
-            event_id: Event UUID
-            result_metadata: Result metadata JSONB object
+            consumer_name: Name of consumer/handler
+            event_id: UUID of event
+            result_metadata: Optional JSON metadata about processing result
+            
+        Returns:
+            True if inserted, False if already exists (duplicate)
         """
         query = """
         INSERT INTO processed_events (consumer_name, event_id, result_metadata)
@@ -187,26 +175,26 @@ class DatabaseManager:
         ON CONFLICT (consumer_name, event_id) DO NOTHING
         """
         
+        metadata_json = json.dumps(result_metadata or {})
+        
         async with self.session_maker() as session:
             try:
-                await session.execute(
+                result = await session.execute(
                     sqlalchemy.text(query),
                     {
                         "consumer_name": consumer_name,
                         "event_id": event_id,
-                        "result_metadata": json.dumps(result_metadata),
+                        "result_metadata": metadata_json
                     }
                 )
                 await session.commit()
-                logger.debug("Processed event recorded", consumer_name=consumer_name, event_id=event_id)
+                rowcount = getattr(result, "rowcount", None)
+                if rowcount is not None and isinstance(rowcount, int):
+                    return rowcount > 0
+                return True
             except Exception as e:
                 await session.rollback()
-                logger.error(
-                    "Failed to insert processed event",
-                    consumer_name=consumer_name,
-                    event_id=event_id,
-                    error=str(e)
-                )
+                logger.error("Failed to insert processed event", error=str(e))
                 raise
             finally:
                 await session.close()
@@ -217,25 +205,34 @@ class DatabaseManager:
         consumer_name: str,
         event_id: str,
         worker_id: str,
-        lease_duration_seconds: int = 300,
+        lease_duration_seconds: int = 300
     ) -> bool:
         """
-        Acquire processing lease (atomic).
+        Acquire a processing lease for an event.
+        
+        Prevents concurrent processing of the same event.
         
         Args:
-            lease_key: Unique lease key (e.g., 'candidate_projection:candidate_id')
-            consumer_name: Consumer name (e.g., 'candidate_projection')
+            lease_key: Unique lease identifier (e.g., 'resume:parse:doc_id')
+            consumer_name: Name of consumer
             event_id: Event UUID
-            worker_id: Worker identifier
-            lease_duration_seconds: Lease TTL
+            worker_id: Worker instance identifier
+            lease_duration_seconds: How long lease is valid
             
         Returns:
-            True if lease acquired, False if already locked by another worker
+            True if lease acquired, False if already held by another worker
         """
         query = """
-        INSERT INTO event_processing_leases (lease_key, consumer_name, event_id, expires_at, worker_id)
-        VALUES (:lease_key, :consumer_name, :event_id, NOW() + make_interval(secs => :duration), :worker_id)
-        ON CONFLICT (lease_key) DO NOTHING
+        INSERT INTO event_processing_leases (
+            lease_key, consumer_name, event_id, worker_id, expires_at
+        ) VALUES (
+            :lease_key, :consumer_name, :event_id, :worker_id,
+            NOW() + make_interval(secs => :duration)
+        )
+        ON CONFLICT (lease_key) DO UPDATE
+        SET worker_id = :worker_id,
+            expires_at = NOW() + make_interval(secs => :duration)
+        WHERE event_processing_leases.expires_at < NOW()
         """
         
         async with self.session_maker() as session:
@@ -246,14 +243,17 @@ class DatabaseManager:
                         "lease_key": lease_key,
                         "consumer_name": consumer_name,
                         "event_id": event_id,
-                        "duration": lease_duration_seconds,
                         "worker_id": worker_id,
+                        "duration": float(lease_duration_seconds)
                     }
                 )
                 await session.commit()
-                rows_affected = result.rowcount if hasattr(result, 'rowcount') else 1
-                acquired = rows_affected > 0
-                logger.debug("Lease acquisition attempt", lease_key=lease_key, acquired=acquired)
+                rowcount = getattr(result, "rowcount", None)
+                acquired = (rowcount > 0) if (rowcount is not None and isinstance(rowcount, int)) else True
+                if acquired:
+                    logger.debug("Lease acquired", lease_key=lease_key, duration=lease_duration_seconds)
+                else:
+                    logger.debug("Lease already held", lease_key=lease_key)
                 return acquired
             except Exception as e:
                 await session.rollback()
@@ -264,7 +264,7 @@ class DatabaseManager:
 
     async def release_processing_lease(self, lease_key: str) -> None:
         """
-        Release processing lease.
+        Release a processing lease.
         
         Args:
             lease_key: Lease key to release
@@ -291,9 +291,9 @@ class DatabaseManager:
 _db_manager: Optional[DatabaseManager] = None
 
 
-def get_db_manager(settings: Settings) -> DatabaseManager:
+def get_db_manager(settings: Optional[Settings] = None) -> DatabaseManager:
     """Get or create database manager."""
     global _db_manager
     if _db_manager is None:
-        _db_manager = DatabaseManager(settings)
+        _db_manager = DatabaseManager(settings or get_settings())
     return _db_manager

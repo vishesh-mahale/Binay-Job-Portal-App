@@ -107,3 +107,12 @@ async def readiness_probe(
             status="error",
             details=details
         )
+
+
+@router.get("/metrics")
+async def get_health_metrics():
+    """Expose real-time Prometheus / OpenMetrics format metrics."""
+    from fastapi.responses import Response
+    from app.core.metrics import get_metrics_collector
+    collector = get_metrics_collector()
+    return Response(content=collector.generate_metrics_text(), media_type="text/plain; version=0.0.4")

@@ -1,0 +1,28 @@
+Ankit Sharma
+Email: ankit.sharma.dev@example.com | Phone: +91-9876543210
+Location: Bengaluru, Karnataka, India
+LinkedIn: linkedin.com/in/ankitsharma-sample | GitHub: github.com/ankitsharma-sample
+
+PROFESSIONAL SUMMARY
+Senior Full Stack Engineer with 6+ years of experience building high-scale distributed web applications.
+Specialized in Python (FastAPI, Django), TypeScript (React, Next.js, Node.js), PostgreSQL, and AWS cloud architectures.
+
+SKILLS
+- Backend: Python, FastAPI, Django, Node.js, NestJS, Go
+- Frontend: TypeScript, React, Next.js, Redux, TailwindCSS
+- Databases: PostgreSQL, Redis, Elasticsearch, MongoDB
+- Cloud & DevOps: AWS (ECS, S3, RDS), Docker, Kubernetes, CI/CD (GitHub Actions), Terraform
+
+WORK EXPERIENCE
+Senior Software Engineer | CloudTech Solutions (2022 - Present)
+- Architected and delivered core asynchronous backend services processing 2M+ daily requests using FastAPI and Postgres.
+- Reduced API p99 latency from 450ms to 65ms by implementing multi-tiered Redis caching and pgvector semantic search.
+- Mentored a team of 5 software engineers and established clean architecture standards.
+
+Software Engineer | FinFlow Technologies (2019 - 2022)
+- Developed payment gateway integrations handling ₹50M+ monthly transactional volume with zero downtime.
+- Built real-time transaction event pipelines using PostgreSQL outbox pattern and Kafka message queues.
+
+EDUCATION
+Bachelor of Technology in Computer Science & Engineering
+National Institute of Technology Karnataka (NITK) | Graduated: 2019

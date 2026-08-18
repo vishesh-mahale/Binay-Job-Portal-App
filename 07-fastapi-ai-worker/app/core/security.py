@@ -192,9 +192,9 @@ class OIDCTokenValidator:
             raise ValueError(f"Invalid token format: {str(e)}")
 
 
-def get_oidc_validator(settings: Settings) -> OIDCTokenValidator:
+def get_oidc_validator(settings: Optional[Settings] = None) -> OIDCTokenValidator:
     """Factory function for creating OIDC validator."""
-    return OIDCTokenValidator(settings)
+    return OIDCTokenValidator(settings or get_settings())
 
 
 # Alias for backward compatibility

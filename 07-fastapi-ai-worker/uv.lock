@@ -1,0 +1,29 @@
+version = 1
+[[package]]
+name = "binay_fastapi_ai_worker"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "fastapi" },
+    { name = "uvicorn" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "sqlalchemy" },
+    { name = "asyncpg" },
+    { name = "python-dotenv" },
+    { name = "python-json-logger" },
+    { name = "google-generativeai" },
+    { name = "openai" },
+    { name = "PyPDF2" },
+    { name = "pdfplumber" },
+    { name = "python-docx" },
+    { name = "pytesseract" },
+    { name = "pillow" },
+    { name = "httpx" },
+    { name = "python-jose" },
+    { name = "cryptography" },
+]
+
+[package.metadata.requires-dist]
+name = "binay_fastapi_ai_worker"
+version = "0.1.0"

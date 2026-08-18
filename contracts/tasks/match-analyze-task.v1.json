@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/tasks/match-analyze-task.v1.json",
+  "title": "MatchAnalyzeTaskPayloadV1",
+  "description": "Payload for Cloud Task that requests AI match and gap analysis for an application",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_id", "trace_id"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version, must be 1"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique UUID for the incoming trigger event"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The job_application UUID to analyze"
+    },
+    "trace_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Distributed tracing UUID"
+    }
+  },
+  "additionalProperties": false
+}

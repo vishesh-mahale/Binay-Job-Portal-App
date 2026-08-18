@@ -3,13 +3,21 @@ Mock AI Provider for deterministic testing.
 Returns predictable responses without calling external APIs.
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
 import json
 import logging
 
-from app.providers.base import LLMProvider, EmbeddingProvider, LLMRequest, LLMResponse, EmbeddingResponse
+from app.providers.base import (
+    LLMProvider,
+    EmbeddingProvider,
+    LLMRequest,
+    LLMResponse,
+    EmbeddingRequest,
+    EmbeddingResponse,
+)
 from app.core.exceptions import AIResponseValidationError
-
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -18,8 +26,10 @@ logger = get_logger(__name__)
 class MockLLMProvider(LLMProvider):
     """Mock LLM provider for testing."""
 
-    def __init__(self):
+    def __init__(self, model_name: str = "mock-llm-v1"):
         """Initialize mock provider."""
+        super().__init__(model_name=model_name)
+        self.model_name = model_name
         logger.warning("Using MockLLMProvider; set AI_PROVIDER != 'mock' for production")
 
     @property
@@ -50,7 +60,7 @@ class MockLLMProvider(LLMProvider):
         
         return LLMResponse(
             text=mock_text,
-            model="mock-llm-v1",
+            model=self.model_name,
             tokens_in=len(request.prompt.split()),
             tokens_out=len(mock_text.split()),
             stop_reason="stop_sequence"
@@ -80,11 +90,11 @@ class MockLLMProvider(LLMProvider):
                 if prop_type == "string":
                     mock_response[prop_name] = f"Mock {prop_name}"
                 elif prop_type == "number":
-                    mock_response[prop_name] = 0.5
+                    mock_response[prop_name] = 85.0
                 elif prop_type == "integer":
-                    mock_response[prop_name] = 0
+                    mock_response[prop_name] = 1
                 elif prop_type == "boolean":
-                    mock_response[prop_name] = False
+                    mock_response[prop_name] = True
                 elif prop_type == "array":
                     mock_response[prop_name] = []
                 elif prop_type == "object":
@@ -98,47 +108,43 @@ class MockLLMProvider(LLMProvider):
 class MockEmbeddingProvider(EmbeddingProvider):
     """Mock embedding provider for testing."""
 
-    def __init__(self):
+    def __init__(self, model_name: str = "mock-embedding-v1"):
         """Initialize mock provider."""
-        self._dimension = 768
-        logger.warning("Using MockEmbeddingProvider; set EMBEDDING_PROVIDER != 'mock' for production")
+        super().__init__(model_name=model_name)
+        self.model_name = model_name
 
     @property
     def provider_name(self) -> str:
         return "mock"
 
     @property
-    def model_name(self) -> str:
-        return "mock-embedding-v1"
+    def embedding_dimensions(self) -> int:
+        return 768
 
-    @property
-    def dimension(self) -> int:
-        return self._dimension
-
-    def validate_embedding(self, embedding: List[float]) -> None:
-        """Validate embedding."""
-        if len(embedding) != self.dimension:
-            raise ValueError(f"Expected {self.dimension}-dimensional vector, got {len(embedding)}")
-        if not all(isinstance(x, (int, float)) for x in embedding):
-            raise ValueError("All elements must be numbers")
-
-    async def embed(self, text: str) -> List[float]:
+    async def embed(self, text_or_request: Any) -> List[float]:
         """
-        Generate mock embedding.
+        Generate mock 768-dim embedding.
         
-        Returns deterministic vector based on text hash.
+        Returns deterministic normalized vector of 768 floats.
         """
-        if not text:
-            raise ValueError("Text cannot be empty")
+        import hashlib
+        import math
         
-        # Deterministic mock: hash text and generate vector
-        hash_val = hash(text) % 1000
-        vector = [(hash_val + i) / 1000.0 for i in range(self.dimension)]
+        text_str = text_or_request.text if hasattr(text_or_request, "text") else str(text_or_request)
+        hash_bytes = hashlib.sha256(text_str.encode()).digest()
         
-        logger.debug("Mock embedding generated", text_len=len(text), dim=self.dimension)
+        # Create 768-dim vector from hash bytes (repeat to reach 768)
+        raw_vector = []
+        for i in range(768):
+            byte_idx = i % len(hash_bytes)
+            raw_vector.append(float(hash_bytes[byte_idx]) / 255.0 - 0.5)
         
-        return vector
-
-    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for batch."""
-        return [await self.embed(text) for text in texts]
+        # Normalize vector
+        magnitude = math.sqrt(sum(x * x for x in raw_vector))
+        if magnitude > 0:
+            normalized = [x / magnitude for x in raw_vector]
+        else:
+            normalized = [0.0] * 768
+            normalized[0] = 1.0
+        
+        return normalized

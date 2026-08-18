@@ -1,0 +1,13 @@
+John Doe
+Senior Python Engineer
+
+Experience:
+- 5+ years in Python, FastAPI, PostgreSQL
+- Led backend team at TechCorp
+- Built microservices architecture
+
+Skills:
+Python, FastAPI, PostgreSQL, Docker, Kubernetes, AWS
+
+Education:
+B.Tech in Computer Science from State University

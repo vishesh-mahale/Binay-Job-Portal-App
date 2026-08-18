@@ -27,3 +27,27 @@ class JobEnrichTaskPayload(BaseModel):
     event_id: str
     aggregate_id: str
     trace_id: str | None = None
+
+
+class MatchAnalyzeTaskPayload(BaseModel):
+    """Cloud Task payload for application match analysis."""
+    schema_version: int = Field(1, ge=1)
+    event_id: str
+    aggregate_id: str
+    trace_id: str | None = None
+
+
+class InterviewSummaryTaskPayload(BaseModel):
+    """Cloud Task payload for interview AI summary."""
+    schema_version: int = Field(1, ge=1)
+    event_id: str
+    aggregate_id: str
+    trace_id: str | None = None
+
+
+class JobScreeningQuestionsTaskPayload(BaseModel):
+    """Cloud Task payload for job screening questions."""
+    schema_version: int = Field(1, ge=1)
+    event_id: str
+    aggregate_id: str
+    trace_id: str | None = None

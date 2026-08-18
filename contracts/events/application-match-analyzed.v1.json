@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/events/application-match-analyzed.v1.json",
+  "title": "ApplicationMatchAnalyzedEventV1",
+  "description": "Transactional outbox event emitted after AI match and gap analysis completes",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_type", "aggregate_id", "event_type", "payload", "occurred_at"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregate_type": {
+      "type": "string",
+      "const": "job_application"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The job_application UUID"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "application.match_analyzed"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["application_id", "match_score", "ranking_score", "trace_id"],
+      "properties": {
+        "application_id": { "type": "string", "format": "uuid" },
+        "match_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "ranking_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "trace_id": { "type": "string", "format": "uuid" }
+      },
+      "additionalProperties": false
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

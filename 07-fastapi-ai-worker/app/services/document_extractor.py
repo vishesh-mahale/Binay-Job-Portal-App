@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -13,6 +14,9 @@ import pytesseract
 
 from app.core.config import get_settings
 from app.schemas.resume_parser import ResumeExtractedSchema
+
+MAX_DOCX_ENTRIES = 1000
+MAX_DOCX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
 
 
 class DocumentExtractor:
@@ -46,6 +50,33 @@ class DocumentExtractor:
                 f"Document exceeds max size: {len(content)} > {self.max_document_size_bytes} bytes"
             )
 
+    def _validate_docx_zip(self, content: bytes) -> None:
+        try:
+            with zipfile.ZipFile(io.BytesIO(content)) as archive:
+                infos = archive.infolist()
+                if len(infos) > MAX_DOCX_ENTRIES:
+                    raise ValueError(f"DOCX archive exceeds max entries: {len(infos)} > {MAX_DOCX_ENTRIES}")
+
+                uncompressed_total = 0
+                for info in infos:
+                    if info.file_size < 0 or info.compress_size < 0:
+                        raise ValueError("Invalid DOCX archive entry size")
+
+                    uncompressed_total += info.file_size
+                    if uncompressed_total > MAX_DOCX_UNCOMPRESSED_BYTES:
+                        raise ValueError(
+                            f"DOCX archive uncompressed size exceeds limit: {uncompressed_total} > {MAX_DOCX_UNCOMPRESSED_BYTES}"
+                        )
+
+                    if ".." in info.filename or info.filename.startswith("/"):
+                        raise ValueError(f"Unsafe DOCX archive path: {info.filename}")
+
+                    if info.file_size > 10 * 1024 * 1024:
+                        raise ValueError(f"Uncompressed DOCX entry too large: {info.file_size} bytes")
+
+        except zipfile.BadZipFile as exc:
+            raise ValueError(f"Invalid DOCX ZIP archive: {exc}") from exc
+
     def extract_from_bytes(self, filename: str, content: bytes) -> ResumeExtractedSchema:
         """Extract text from raw bytes and return a validated resume schema."""
         if not isinstance(content, (bytes, bytearray)):
@@ -59,6 +90,7 @@ class DocumentExtractor:
         if name.endswith(".pdf"):
             extracted_text = self._extract_pdf_text(raw)
         elif name.endswith(".docx"):
+            self._validate_docx_zip(raw)
             extracted_text = self._extract_docx_text(raw)
         elif name.endswith(".txt"):
             extracted_text = raw.decode("utf-8", errors="replace")

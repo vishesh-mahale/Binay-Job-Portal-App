@@ -43,7 +43,7 @@ class EmbeddingResponse(BaseModel):
     """Embedding API response."""
     embedding: List[float] = Field(..., description="768-dimensional vector")
     model: str = Field(..., description="Model name")
-    dimension: int = Field(..., description="Vector dimension")
+    dimension: int = Field(default=768, description="Vector dimension")
 
 
 # ============================================================================
@@ -62,6 +62,9 @@ class LLMProvider(ABC):
     - Token counting
     """
 
+    def __init__(self, model_name: str = "gemini-2.0-flash"):
+        self.model_name = model_name
+
     @property
     @abstractmethod
     def provider_name(self) -> str:
@@ -76,20 +79,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def generate(self, request: LLMRequest) -> LLMResponse:
-        """
-        Generate text using LLM.
-        
-        Args:
-            request: LLM request
-            
-        Returns:
-            Generated response
-            
-        Raises:
-            AIProviderError: If API call fails
-            RateLimitError: If rate limited
-            TimeoutError: If call times out
-        """
+        """Generate text using LLM."""
         pass
 
     @abstractmethod
@@ -100,35 +90,12 @@ class LLMProvider(ABC):
         response_schema: Dict[str, Any],
         **kwargs: Any
     ) -> Dict[str, Any]:
-        """
-        Generate structured JSON output.
-        
-        Args:
-            prompt: System prompt
-            user_input: User input
-            response_schema: JSON Schema for output
-            **kwargs: Additional provider-specific options
-            
-        Returns:
-            Parsed JSON response matching schema
-            
-        Raises:
-            AIProviderError: If call fails
-            AIResponseValidationError: If response doesn't match schema
-        """
+        """Generate structured JSON output."""
         pass
 
     @abstractmethod
     def validate_request(self, request: LLMRequest) -> None:
-        """
-        Validate LLM request.
-        
-        Args:
-            request: Request to validate
-            
-        Raises:
-            ValueError: If request is invalid
-        """
+        """Validate LLM request."""
         pass
 
 
@@ -143,6 +110,9 @@ class EmbeddingProvider(ABC):
     - Rate limiting
     """
 
+    def __init__(self, model_name: str = "text-embedding-004"):
+        self.model_name = model_name
+
     @property
     @abstractmethod
     def provider_name(self) -> str:
@@ -150,87 +120,11 @@ class EmbeddingProvider(ABC):
         pass
 
     @property
-    @abstractmethod
-    def model_name(self) -> str:
-        """Get model name."""
-        pass
-
-    @property
-    @abstractmethod
     def dimension(self) -> int:
         """Get embedding dimension (must be 768)."""
         return 768
 
     @abstractmethod
-    async def embed(self, text: str) -> List[float]:
-        """
-        Generate embedding for text.
-        
-        Args:
-            text: Text to embed
-            
-        Returns:
-            768-dimensional vector
-            
-        Raises:
-            AIProviderError: If API call fails
-            ValueError: If text exceeds length limits
-        """
+    async def embed(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        """Generate embedding for text."""
         pass
-
-    @abstractmethod
-    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """
-        Generate embeddings for multiple texts.
-        
-        Args:
-            texts: Texts to embed
-            
-        Returns:
-            List of 768-dimensional vectors
-        """
-        pass
-
-    @abstractmethod
-    def validate_embedding(self, embedding: List[float]) -> None:
-        """
-        Validate embedding vector.
-        
-        Args:
-            embedding: Vector to validate
-            
-        Raises:
-            ValueError: If embedding is invalid
-        """
-        pass
-
-
-# ============================================================================
-# Provider Factory
-# ============================================================================
-
-class ProviderFactory:
-    """Factory for creating provider instances."""
-
-    _providers: Dict[str, type] = {}
-
-    @classmethod
-    def register(cls, name: str, provider_class: type) -> None:
-        """Register a provider class."""
-        cls._providers[name.lower()] = provider_class
-
-    @classmethod
-    def create_llm_provider(cls, provider_name: str, **kwargs: Any) -> LLMProvider:
-        """Create LLM provider instance."""
-        provider_class = cls._providers.get(provider_name.lower())
-        if not provider_class:
-            raise ValueError(f"Unknown LLM provider: {provider_name}")
-        return provider_class(**kwargs)
-
-    @classmethod
-    def create_embedding_provider(cls, provider_name: str, **kwargs: Any) -> EmbeddingProvider:
-        """Create embedding provider instance."""
-        provider_class = cls._providers.get(provider_name.lower())
-        if not provider_class:
-            raise ValueError(f"Unknown embedding provider: {provider_name}")
-        return provider_class(**kwargs)

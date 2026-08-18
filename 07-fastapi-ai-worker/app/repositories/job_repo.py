@@ -47,6 +47,9 @@ class JobRepository:
                 j.requirements,
                 j.preferred_qualifications,
                 j.benefits,
+                j.location_city,
+                j.location_state,
+                j.location_country,
                 j.updated_at,
                 jc.name AS category_name
             FROM jobs j

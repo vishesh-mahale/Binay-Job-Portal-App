@@ -84,6 +84,7 @@ async def test_job_enrichment_task_end_to_end(test_app):
         patch("app.repositories.job_repo.JobRepository.update_job_ai_enrichment", new_callable=AsyncMock) as mock_update,
         patch("app.repositories.processed_events_repo.ProcessedEventsRepository.record_processed", new_callable=AsyncMock) as mock_record,
         patch("app.repositories.outbox_repo.OutboxRepository.emit_event", new_callable=AsyncMock) as mock_emit,
+        patch("app.repositories.analytics_repo.AnalyticsRepository.emit", new_callable=AsyncMock) as mock_analytics,
         patch("app.core.database.DatabaseManager.transaction", side_effect=_mock_tx),
     ):
         mock_is_processed.return_value = False
@@ -93,6 +94,7 @@ async def test_job_enrichment_task_end_to_end(test_app):
         mock_update.return_value = True
         mock_record.return_value = True
         mock_emit.return_value = "outbox-job-enriched-123"
+        mock_analytics.return_value = True
 
         response = client.post("/internal/tasks/job/enrich", json=payload)
         assert response.status_code == 200

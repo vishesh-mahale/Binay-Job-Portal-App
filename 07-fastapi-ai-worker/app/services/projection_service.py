@@ -214,7 +214,8 @@ class CandidateProjectionService:
         merged = self.merge_facts(aggregate)
 
         # Generate 768-dimensional vector embedding
-        embedding = await self.embedding_provider.embed(merged.semantic_text)
+        raw_embedding = await self.embedding_provider.embed(merged.semantic_text)
+        embedding = raw_embedding.embedding if hasattr(raw_embedding, "embedding") else raw_embedding
         if len(embedding) != 768:
             raise ValueError(
                 f"Embedding provider generated vector of dimension {len(embedding)}; expected 768"
