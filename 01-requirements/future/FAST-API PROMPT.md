@@ -570,6 +570,60 @@ Certifications: {certifications_list}
 
 ---
 
+### 7.3 Universal Multi-Provider AI Architecture & 4 Runtime Modes
+
+The service implements a **Universal Pluggable Provider Architecture** decoupled via `app/providers/base.py`. Any environment can select its AI backend seamlessly via `.env` configuration without code changes.
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                         UNIVERSAL PROVIDER FACTORY (base.py)                     │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │
+                 ┌───────────────────────┼───────────────────────┬───────────────────────┐
+                 ▼                       ▼                       ▼                       ▼
+    [1. vertexai.py]            [2. gemini.py]          [3. openai.py]          [4. mock.py]
+    Google Cloud Vertex AI       Google AI Studio        OpenAI Provider         Offline Mock
+    (0-Key IAM Enterprise)       (API Key Mode)          (API Key Mode)          (Deterministic Test)
+```
+
+#### 7.3.1 The 4 Supported Runtime Modes
+
+| Mode (`AI_PROVIDER`) | Auth Mechanism | Primary Use Case | Concurrency & Limits | Data Privacy / Compliance |
+|---|---|---|---|---|
+| **`vertexai`** *(Recommended Prod/Dev)* | **0-Key IAM** via Google Cloud ADC / Service Account | Production Cloud Run & Local Dev | **2,000+ RPM** / 4M TPM (No daily cap) | **100% Private** (Google NEVER trains on candidate PII) |
+| **`gemini`** | API Key (`GEMINI_API_KEY`) via Google AI Studio | Free Developer Testing / Staging | 15 RPM / 1,500 requests/day | Free tier prompts may be logged by Google |
+| **`openai`** | API Key (`OPENAI_API_KEY`) | Cross-Vendor Deployment / Fallback | Based on OpenAI Tier (e.g. Tier 1-5) | Standard OpenAI enterprise terms |
+| **`mock`** | Zero Keys / In-Memory | Unit Tests & CI/CD Pipelines | Unlimited / Instant | 100% In-Memory Synthetic Fixtures |
+
+#### 7.3.2 0-Key IAM (Vertex AI) Local Dev & Production Workflow
+
+* **Local Machine (Development)**:
+  1. Developer logs in once via Google Cloud SDK: `gcloud auth application-default login`.
+  2. Google stores Application Default Credentials (ADC) locally.
+  3. Set `.env`: `AI_PROVIDER=vertexai`, `EMBEDDING_PROVIDER=vertexai`, `GOOGLE_CLOUD_PROJECT_ID=your-gcp-project`.
+  4. Worker runs locally with 0 API keys, full 2,000+ RPM throughput, and enterprise privacy!
+* **Cloud Run (Production)**:
+  1. Cloud Run automatically attaches its runtime Service Account (`fastapi-worker-sa@project-id.iam.gserviceaccount.com`).
+  2. IAM role `roles/aiplatform.user` grants direct Vertex AI access with zero secrets in environment variables.
+
+#### 7.3.3 Configuration Reference (`.env.example`)
+
+```bash
+# Provider Selection: vertexai | gemini | openai | mock
+AI_PROVIDER=vertexai
+EMBEDDING_PROVIDER=vertexai
+
+# Google Cloud Vertex AI (0-Key IAM Mode)
+GOOGLE_CLOUD_PROJECT_ID=binay-job-portal-prod
+GCP_REGION=asia-south1
+
+# Optional API Keys (Only required if AI_PROVIDER is set to gemini or openai)
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+```
+
+---
+
 ## 8. Target Directory Structure for `07-fastapi-ai-worker`
 
 You will build the component cleanly under `07-fastapi-ai-worker/`:
@@ -616,8 +670,9 @@ You will build the component cleanly under `07-fastapi-ai-worker/`:
 │   │   └── job_ai_service.py      # Job AI enrichment & embedding service
 │   ├── providers/
 │   │   ├── __init__.py
-│   │   ├── base.py                # Abstract Base Classes (LLMProvider, EmbeddingProvider)
-│   │   ├── gemini.py              # Google Gemini 2.5 Flash & text-embedding-004 provider
+│   │   ├── base.py                # Abstract Base Classes & Universal Provider Factory
+│   │   ├── vertexai.py            # Google Cloud Vertex AI (0-Key IAM Enterprise provider)
+│   │   ├── gemini.py              # Google AI Studio (API Key mode provider)
 │   │   ├── openai.py              # OpenAI fallback provider
 │   │   └── mock.py                # Mock AI provider for fast deterministic testing
 │   ├── repositories/

@@ -61,6 +61,9 @@ def _get_llm_provider(settings) -> LLMProvider:
     ai_provider = settings.AI_PROVIDER.value if hasattr(settings.AI_PROVIDER, "value") else str(settings.AI_PROVIDER or "mock")
     if settings.MOCK_AI_PROVIDER or ai_provider.lower() == "mock":
         return MockLLMProvider()
+    if ai_provider.lower() == "vertexai":
+        from app.providers.vertexai import VertexAILLMProvider
+        return VertexAILLMProvider()
     if ai_provider.lower() == "gemini":
         return GeminiLLMProvider()
     if ai_provider.lower() == "openai":
@@ -70,12 +73,17 @@ def _get_llm_provider(settings) -> LLMProvider:
 
 
 def _get_embedding_provider(settings) -> EmbeddingProvider:
-    ai_provider = settings.AI_PROVIDER.value if hasattr(settings.AI_PROVIDER, "value") else str(settings.AI_PROVIDER or "mock")
-    if settings.MOCK_AI_PROVIDER or ai_provider.lower() == "mock":
+    embedding_provider = getattr(settings, "EMBEDDING_PROVIDER", None) or (
+        settings.AI_PROVIDER.value if hasattr(settings.AI_PROVIDER, "value") else str(settings.AI_PROVIDER or "mock")
+    )
+    if settings.MOCK_AI_PROVIDER or str(embedding_provider).lower() == "mock":
         return MockEmbeddingProvider()
-    if ai_provider.lower() == "gemini":
+    if str(embedding_provider).lower() == "vertexai":
+        from app.providers.vertexai import VertexAIEmbeddingProvider
+        return VertexAIEmbeddingProvider()
+    if str(embedding_provider).lower() == "gemini":
         return GeminiEmbeddingProvider()
-    if ai_provider.lower() == "openai":
+    if str(embedding_provider).lower() == "openai":
         from app.providers.openai import OpenAIEmbeddingProvider
         return OpenAIEmbeddingProvider()
     return MockEmbeddingProvider()

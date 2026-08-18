@@ -17,6 +17,7 @@ class LogFormat(str, Enum):
 
 class AIProvider(str, Enum):
     """Supported AI providers."""
+    VERTEXAI = "vertexai"
     GEMINI = "gemini"
     OPENAI = "openai"
     MOCK = "mock"
@@ -61,6 +62,10 @@ class Settings(BaseSettings):
     GOOGLE_CLOUD_PROJECT_ID: str = Field(
         ...,
         description="GCP project ID"
+    )
+    GCP_REGION: str = Field(
+        "asia-south1",
+        description="GCP region for Vertex AI and Cloud Run"
     )
     GOOGLE_OIDC_ALLOWED_SERVICE_ACCOUNTS: str = Field(
         ...,

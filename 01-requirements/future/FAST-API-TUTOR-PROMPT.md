@@ -192,6 +192,11 @@ app/api/
 app/core/
 app/services/
 app/providers/
+    ├── base.py                # Abstract Base Classes & Universal Provider Factory
+    ├── vertexai.py            # Google Cloud Vertex AI (0-Key IAM Enterprise provider)
+    ├── gemini.py              # Google AI Studio (API Key mode provider)
+    ├── openai.py              # OpenAI fallback provider
+    └── mock.py                # Mock AI provider for fast deterministic testing
 app/repositories/
 app/schemas/
 app/storage/
@@ -467,6 +472,7 @@ OCR isolation
 prompt injection
 structured LLM output
 SQL injection prevention
+AI provider 0-Key IAM vs API key modes
 
 Har security layer ke saath attack example do:
 
@@ -488,7 +494,7 @@ context managers
 dependency injection
 Pydantic models
 repository pattern
-provider abstraction
+provider abstraction (4 modes: vertexai 0-Key IAM, gemini API key, openai API key, mock)
 exception handling
 timeouts
 
@@ -570,6 +576,9 @@ PostgreSQL + pgvector kyun?
 768 dimensions kyun?
 Cloud Run kyun?
 Cloud Run Jobs kab use karenge?
+AI provider abstraction kyun hai?
+Vertex AI 0-Key IAM kyun preferred hai production mein?
+Gemini vs OpenAI vs Mock kab use karte hai?
 
 Har answer Binay-App requirement ke context mein do.
 
@@ -682,6 +691,7 @@ Uske baad mujhe quiz karo.
 - Security layers (OIDC, IAM, least privilege)
 - Reliability patterns (outbox, idempotency, leases, retries)
 - Async Python concepts in real code
+- AI provider abstraction (Vertex AI 0-Key IAM, Gemini, OpenAI, Mock)
 - Cloud Run + Cloud Tasks deployment
 - Testing strategies
 - Architecture decision rationale

@@ -27,6 +27,7 @@ def _build_test_settings() -> Settings:
     return Settings(
         DATABASE_URL="postgresql+asyncpg://test:test@localhost:5432/test_db",
         GOOGLE_CLOUD_PROJECT_ID="test-project",
+        GCP_REGION="asia-south1",
         GOOGLE_OIDC_ALLOWED_SERVICE_ACCOUNTS="test@test-project.iam.gserviceaccount.com",
         OIDC_AUTH_ENABLED=False,  # Disable for tests
         SUPABASE_PROJECT_URL="https://test.supabase.co",

@@ -1,0 +1,238 @@
+"""
+Google Cloud Vertex AI Provider Implementation.
+Enforces 0-Key IAM Authentication (Workload Identity / Application Default Credentials).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from typing import Any, Dict, List, Optional
+
+from app.core.config import get_settings
+from app.core.exceptions import AIProviderError, RateLimitError
+from app.providers.base import (
+    EmbeddingProvider,
+    EmbeddingRequest,
+    EmbeddingResponse,
+    LLMProvider,
+    LLMRequest,
+    LLMResponse,
+)
+
+
+class VertexAILLMProvider(LLMProvider):
+    """Google Cloud Vertex AI LLM Provider with 0-Key IAM authentication."""
+
+    def __init__(
+        self,
+        project_id: Optional[str] = None,
+        location: Optional[str] = None,
+        model_name: Optional[str] = None,
+    ) -> None:
+        settings = get_settings()
+        self._project_id = project_id or settings.GOOGLE_CLOUD_PROJECT_ID
+        self._location = location or settings.GCP_REGION
+        self._model_name = model_name or settings.GEMINI_MODEL or "gemini-2.0-flash"
+        self._initialized = False
+
+    @property
+    def provider_name(self) -> str:
+        return "vertexai"
+
+    @property
+    def supported_models(self) -> List[str]:
+        return ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+
+    def _ensure_initialized(self) -> None:
+        if not self._initialized:
+            try:
+                import vertexai
+                vertexai.init(project=self._project_id, location=self._location)
+                self._initialized = True
+            except Exception as exc:
+                raise AIProviderError("vertexai", f"Failed to initialize Vertex AI: {exc}", retryable=False) from exc
+
+    def validate_request(self, request: LLMRequest) -> None:
+        if not request.prompt or not request.user_input:
+            raise ValueError("Prompt and user_input are required")
+        if request.max_tokens < 100:
+            raise ValueError("max_tokens must be at least 100")
+
+    async def _run_sync(self, func, *args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+
+    async def generate(self, request: LLMRequest) -> LLMResponse:
+        self.validate_request(request)
+        self._ensure_initialized()
+        try:
+            from vertexai.generative_models import GenerativeModel, GenerationConfig
+
+            model = GenerativeModel(self._model_name)
+            config = GenerationConfig(
+                temperature=request.temperature,
+                max_output_tokens=request.max_tokens,
+            )
+
+            def _call():
+                response = model.generate_content(
+                    f"{request.prompt}\n\n{request.user_input}",
+                    generation_config=config,
+                )
+                return getattr(response, "text", "") or ""
+
+            text = await self._run_sync(_call)
+            return LLMResponse(
+                text=text,
+                model=self._model_name,
+                tokens_in=max(len(request.prompt.split()), 1),
+                tokens_out=max(len(text.split()), 1),
+                stop_reason="stop",
+            )
+        except Exception as exc:
+            if "429" in str(exc) or "ResourceExhausted" in str(type(exc).__name__):
+                raise RateLimitError("vertexai") from exc
+            raise AIProviderError("vertexai", str(exc), retryable=True) from exc
+
+    async def generate_structured(
+        self,
+        prompt: str,
+        user_input: str,
+        response_schema: Dict[str, Any],
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        self._ensure_initialized()
+        try:
+            from vertexai.generative_models import GenerativeModel, GenerationConfig
+
+            model = GenerativeModel(self._model_name)
+            temperature = kwargs.get("temperature", 0.2)
+            max_tokens = kwargs.get("max_tokens", 2048)
+
+            config = GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                response_mime_type="application/json",
+            )
+
+            system_instruction = (
+                f"{prompt}\n\n"
+                f"You MUST strictly format your output as a valid JSON object matching this schema:\n"
+                f"{json.dumps(response_schema, indent=2)}\n"
+                f"Do not include markdown code block formatting (```json), return ONLY raw valid JSON."
+            )
+
+            def _call():
+                response = model.generate_content(
+                    f"{system_instruction}\n\n{user_input}",
+                    generation_config=config,
+                )
+                return getattr(response, "text", "") or "{}"
+
+            raw_text = await self._run_sync(_call)
+            cleaned = raw_text.strip()
+            if cleaned.startswith("```json"):
+                cleaned = cleaned[7:]
+            if cleaned.startswith("```"):
+                cleaned = cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+
+            return json.loads(cleaned)
+        except json.JSONDecodeError as exc:
+            raise AIProviderError("vertexai", f"Invalid JSON returned: {exc}", retryable=False) from exc
+        except Exception as exc:
+            if "429" in str(exc) or "ResourceExhausted" in str(type(exc).__name__):
+                raise RateLimitError("vertexai") from exc
+            raise AIProviderError("vertexai", str(exc), retryable=True) from exc
+
+
+class VertexAIEmbeddingProvider(EmbeddingProvider):
+    """Google Cloud Vertex AI 768-dimensional Embedding Provider with 0-Key IAM."""
+
+    def __init__(
+        self,
+        project_id: Optional[str] = None,
+        location: Optional[str] = None,
+        model_name: str = "text-embedding-004",
+    ) -> None:
+        super().__init__(model_name=model_name)
+        settings = get_settings()
+        self._project_id = project_id or settings.GOOGLE_CLOUD_PROJECT_ID
+        self._location = location or settings.GCP_REGION
+        self._initialized = False
+
+    @property
+    def provider_name(self) -> str:
+        return "vertexai"
+
+    @property
+    def dimension(self) -> int:
+        return 768
+
+    def _ensure_initialized(self) -> None:
+        if not self._initialized:
+            try:
+                import vertexai
+                vertexai.init(project=self._project_id, location=self._location)
+                self._initialized = True
+            except Exception as exc:
+                raise AIProviderError("vertexai", f"Failed to initialize Vertex AI Embedding: {exc}", retryable=False) from exc
+
+    async def _run_sync(self, func, *args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+
+    async def embed(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        if not request.text:
+            raise ValueError("Text cannot be empty")
+        self._ensure_initialized()
+        try:
+            from vertexai.language_models import TextEmbeddingModel
+
+            model_name = request.model or self.model_name
+            model = TextEmbeddingModel.from_pretrained(model_name)
+
+            def _call():
+                embeddings = model.get_embeddings([request.text])
+                return embeddings[0].values if embeddings else []
+
+            values = await self._run_sync(_call)
+
+            if len(values) != self.dimension:
+                values = (values + [0.0] * self.dimension)[: self.dimension]
+
+            return EmbeddingResponse(
+                embedding=values,
+                model=model_name,
+                dimension=self.dimension,
+            )
+        except Exception as exc:
+            if "429" in str(exc) or "ResourceExhausted" in str(type(exc).__name__):
+                raise RateLimitError("vertexai") from exc
+            raise AIProviderError("vertexai", f"Vertex AI embedding failed: {exc}", retryable=True) from exc
+
+    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        if not texts:
+            return []
+        self._ensure_initialized()
+        try:
+            from vertexai.language_models import TextEmbeddingModel
+
+            model = TextEmbeddingModel.from_pretrained(self.model_name)
+
+            def _call():
+                results = model.get_embeddings(texts)
+                return [r.values for r in results]
+
+            embeddings = await self._run_sync(_call)
+            output = []
+            for emb in embeddings:
+                if len(emb) != self.dimension:
+                    emb = (emb + [0.0] * self.dimension)[: self.dimension]
+                output.append(emb)
+            return output
+        except Exception as exc:
+            if "429" in str(exc) or "ResourceExhausted" in str(type(exc).__name__):
+                raise RateLimitError("vertexai") from exc
+            raise AIProviderError("vertexai", f"Vertex AI batch embedding failed: {exc}", retryable=True) from exc

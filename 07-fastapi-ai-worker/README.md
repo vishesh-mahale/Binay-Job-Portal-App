@@ -109,15 +109,16 @@ Search symmetry ensures cosine distance in `pgvector` accurately reflects candid
 
 ---
 
-## 7. Pluggable AI Providers
+## 7. Pluggable AI Providers (4 Universal Modes)
 
 AI provider architecture is decoupled via [`LLMProvider`](app/providers/base.py) and [`EmbeddingProvider`](app/providers/base.py):
 
-| Provider | LLM Implementation | Embedding Model | 768-dim Check |
+| Provider (`AI_PROVIDER`) | LLM Implementation | Embedding Model | Auth Mechanism & Key Handling |
 |---|---|---|---|
-| **Gemini** (Default) | `GeminiLLMProvider` (`gemini-2.0-flash`) | `GeminiEmbeddingProvider` (`text-embedding-004`) | Native 768-dim |
-| **OpenAI** | `OpenAILLMProvider` (`gpt-4o-mini`) | `OpenAIEmbeddingProvider` (`text-embedding-3-small`) | 768 via `dimensions=768` |
-| **Mock** | `MockLLMProvider` | `MockEmbeddingProvider` | Deterministic 768-dim test vector |
+| **`vertexai`** *(Recommended)* | `VertexAILLMProvider` (`gemini-2.0-flash`) | `VertexAIEmbeddingProvider` (`text-embedding-004`) | **0-Key IAM** via Google Cloud ADC / Cloud Run SA |
+| **`gemini`** | `GeminiLLMProvider` (`gemini-2.5-flash`) | `GeminiEmbeddingProvider` (`text-embedding-004`) | API Key via `GEMINI_API_KEY` (AI Studio Free Tier) |
+| **`openai`** | `OpenAILLMProvider` (`gpt-4o-mini`) | `OpenAIEmbeddingProvider` (`text-embedding-3-small`) | API Key via `OPENAI_API_KEY` (768-dim) |
+| **`mock`** | `MockLLMProvider` | `MockEmbeddingProvider` | Zero Keys / Deterministic 768-dim in-memory fixtures |
 
 ---
 
