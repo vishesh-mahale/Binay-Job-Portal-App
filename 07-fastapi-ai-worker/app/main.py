@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         
         # Initialize database
         await db_manager.initialize()
-        logger.info("Database initialized successfully")
+        logger.info("Database manager initialized")
         
         # Initialize AI providers
         logger.info("AI providers initialized")
@@ -105,6 +105,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         description="Private Cloud Run service for AI-powered resume parsing, candidate projections, and job enrichment",
         version="0.1.0",
         lifespan=lifespan,
+        docs_url="/docs" if app_settings.DEBUG_ENDPOINTS_ENABLED else None,
+        redoc_url="/redoc" if app_settings.DEBUG_ENDPOINTS_ENABLED else None,
+        openapi_url="/openapi.json" if app_settings.DEBUG_ENDPOINTS_ENABLED else None,
     )
     app.state.settings = app_settings
     

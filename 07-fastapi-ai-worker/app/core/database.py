@@ -3,6 +3,7 @@ Async PostgreSQL database connection management.
 Uses asyncpg for performance and SQLAlchemy for ORM/query building.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncGenerator
 import json
@@ -51,7 +52,15 @@ class DatabaseManager:
         logger.info("Initializing database engine", url=self.settings.DATABASE_URL[:50] + "...")
         
         try:
-            # Create async SQLAlchemy engine
+            # Create async SQLAlchemy engine with Transaction Pooler compatibility (port 6543)
+            connect_args: dict[str, Any] = {
+                "statement_cache_size": 0,
+                "prepared_statement_cache_size": 0,
+            }
+            # Auto-enable SSL for cloud databases (Supabase) if not on localhost
+            if "localhost" not in self.settings.DATABASE_URL and "127.0.0.1" not in self.settings.DATABASE_URL:
+                connect_args["ssl"] = "require"
+
             self.engine = create_async_engine(
                 self.settings.DATABASE_URL,
                 echo=False,
@@ -59,6 +68,7 @@ class DatabaseManager:
                 max_overflow=10,
                 pool_pre_ping=True,
                 pool_recycle=3600,
+                connect_args=connect_args,
             )
             
             # Create session factory
@@ -69,7 +79,21 @@ class DatabaseManager:
                 autoflush=False
             )
             
-            logger.info("Database engine initialized successfully")
+            # Perform live connection ping to verify credentials & reachability (Fail-Fast)
+            try:
+                async with self.engine.connect() as conn:
+                    await conn.execute(sqlalchemy.text("SELECT 1"))
+                logger.info("Database live connection verified successfully (SELECT 1 OK)")
+            except Exception as ping_err:
+                logger.error(
+                    "Database live connection verification failed on startup",
+                    error=str(ping_err),
+                )
+                if self.engine is not None and hasattr(self.engine, "dispose"):
+                    res = self.engine.dispose()
+                    if asyncio.iscoroutine(res):
+                        await res
+                raise
             
         except Exception as e:
             logger.error("Failed to initialize database engine", error=str(e))

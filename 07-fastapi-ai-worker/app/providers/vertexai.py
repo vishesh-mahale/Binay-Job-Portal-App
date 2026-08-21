@@ -1,5 +1,5 @@
 """
-Google Cloud Vertex AI Provider Implementation.
+Google Cloud Vertex AI Provider Implementation using official modern google-genai SDK.
 Enforces 0-Key IAM Authentication (Workload Identity / Application Default Credentials).
 """
 
@@ -9,8 +9,12 @@ import asyncio
 import json
 from typing import Any, Dict, List, Optional
 
+from google import genai
+from google.genai import types
+
 from app.core.config import get_settings
 from app.core.exceptions import AIProviderError, RateLimitError
+from app.core.logging import get_logger
 from app.providers.base import (
     EmbeddingProvider,
     EmbeddingRequest,
@@ -19,6 +23,8 @@ from app.providers.base import (
     LLMRequest,
     LLMResponse,
 )
+
+logger = get_logger(__name__)
 
 
 class VertexAILLMProvider(LLMProvider):
@@ -34,7 +40,7 @@ class VertexAILLMProvider(LLMProvider):
         self._project_id = project_id or settings.GOOGLE_CLOUD_PROJECT_ID
         self._location = location or settings.GCP_REGION
         self._model_name = model_name or settings.GEMINI_MODEL or "gemini-2.0-flash"
-        self._initialized = False
+        self._client: Optional[genai.Client] = None
 
     @property
     def provider_name(self) -> str:
@@ -44,14 +50,19 @@ class VertexAILLMProvider(LLMProvider):
     def supported_models(self) -> List[str]:
         return ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
 
-    def _ensure_initialized(self) -> None:
-        if not self._initialized:
+    def _get_client(self) -> genai.Client:
+        if self._client is None:
             try:
-                import vertexai
-                vertexai.init(project=self._project_id, location=self._location)
-                self._initialized = True
+                self._client = genai.Client(
+                    vertexai=True,
+                    project=self._project_id,
+                    location=self._location,
+                )
             except Exception as exc:
-                raise AIProviderError("vertexai", f"Failed to initialize Vertex AI: {exc}", retryable=False) from exc
+                raise AIProviderError(
+                    "vertexai", f"Failed to initialize Vertex AI client: {exc}", retryable=False
+                ) from exc
+        return self._client
 
     def validate_request(self, request: LLMRequest) -> None:
         if not request.prompt or not request.user_input:
@@ -64,22 +75,20 @@ class VertexAILLMProvider(LLMProvider):
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         self.validate_request(request)
-        self._ensure_initialized()
+        client = self._get_client()
         try:
-            from vertexai.generative_models import GenerativeModel, GenerationConfig
-
-            model = GenerativeModel(self._model_name)
-            config = GenerationConfig(
+            config = types.GenerateContentConfig(
                 temperature=request.temperature,
                 max_output_tokens=request.max_tokens,
             )
 
             def _call():
-                response = model.generate_content(
-                    f"{request.prompt}\n\n{request.user_input}",
-                    generation_config=config,
+                resp = client.models.generate_content(
+                    model=self._model_name,
+                    contents=f"{request.prompt}\n\n{request.user_input}",
+                    config=config,
                 )
-                return getattr(response, "text", "") or ""
+                return getattr(resp, "text", "") or ""
 
             text = await self._run_sync(_call)
             return LLMResponse(
@@ -101,15 +110,12 @@ class VertexAILLMProvider(LLMProvider):
         response_schema: Dict[str, Any],
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        self._ensure_initialized()
+        client = self._get_client()
         try:
-            from vertexai.generative_models import GenerativeModel, GenerationConfig
-
-            model = GenerativeModel(self._model_name)
             temperature = kwargs.get("temperature", 0.2)
-            max_tokens = kwargs.get("max_tokens", 2048)
+            max_tokens = kwargs.get("max_tokens", 8192)
 
-            config = GenerationConfig(
+            config = types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
                 response_mime_type="application/json",
@@ -123,11 +129,12 @@ class VertexAILLMProvider(LLMProvider):
             )
 
             def _call():
-                response = model.generate_content(
-                    f"{system_instruction}\n\n{user_input}",
-                    generation_config=config,
+                resp = client.models.generate_content(
+                    model=self._model_name,
+                    contents=f"{system_instruction}\n\n{user_input}",
+                    config=config,
                 )
-                return getattr(response, "text", "") or "{}"
+                return getattr(resp, "text", "") or "{}"
 
             raw_text = await self._run_sync(_call)
             cleaned = raw_text.strip()
@@ -161,7 +168,7 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
         settings = get_settings()
         self._project_id = project_id or settings.GOOGLE_CLOUD_PROJECT_ID
         self._location = location or settings.GCP_REGION
-        self._initialized = False
+        self._client: Optional[genai.Client] = None
 
     @property
     def provider_name(self) -> str:
@@ -171,31 +178,35 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
     def dimension(self) -> int:
         return 768
 
-    def _ensure_initialized(self) -> None:
-        if not self._initialized:
+    def _get_client(self) -> genai.Client:
+        if self._client is None:
             try:
-                import vertexai
-                vertexai.init(project=self._project_id, location=self._location)
-                self._initialized = True
+                self._client = genai.Client(
+                    vertexai=True,
+                    project=self._project_id,
+                    location=self._location,
+                )
             except Exception as exc:
-                raise AIProviderError("vertexai", f"Failed to initialize Vertex AI Embedding: {exc}", retryable=False) from exc
+                raise AIProviderError(
+                    "vertexai", f"Failed to initialize Vertex AI Embedding client: {exc}", retryable=False
+                ) from exc
+        return self._client
 
     async def _run_sync(self, func, *args, **kwargs):
         return await asyncio.to_thread(func, *args, **kwargs)
 
-    async def embed(self, request: EmbeddingRequest) -> EmbeddingResponse:
+    async def embed(self, request: EmbeddingRequest | str) -> EmbeddingResponse:
+        if isinstance(request, str):
+            request = EmbeddingRequest(text=request)
         if not request.text:
             raise ValueError("Text cannot be empty")
-        self._ensure_initialized()
+        client = self._get_client()
         try:
-            from vertexai.language_models import TextEmbeddingModel
-
             model_name = request.model or self.model_name
-            model = TextEmbeddingModel.from_pretrained(model_name)
 
             def _call():
-                embeddings = model.get_embeddings([request.text])
-                return embeddings[0].values if embeddings else []
+                res = client.models.embed_content(model=model_name, contents=request.text)
+                return res.embeddings[0].values if res.embeddings else []
 
             values = await self._run_sync(_call)
 
@@ -215,15 +226,11 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
         if not texts:
             return []
-        self._ensure_initialized()
+        client = self._get_client()
         try:
-            from vertexai.language_models import TextEmbeddingModel
-
-            model = TextEmbeddingModel.from_pretrained(self.model_name)
-
             def _call():
-                results = model.get_embeddings(texts)
-                return [r.values for r in results]
+                res = client.models.embed_content(model=self.model_name, contents=texts)
+                return [emb.values for emb in res.embeddings] if res.embeddings else []
 
             embeddings = await self._run_sync(_call)
             output = []

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, AsyncGenerator, Optional
 
 from sqlalchemy import text
@@ -76,7 +77,8 @@ class ResumeParsingJobRepository:
 
         async for s in self._with_session(session):
             try:
-                await s.execute(text(query), {"job_id": job_id, "error_details": error_details})
+                err_payload = json.dumps(error_details) if isinstance(error_details, dict) else error_details
+                await s.execute(text(query), {"job_id": job_id, "error_details": err_payload})
             except Exception:
                 if session is None:
                     await s.rollback()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, AsyncGenerator, Optional
 
 from sqlalchemy import text
@@ -58,6 +59,8 @@ class AnalyticsRepository:
         ON CONFLICT (idempotency_key) DO NOTHING
         """
 
+        payload_json = json.dumps(event_data or {}) if isinstance(event_data or {}, dict) else (event_data or {})
+
         async for s in self._with_session(session):
             try:
                 result = await s.execute(
@@ -73,7 +76,7 @@ class AnalyticsRepository:
                         "source": source,
                         "entity_type": entity_type,
                         "entity_id": entity_id,
-                        "event_data": event_data or {},
+                        "event_data": payload_json,
                     },
                 )
                 rowcount = getattr(result, "rowcount", 0) or 0

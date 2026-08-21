@@ -7,6 +7,7 @@
 
 - [Agent working rules](AGENTS.md)
 - [Project context map](PROJECT-CONTEXT-MAP.md)
+- [System architecture diagram & blueprint](docs/architecture/ARCHITECTURE-DIAGRAM.md)
 - [Repository migration plan (Hinglish)](MIGRATION-PLAN-HINGLISH.md)
 - [Migrated-document coverage audit](MIGRATION-COVERAGE-AUDIT.md)
 - [Architecture Decision Records](docs/adr/README.md)
@@ -15,11 +16,12 @@
 - [Background-worker implementation plan](docs/architecture/background-processing/BACKGROUND-WORKER-IMPLEMENTATION-PLAN-HINGLISH.md)
 - [Shared contracts](contracts/README.md)
 
-## �️ Quick Links (Clickable)
+## 🗺️ Quick Links (Clickable)
 
 **Start Here:**
 - [AGENTS.md](AGENTS.md) — Agent working rules
 - [PROJECT-CONTEXT-MAP.md](PROJECT-CONTEXT-MAP.md) — Architecture overview
+- [ARCHITECTURE-DIAGRAM.md](docs/architecture/ARCHITECTURE-DIAGRAM.md) — System architecture diagram & layers
 - [MIGRATION-PLAN-HINGLISH.md](MIGRATION-PLAN-HINGLISH.md) — Migration details
 - [MIGRATION-COVERAGE-AUDIT.md](MIGRATION-COVERAGE-AUDIT.md) — Migration verification
 
@@ -119,6 +121,7 @@ Binay-Job-Portal-App/
 │   ├── adr/
 │   │   └── README.md
 │   ├── architecture/
+│   │   ├── ARCHITECTURE-DIAGRAM.md
 │   │   └── background-processing/
 │   │       ├── BACKGROUND-WORKER-ARCHITECTURE-OPTIONS-HINGLISH.md
 │   │       └── BACKGROUND-WORKER-IMPLEMENTATION-PLAN-HINGLISH.md
@@ -258,6 +261,8 @@ Binay-Job-Portal-App/
 - [Implementation Guide](04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md)
 
 📚 **ARCHITECTURE & DOCS**
+- System Overview
+  - [System Architecture Diagram & Blueprint](docs/architecture/ARCHITECTURE-DIAGRAM.md)
 - ADRs
   - [Architecture Decision Records](docs/adr/README.md)
 - Background Processing
@@ -300,9 +305,9 @@ Binay-Job-Portal-App/
 2. [Database](02-database/README.md) — authoritative migrations, schema docs, Supabase config, seeds, tests और flows
 3. `03-nextjs-web/` — frontend application
 4. [NestJS API](04-nestjs-api/README.md) — main backend/API
-5. `05-outbox-dispatcher-nestjs/` — outbox publisher/dispatcher service
+5. [Outbox Dispatcher NestJS](05-outbox-dispatcher-nestjs/README.md) — outbox publisher/dispatcher service
 6. `06-google-cloud-tasks/` — managed queue configuration, IAM और retry policy
-7. `07-fastapi-ai-worker/` — resume parsing, AI और embeddings
+7. [FastAPI AI Worker](07-fastapi-ai-worker/README.md) — resume parsing, AI और embeddings
 
 Cross-cutting areas:
 

@@ -389,9 +389,9 @@ async def handle_candidate_projection_task(
         # Step 6: Stale Source State Guard
         is_stale = await projection_repo.check_stale_source_state(
             candidate_id=candidate_id,
-            profile_revision=stored_revision,
-            active_resume_document_id=stored_resume_doc,
-            active_resume_parsing_result_id=stored_resume_res,
+            stored_revision=stored_revision,
+            stored_document_id=stored_resume_doc,
+            stored_parsing_result_id=stored_resume_res,
         )
         if is_stale:
             logger.info("Stale source state detected; skipping write.", candidate_id=candidate_id)

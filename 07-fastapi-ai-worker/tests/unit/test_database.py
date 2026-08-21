@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -20,12 +21,21 @@ def test_database_manager_initialization():
     db_manager._pool = None
     
     mock_engine = MagicMock(spec=Engine)
+    mock_conn = MagicMock()
+    mock_conn.execute = AsyncMock()
+    
+    class _AsyncConnContext:
+        async def __aenter__(self):
+            return mock_conn
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+    mock_engine.connect = MagicMock(return_value=_AsyncConnContext())
     mock_session_maker = MagicMock()
     
     with patch("app.core.database.create_async_engine", return_value=mock_engine) as mock_create_engine, \
          patch("app.core.database.async_sessionmaker", return_value=mock_session_maker):
         
-        import asyncio
         asyncio.run(db_manager.initialize())
         
         mock_create_engine.assert_called_once()

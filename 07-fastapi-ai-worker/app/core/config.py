@@ -91,7 +91,7 @@ class Settings(BaseSettings):
     
     EMBEDDING_PROVIDER: str = Field("gemini")
     EMBEDDING_MODEL: str = Field("text-embedding-004")
-    EMBEDDING_DIMENSION: int = Field(768)
+    EMBEDDING_DIMENSION: int = Field(768, ge=128, le=3072)
     
     MOCK_AI_PROVIDER: bool = Field(False, description="Force mock provider for testing")
 
@@ -115,7 +115,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: LogFormat = Field(LogFormat.JSON)
     TRACE_ID_HEADER: str = Field("x-trace-id")
     LOG_REDACT_PII: bool = Field(True)
-    DEBUG_ENDPOINTS_ENABLED: bool = Field(False)
+    DEBUG_ENDPOINTS_ENABLED: bool = Field(True, description="Enable Swagger /docs and OpenAPI schema")
     DEBUG_FULL_TRACEBACK: bool = Field(False)
 
     # ========================================================================

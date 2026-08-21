@@ -28,6 +28,7 @@ clean source है। Technical implementation choices यहाँ duplicate �
 - [Account roles and referral eligibility](product-decisions/PD-001-ACCOUNT-AND-REFERRAL-ROLES.md)
 - [Active resume contribution to recruiter search](product-decisions/PD-002-ACTIVE-RESUME-SEARCH.md)
 - [Application identity and historical truth](product-decisions/PD-003-APPLICATION-HISTORY.md)
+- [Candidate preferred work mode multi-selection design](product-decisions/PD-004-MULTI-SELECT-WORK-MODE.md)
 
 ## Future requirements
 

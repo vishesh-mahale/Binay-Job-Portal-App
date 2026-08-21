@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, AsyncGenerator, Optional
 
 from sqlalchemy import text
@@ -60,7 +61,7 @@ class OutboxRepository:
                         "aggregate_id": aggregate_id,
                         "event_type": event_type,
                         "schema_version": schema_version,
-                        "payload": payload,
+                        "payload": json.dumps(payload) if isinstance(payload, dict) else payload,
                     },
                 )
                 row = result.mappings().first()

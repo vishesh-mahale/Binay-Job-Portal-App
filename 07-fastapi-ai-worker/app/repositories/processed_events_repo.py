@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, AsyncGenerator, Optional
 
 from sqlalchemy import text
@@ -50,7 +51,7 @@ class ProcessedEventsRepository:
                     {
                         "consumer_name": consumer_name,
                         "event_id": event_id,
-                        "result_metadata": result_metadata,
+                        "result_metadata": json.dumps(result_metadata) if isinstance(result_metadata, dict) else result_metadata,
                     },
                 )
                 return result.rowcount > 0

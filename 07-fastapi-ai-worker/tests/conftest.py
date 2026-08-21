@@ -30,6 +30,7 @@ def _build_test_settings() -> Settings:
         GCP_REGION="asia-south1",
         GOOGLE_OIDC_ALLOWED_SERVICE_ACCOUNTS="test@test-project.iam.gserviceaccount.com",
         OIDC_AUTH_ENABLED=False,  # Disable for tests
+        OIDC_TOKEN_AUDIENCE=None,
         SUPABASE_PROJECT_URL="https://test.supabase.co",
         SUPABASE_STORAGE_KEY="test-key",
         SECRET_KEY="test-secret-key-minimum-32-characters-required-here",

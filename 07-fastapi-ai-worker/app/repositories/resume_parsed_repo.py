@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, AsyncGenerator, Optional
 
 from sqlalchemy import text
@@ -61,10 +62,10 @@ class ResumeParsedRepository:
                         "parsing_job_id": parsing_job_id,
                         "document_id": document_id,
                         "extracted_text": extracted_text,
-                        "raw_ai_output": raw_ai_output,
-                        "normalized_output": normalized_output,
-                        "confidence_details": confidence_details,
-                        "validation_result": validation_result,
+                        "raw_ai_output": json.dumps(raw_ai_output) if isinstance(raw_ai_output, dict) else raw_ai_output,
+                        "normalized_output": json.dumps(normalized_output) if isinstance(normalized_output, dict) else normalized_output,
+                        "confidence_details": json.dumps(confidence_details) if isinstance(confidence_details, dict) else confidence_details,
+                        "validation_result": json.dumps(validation_result) if isinstance(validation_result, dict) else validation_result,
                         "overall_confidence": overall_confidence,
                         "schema_version": schema_version,
                     },
@@ -100,7 +101,7 @@ class ResumeParsedRepository:
                     {
                         "parsing_job_id": parsing_job_id,
                         "artifact_type": artifact_type,
-                        "inline_data": inline_data,
+                        "inline_data": json.dumps(inline_data) if isinstance(inline_data, dict) else inline_data,
                         "checksum_sha256": checksum_sha256,
                     },
                 )
@@ -132,7 +133,7 @@ class ResumeParsedRepository:
                     {
                         "parsing_job_id": parsing_job_id,
                         "event_type": event_type,
-                        "event_data": event_data,
+                        "event_data": json.dumps(event_data) if isinstance(event_data, dict) else event_data,
                     },
                 )
             except Exception:

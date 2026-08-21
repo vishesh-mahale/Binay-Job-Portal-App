@@ -43,16 +43,21 @@ class SupabaseStorageClient:
             import httpx
 
             filename = path.split("/")[-1] if "/" in path else path
-            signed_url = (
-                f"{self._project_url}/storage/v1/object/authenticated/{self._bucket}/{path}"
-            )
+            public_url = f"{self._project_url}/storage/v1/object/public/{self._bucket}/{path}"
+            auth_url = f"{self._project_url}/storage/v1/object/authenticated/{self._bucket}/{path}"
 
             async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    signed_url,
-                    headers={"apikey": self._key, "Authorization": f"Bearer {self._key}"},
-                    timeout=httpx.Timeout(30.0),
-                )
+                # Try public bucket access first
+                pub_resp = await client.get(public_url, timeout=httpx.Timeout(30.0))
+                if pub_resp.status_code == 200:
+                    return filename, pub_resp.content
+
+                # Fallback to authenticated endpoint with API key
+                headers = {}
+                if self._key and self._key != "dummy-test-key":
+                    headers = {"apikey": self._key, "Authorization": f"Bearer {self._key}"}
+
+                response = await client.get(auth_url, headers=headers, timeout=httpx.Timeout(30.0))
                 response.raise_for_status()
                 return filename, response.content
         except StorageError:
