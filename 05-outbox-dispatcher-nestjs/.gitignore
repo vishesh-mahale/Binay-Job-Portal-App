@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# local env files — secrets never committed (governance rule)
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+logs/
+
+# test artifacts
+coverage/
+
+# misc
+.DS_Store
