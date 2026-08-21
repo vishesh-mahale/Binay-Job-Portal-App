@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/events/job-screening-questions-requested.v1.json",
+  "title": "JobScreeningQuestionsRequestedEventV1",
+  "description": "Transactional outbox event emitted when a job is created/updated and requires AI-generated screening questions",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_type", "aggregate_id", "event_type", "payload", "occurred_at"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique UUID for this trigger event"
+    },
+    "aggregate_type": {
+      "type": "string",
+      "const": "job"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The job UUID requiring screening questions"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "job.screening_questions.requested"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["job_id", "company_id"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The job row UUID"
+        },
+        "company_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The company posting the job"
+        },
+        "trace_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Distributed tracing UUID (optional, falls back to event_id)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false,
+  "_draft_note": "G-1 pending — producer (04-nestjs-api) trigger contract not yet frozen"
+}

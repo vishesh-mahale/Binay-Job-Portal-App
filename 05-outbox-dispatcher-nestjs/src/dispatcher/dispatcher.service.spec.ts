@@ -130,7 +130,7 @@ describe('DispatcherService.wake — basic drain', () => {
   });
 
   it('fails closed on unknown event types without calling the publisher', async () => {
-    const event = eventFixture({ event_type: 'match.analyze.requested' });
+    const event = eventFixture({ event_type: 'notification.email.requested' });
     const repo = repoStub();
     repo.claimEvents.mockResolvedValueOnce([event]).mockResolvedValue([]);
     const publish = jest.fn();
@@ -144,7 +144,7 @@ describe('DispatcherService.wake — basic drain', () => {
     const [eventId, worker, error, availableAt] = repo.markFailed.mock.calls[0];
     expect(eventId).toBe(event.id);
     expect(worker).toBe('worker-test');
-    expect(error).toBe('unknown_route:match.analyze.requested');
+    expect(error).toBe('unknown_route:notification.email.requested');
     expect(availableAt).toBeInstanceOf(Date);
     expect(availableAt.getTime()).toBeGreaterThan(Date.now() - 1000);
   });

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/events/security-scan-requested.v1.json",
+  "title": "SecurityScanRequestedEventV1",
+  "description": "Transactional outbox event emitted when a document is uploaded and requires security scanning (antivirus/malware check) before resume parsing can proceed",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_type", "aggregate_id", "event_type", "payload", "occurred_at"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique UUID for this trigger event"
+    },
+    "aggregate_type": {
+      "type": "string",
+      "const": "uploaded_document"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The uploaded_document UUID to scan"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "security.scan.requested"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["document_id", "storage_url"],
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The uploaded_document row UUID"
+        },
+        "storage_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "GCS/S3 signed URL or object path for the uploaded file"
+        },
+        "uploaded_by_user_id": {
+          "type": ["string", "null"],
+          "format": "uuid",
+          "description": "Registered user who uploaded (null if guest)"
+        },
+        "guest_upload_session_id": {
+          "type": ["string", "null"],
+          "description": "Guest session token (null if registered user)"
+        },
+        "trace_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Distributed tracing UUID (optional, falls back to event_id)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false,
+  "_draft_note": "Dedicated handler (not inline) — separate workflow step before resume.parse.requested. G-1 pending producer freeze."
+}

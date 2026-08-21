@@ -1,16 +1,20 @@
-import { EventRouteRegistry, PHASE_1_ROUTES } from './event-route.registry';
+import { EventRouteRegistry, PHASE_1_ROUTES, PHASE_2_ROUTES, ALL_ROUTES } from './event-route.registry';
 import { buildTaskPayload } from './payload.builder';
 import { OutboxEvent } from '../database/outbox.types';
 
-describe('EventRouteRegistry (Phase 1)', () => {
+describe('EventRouteRegistry (Phase 1 + Phase 2)', () => {
   const registry = new EventRouteRegistry();
 
-  it('registers exactly the three contracted producer events', () => {
+  it('registers exactly 7 contracted producer events (3 Phase 1 + 4 Phase 2)', () => {
     expect(registry.registeredEventTypes().sort()).toEqual(
       [
         'candidate.profile.changed',
+        'interview.summary.requested',
         'job.ai.enrichment.requested',
+        'job.screening_questions.requested',
+        'match.analyze.requested',
         'resume.parse.requested',
+        'security.scan.requested',
       ].sort(),
     );
   });
@@ -35,15 +39,36 @@ describe('EventRouteRegistry (Phase 1)', () => {
   });
 
   it('returns undefined for unknown event types (caller fails closed)', () => {
-    expect(registry.resolve('match.analyze.requested')).toBeUndefined();
-    expect(registry.resolve('security.scan.requested')).toBeUndefined();
+    expect(registry.resolve('notification.email.requested')).toBeUndefined();
+    expect(registry.resolve('application.submitted')).toBeUndefined();
     expect(registry.resolve('')).toBeUndefined();
   });
 
-  it('every route references a contract file (traceability)', () => {
+  it('every Phase 1 route references a task contract file', () => {
     for (const route of PHASE_1_ROUTES) {
       expect(route.taskContract).toMatch(/^contracts\/tasks\/.+\.v1\.json$/);
     }
+  });
+
+  it('Phase 2 routes resolve to verified FastAPI endpoints', () => {
+    const match = registry.resolve('match.analyze.requested');
+    expect(match?.queue).toBe('ai-heavy-queue');
+    expect(match?.urlPath).toBe('/internal/tasks/match/analyze');
+
+    const interview = registry.resolve('interview.summary.requested');
+    expect(interview?.urlPath).toBe('/internal/tasks/interview/summary');
+
+    const screening = registry.resolve('job.screening_questions.requested');
+    expect(screening?.urlPath).toBe('/internal/tasks/job/screening-questions');
+
+    const scan = registry.resolve('security.scan.requested');
+    expect(scan?.queue).toBe('security-scan-queue');
+    expect(scan?.urlPath).toBe('/internal/tasks/security/scan');
+  });
+
+  it('ALL_ROUTES contains Phase 1 + Phase 2', () => {
+    expect(ALL_ROUTES.length).toBe(PHASE_1_ROUTES.length + PHASE_2_ROUTES.length);
+    expect(ALL_ROUTES.length).toBe(7);
   });
 });
 
