@@ -117,6 +117,17 @@ Binay-Job-Portal-App/
 │   ├── README.md
 │   └── NESTJS-IMPLEMENTATION-GUIDE.md
 │
+├── ⚡ 05-outbox-dispatcher-nestjs/
+│   ├── README.md
+│   ├── IMPLEMENTATION-PLAN.md
+│   ├── LOCAL-TESTING-OPTIONS.md
+│   ├── TESTING-SCENARIOS.md
+│   └── TESTING-SCENARIOS-1.md
+│
+├── 🤖 07-fastapi-ai-worker/
+│   ├── README.md
+│   └── pyproject.toml
+│
 ├── 📚 docs/
 │   ├── adr/
 │   │   └── README.md
@@ -260,6 +271,16 @@ Binay-Job-Portal-App/
 - [API README](04-nestjs-api/README.md)
 - [Implementation Guide](04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md)
 
+⚡ **OUTBOX DISPATCHER (05-outbox-dispatcher-nestjs)**
+- [Dispatcher README](05-outbox-dispatcher-nestjs/README.md)
+- [Implementation Plan](05-outbox-dispatcher-nestjs/IMPLEMENTATION-PLAN.md)
+- [Local Testing Options](05-outbox-dispatcher-nestjs/LOCAL-TESTING-OPTIONS.md)
+- [Testing Scenarios (Master)](05-outbox-dispatcher-nestjs/TESTING-SCENARIOS.md)
+- [Testing Scenarios (Consolidated)](05-outbox-dispatcher-nestjs/TESTING-SCENARIOS-1.md)
+
+🤖 **FASTAPI AI WORKER (07-fastapi-ai-worker)**
+- [Worker README](07-fastapi-ai-worker/README.md)
+
 📚 **ARCHITECTURE & DOCS**
 - System Overview
   - [System Architecture Diagram & Blueprint](docs/architecture/ARCHITECTURE-DIAGRAM.md)
@@ -289,10 +310,13 @@ Binay-Job-Portal-App/
   - [job-enrich-task.v1.json](contracts/tasks/job-enrich-task.v1.json)
   - [resume-parse-task.v1.json](contracts/tasks/resume-parse-task.v1.json)
 
-🔍 **AUDIT**
+🔍 **AUDIT & REVIEWS**
+- [Final Consolidated Synthesis (Antigravity)](Agent_review/final-antigravity.md)
+- [Consolidated Codex Audit](Agent_review/final-codex.md)
+- [Cline Independent Audit](Agent_review/Cline-testing-scenarios-audit.md)
+- [Qoder Independent Audit](Agent_review/testing-scenarios-audit-qoder.md)
+- [Freebuff Independent Audit](Agent_review/freebuf-testing-scenarios-audit.md)
 - [Comprehensive Audit Report](Agent_review/MERGED_COMPREHENSIVE_AUDIT.md)
-- [Copilotk Audit](Agent_review/copilotk.md)
-- [Kilocode Audit](Agent_review/kilocode.md)
 
 ---
 

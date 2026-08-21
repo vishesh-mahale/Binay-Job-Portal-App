@@ -26,6 +26,10 @@ export class AppConfigService {
     return this.env.DISPATCH_MODE === 'direct';
   }
 
+  get isCloudTasksMode(): boolean {
+    return this.env.DISPATCH_MODE === 'cloud_tasks';
+  }
+
   get webhookSecret(): string {
     return this.env.WEBHOOK_SECRET;
   }
@@ -35,6 +39,22 @@ export class AppConfigService {
   }
 
   get fastapiWorkerUrl(): string | undefined {
+    return this.env.FASTAPI_WORKER_URL;
+  }
+
+  get gcpProjectId(): string | undefined {
+    return this.env.GCP_PROJECT_ID;
+  }
+
+  get gcpLocation(): string | undefined {
+    return this.env.GCP_LOCATION;
+  }
+
+  get dispatcherServiceAccountEmail(): string | undefined {
+    return this.env.GCP_SERVICE_ACCOUNT_EMAIL;
+  }
+
+  get fastapiWorkerOidcAudience(): string | undefined {
     return this.env.FASTAPI_WORKER_URL;
   }
 

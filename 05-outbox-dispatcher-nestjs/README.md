@@ -2,7 +2,7 @@
 
 > **Private, zero-trust, event-driven microservice that drains the `outbox_events` table and publishes background tasks to FastAPI workers (Phase 1) or Google Cloud Tasks (future).**
 
-[← Main Project README](../README.md) · [Implementation Plan](IMPLEMENTATION-PLAN.md) · [Shared Contracts](../contracts/README.md) · [Infrastructure Baseline](../02-database/migrations/baseline/15_infrastructure.sql)
+[← Main Project README](../README.md) · [Implementation Plan](IMPLEMENTATION-PLAN.md) · [Local Testing Options](LOCAL-TESTING-OPTIONS.md) · [Testing Scenarios (Master)](TESTING-SCENARIOS.md) · [Testing Scenarios (Consolidated)](TESTING-SCENARIOS-1.md) · [Shared Contracts](../contracts/README.md) · [Infrastructure Baseline](../02-database/migrations/baseline/15_infrastructure.sql)
 
 ---
 
@@ -287,15 +287,15 @@ test/
 ```
 
 ### Current Status
-- **92 tests passing across 10 suites** (0 failures)
+- **103 tests passing across 11 suites** (0 failures)
 - `npm run build` and `npx tsc --noEmit` clean
 
 ### BLOCKED Tests (Not Faked)
 | Test | Reason |
 |---|---|
-| Real PostgreSQL `SKIP LOCKED` concurrency | No local Postgres/Supabase DB in this environment |
-| Local integration flow (curl wake → FastAPI) | No local Supabase stack or running FastAPI worker |
-| Cloud Tasks / OIDC / Cloud Run / production webhook E2E | Gated (G-1…G-5); no GCP credentials |
+| Real PostgreSQL `SKIP LOCKED` concurrency | Requires live Supabase DB in this environment |
+| Local integration flow (curl wake → FastAPI) | Requires live DevTunnel / FastAPI worker |
+| Cloud Tasks / OIDC / Cloud Run / production webhook E2E | Gated (G-1…G-5); requires live GCP credentials |
 
 ---
 
@@ -322,12 +322,14 @@ test/
 
 ---
 
-## 3. Detailed Documentation & Links
+## 14. Detailed Documentation & Links
 
 * 📋 **[Complete Implementation Plan & Execution Roadmap](IMPLEMENTATION-PLAN.md)** — Phased development steps, 3 operational modes, event routing registry, and testing strategy.
 * 🧪 **[Local Testing Options & Architecture Blueprint](LOCAL-TESTING-OPTIONS.md)** — All 4 local testing architectures with diagrams, commands & setup guide.
+* 🎯 **[Master Testing Scenarios Matrix (TESTING-SCENARIOS.md)](TESTING-SCENARIOS.md)** — Comprehensive 17 local scenarios, 6 production gates, and multi-agent audit reconciliation.
+* 📑 **[Consolidated Testing Scenarios (TESTING-SCENARIOS-1.md)](TESTING-SCENARIOS-1.md)** — Merged Antigravity, Codex & Cline verification matrix.
 * 🗺️ **[System Architecture Diagram & Blueprint](../docs/architecture/ARCHITECTURE-DIAGRAM.md)** — End-to-end system context.
 * 📝 **[Shared Event & Task Contracts](../contracts/README.md)** — Versioned event schemas and task payloads.
-* 🗄️ **[Infrastructure Baseline Migration](../02-database/migrations/baseline/15_infrastructure.sql)** — `outbox_events` table and `claim_outbox_events()` stored procedure.nctions, lifecycle trigger, indexes.
-- 🔒 **[RLS Policies](../02-database/migrations/baseline/17_rls.sql)** — Row-level grants governing `outbox_events` access.
-- 🤖 **[FastAPI AI Worker](../07-fastapi-ai-worker/README.md)** — Downstream consumer of the dispatcher's published tasks.
+* 🗄️ **[Infrastructure Baseline Migration](../02-database/migrations/baseline/15_infrastructure.sql)** — `outbox_events` table and `claim_outbox_events()` stored procedures, lifecycle trigger, and indexes.
+* 🔒 **[RLS Policies](../02-database/migrations/baseline/17_rls.sql)** — Row-level grants governing `outbox_events` access.
+* 🤖 **[FastAPI AI Worker](../07-fastapi-ai-worker/README.md)** — Downstream consumer of the dispatcher's published tasks.

@@ -30,8 +30,14 @@ export const envSchema = z
     WEBHOOK_SECRET: z.string().min(1, 'WEBHOOK_SECRET is required'),
     WEBHOOK_SECRET_PREVIOUS: z.string().min(1).optional(),
 
-    // Direct mode target (local FastAPI worker).
+    // Direct mode target (local FastAPI worker) OR cloud_tasks target URL.
     FASTAPI_WORKER_URL: z.string().url().optional(),
+
+    // Cloud Tasks configuration (required when DISPATCH_MODE=cloud_tasks in dev).
+    GCP_PROJECT_ID: z.string().min(1).optional(),
+    GCP_LOCATION: z.string().min(1).optional(),
+    GCP_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),
+    CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS: z.coerce.number().int().min(15).max(1800).optional(),
 
     // Claim/drain tuning — bounded per approved plan.
     CLAIM_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(50),
@@ -54,6 +60,14 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['DISPATCH_MODE'],
         message: 'DISPATCH_MODE=direct is a local/dev mode and is forbidden when NODE_ENV=production',
+      });
+    }
+
+    if (value.DISPATCH_MODE === 'cloud_tasks' && value.NODE_ENV !== 'production' && !value.GCP_PROJECT_ID) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['GCP_PROJECT_ID'],
+        message: 'GCP_PROJECT_ID is required when DISPATCH_MODE=cloud_tasks',
       });
     }
   });

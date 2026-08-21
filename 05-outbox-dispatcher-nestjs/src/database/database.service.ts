@@ -25,7 +25,9 @@ export class DatabaseService implements OnModuleDestroy {
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
       statement_timeout: 30_000,
-      ssl: sslEnabled ? { rejectUnauthorized: true } : undefined,
+      ssl: sslEnabled
+        ? { rejectUnauthorized: this.config.env.NODE_ENV === 'production' }
+        : undefined,
     });
 
     this.pool.on('error', (err) => {
