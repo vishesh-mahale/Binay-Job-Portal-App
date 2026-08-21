@@ -290,13 +290,31 @@ GET  /health/liveness | /health/readiness | /health/metrics
 | `candidate.profile.changed` | `projection-queue` | `/internal/tasks/candidate/projection` | task contract v1 available; event contract reconciliation required (G-1) |
 | `job.ai.enrichment.requested` | `ai-heavy-queue` | `/internal/tasks/job/enrich` | task contract v1 available; event contract reconciliation required (G-1) |
 
+### Phase 2 registry (DRAFT/G-1 pending producer freeze)
+
+| `event_type` | Queue | Endpoint | Contracts |
+|---|---|---|---|
+| `match.analyze.requested` | `ai-heavy-queue` | `/internal/tasks/match/analyze` | task contract v1 available; trigger event contract DRAFT (G-1) |
+| `interview.summary.requested` | `ai-heavy-queue` | `/internal/tasks/interview/summary` | task contract v1 available; trigger event contract DRAFT (G-1) |
+| `job.screening_questions.requested` | `ai-heavy-queue` | `/internal/tasks/job/screening-questions` | task contract v1 available; trigger event contract DRAFT (G-1) |
+| `security.scan.requested` | `security-scan-queue` | `/internal/tasks/security/scan` | trigger event contract DRAFT; dedicated handler (G-1) |
+
 ### Phase 2 (jab 04-nestjs-api trigger contracts freeze kare)
 
 | Endpoint | Task contract | Trigger event | Status |
 |---|---|---|---|
-| `/internal/tasks/match/analyze` | ✅ | `application.submitted` (contract pending) | G-1 |
-| `/internal/tasks/interview/summary` | ✅ | trigger contract nahi | G-1 |
-| `/internal/tasks/job/screening-questions` | ✅ | trigger contract nahi | G-1 |
+| `/internal/tasks/match/analyze` | ✅ | `match.analyze.requested` (contract DRAFT) | G-1 |
+| `/internal/tasks/interview/summary` | ✅ | `interview.summary.requested` (contract DRAFT) | G-1 |
+| `/internal/tasks/job/screening-questions` | ✅ | `job.screening_questions.requested` (contract DRAFT) | G-1 |
+| `/internal/tasks/security/scan` | — | `security.scan.requested` (contract DRAFT, dedicated handler) | G-1 |
+
+**Phase 2 trigger event contracts (created, DRAFT/G-1 pending producer freeze):**
+- `contracts/events/match-analyze-requested.v1.json`
+- `contracts/events/interview-summary-requested.v1.json`
+- `contracts/events/job-screening-questions-requested.v1.json`
+- `contracts/events/security-scan-requested.v1.json`
+
+**Aggregate ID semantics:** `contracts/AGGREGATE-ID-SEMANTICS.md` (G-2 frozen for Phase 1, DRAFT for Phase 2).
 
 **Rejected (invented queue names):** `resume-parsing-queue`, `candidate-projection-queue`,
 `ai-interactive-queue`, `ai-matching-queue` — yeh repo ke kisi authoritative source mein nahi hain,
@@ -306,7 +324,7 @@ sirf agent-plans ki inventions hain.
 
 | Event | Documented kahan | Missing | Action |
 |---|---|---|---|
-| `security.scan.requested` | `06_documents_Explanation.md`, NESTJS guide, background-worker implementation plan, FAST-API PROMPT | contract file NAHI; worker mein dedicated security-scan handler NAHI (scan inline hota hai resume-parse ke andar) | **G-1 gate** mein reconcile; registry entry tab tak nahi (cline audit correction — pehle ise galat tarike se "invention" likha tha) |
+| `security.scan.requested` | `06_documents_Explanation.md`, NESTJS guide, background-worker implementation plan, FAST-API PROMPT | contract file NAHI; worker mein dedicated security-scan handler NAHI (scan inline hota hai resume-parse ke andar) | **G-1 gate** mein reconcile; registry entry tab tak nahi (cline audit correction — pehle ise galat tarike se "invention" likha tha) | **UPDATED**: Contract created (`contracts/events/security-scan-requested.v1.json`), dedicated handler registered (`/internal/tasks/security/scan`), queue `security-scan-queue` |
 | `notification.email.requested` | Background-worker plan ki initial event list | koi consumer/contract nahi | OD-3 — queue provisioned only (already correctly tracked) |
 
 ### Router policy
@@ -712,8 +730,8 @@ Unit + integration + concurrency har PR; load/failure nightly-manual.
 
 | GATE | Item | Detail |
 |---|---|---|
-| G-1 | **Request-event contract reconciliation** | (a) match/interview/screening ke `*.requested` trigger contracts create karo (producer = 04-nestjs-api ke saath); (a.1) `security.scan.requested` — documented flow hai par contract + dedicated worker handler missing: decide karo (dedicated handler banega ya inline-scan hi rahega) aur uske hisaab se contract/registry entry; (b) existing 3 flat request contracts mein `outbox_events` envelope fields (`aggregate_type`, `event_type`, `payload`, `occurred_at`) align karo. Dispatcher par direct effect nahi (wo payload parse nahi karta), lekin producer freeze ke bina E2E integration verify nahi ho sakta |
-| G-2 | **aggregate_id semantics freeze** | Har route ke liye contract mein explicitly likho: resume → parsing job UUID; candidate → candidate UUID; job enrich/screening → job UUID; match → job_application UUID; interview → interview UUID. Dispatcher generic `aggregate_id` forward karta hai, par producer contract mein identity clear honi chahiye |
+| G-1 | **Request-event contract reconciliation** | (a) match/interview/screening ke `*.requested` trigger contracts create karo (producer = 04-nestjs-api ke saath) — **DONE**: 3 contracts created (DRAFT); (a.1) `security.scan.requested` — documented flow hai par contract + dedicated worker handler missing: decide karo (dedicated handler banega ya inline-scan hi rahega) aur uske hisaab se contract/registry entry — **DONE**: dedicated handler registered, contract created; (b) existing 3 flat request contracts mein `outbox_events` envelope fields (`aggregate_type`, `event_type`, `payload`, `occurred_at`) align karo — **PENDING**: dispatcher par direct effect nahi (wo payload parse nahi karta), lekin producer freeze ke bina E2E integration verify nahi ho sakta |
+| G-2 | **aggregate_id semantics freeze** | **DONE**: `contracts/AGGREGATE-ID-SEMANTICS.md` created — Phase 1 frozen (3 routes), Phase 2 DRAFT (4 routes). Har route ke liye contract mein explicitly likho: resume → parsing job UUID; candidate → candidate UUID; job enrich/screening → job UUID; match → job_application UUID; interview → interview UUID; security.scan → uploaded_document UUID. Dispatcher generic `aggregate_id` forward karta hai, par producer contract mein identity clear honi chahiye |
 | G-3 | IAM correction apply | Section 12 wala actAs/serviceAccountUser wiring actual project mein apply + verify |
 | G-4 | Cloud Run ingress decision | Section 11 config deploy par apply; webhook reachability + rate-limiting live verify |
 | G-5 | **Unroutable-event policy enforcement** (chatgpt review) | Frozen rule (Section 9): bina consumer contract ke producer koi bhi event `outbox_events` mein emit NAHI karega — warna dispatcher unhe fail-closed se false dead letters bana dega (schema mein destination column nahi; claim har due row leta hai). Full integration se pehle: (a) producer-side emit discipline verify; (b) decide karo ki forward migration (claim allow-list / destination column) chahiye ya nahi |
@@ -725,10 +743,27 @@ Unit + integration + concurrency har PR; load/failure nightly-manual.
 ## FINAL STATUS
 
 ```text
-READY FOR PHASE-1 SCAFFOLDING
-(NestJS project, config, pg pool, health, route registry skeleton,
- publisher interface, unit tests — contracted 3-event routing ke saath)
+PHASE 1: COMPLETE (all 94 tests pass)
+- NestJS scaffold, config/env validation, pg pool, health endpoints
+- Route registry (3 contracted routes), payload builder, backoff policy
+- TaskPublisher interface + DirectHttpPublisher (local mode)
+- Wake endpoint + webhook-secret guard + dispatcher (single-flight + pending-wake latch + bounded drain)
+- Unit test suite: 10 suites, 94 tests (all genuinely passing)
+- Dockerfile, .env.example, README.md
+
+PHASE 2: PARTIALLY COMPLETE
+- G-1(a): 3 Phase 2 trigger event contracts created (DRAFT/G-1 pending producer freeze)
+- G-1(a.1): security.scan.requested contract created + dedicated handler registered
+- G-2: aggregate_id semantics documented (contracts/AGGREGATE-ID-SEMANTICS.md)
+- Route registry extended: 7 routes total (3 Phase 1 + 4 Phase 2)
+- All tests updated and passing (94/94)
+
+PHASE 2 REMAINING:
+- G-1(b): Align existing 3 flat request contracts with outbox envelope fields (pending producer freeze)
+- G-3/G-4: IAM + Cloud Run ingress (blocked — needs actual GCP project + deployment)
+- OD-1: Dedicated LOGIN role + GRANT EXECUTE migration (reviewed forward migration)
+- OD-10: DB connectivity spike (Pooler 6543 vs direct 5432)
 
 NOT READY FOR FULL INTEGRATION
-(Gates G-1 se G-5 close hone ke baad hi cloud-integration phase)
+(Gates G-3, G-4, G-5 close hone ke baad hi cloud-integration phase)
 ```

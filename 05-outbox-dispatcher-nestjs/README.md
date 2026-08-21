@@ -322,11 +322,12 @@ test/
 
 ---
 
-## 14. Related Documentation
+## 3. Detailed Documentation & Links
 
-- 📋 **[Implementation Plan](IMPLEMENTATION-PLAN.md)** — Phased development, 2 operational modes, event routing registry, testing strategy, and gate definitions.
-- 🗺️ **[System Architecture Diagram](../docs/architecture/ARCHITECTURE-DIAGRAM.md)** — End-to-end system context.
-- 📝 **[Shared Contracts](../contracts/README.md)** — Versioned task payloads (`contracts/tasks/*.v1.json`).
-- 🗄️ **[Infrastructure Baseline](../02-database/migrations/baseline/15_infrastructure.sql)** — `outbox_events` schema, approved functions, lifecycle trigger, indexes.
+* 📋 **[Complete Implementation Plan & Execution Roadmap](IMPLEMENTATION-PLAN.md)** — Phased development steps, 3 operational modes, event routing registry, and testing strategy.
+* 🧪 **[Local Testing Options & Architecture Blueprint](LOCAL-TESTING-OPTIONS.md)** — All 4 local testing architectures with diagrams, commands & setup guide.
+* 🗺️ **[System Architecture Diagram & Blueprint](../docs/architecture/ARCHITECTURE-DIAGRAM.md)** — End-to-end system context.
+* 📝 **[Shared Event & Task Contracts](../contracts/README.md)** — Versioned event schemas and task payloads.
+* 🗄️ **[Infrastructure Baseline Migration](../02-database/migrations/baseline/15_infrastructure.sql)** — `outbox_events` table and `claim_outbox_events()` stored procedure.nctions, lifecycle trigger, indexes.
 - 🔒 **[RLS Policies](../02-database/migrations/baseline/17_rls.sql)** — Row-level grants governing `outbox_events` access.
 - 🤖 **[FastAPI AI Worker](../07-fastapi-ai-worker/README.md)** — Downstream consumer of the dispatcher's published tasks.
