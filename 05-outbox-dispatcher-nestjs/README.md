@@ -1,89 +1,160 @@
 # 05 — Outbox Dispatcher (NestJS / TypeScript)
 
-[← Main README](../README.md) · [System Architecture Diagram](../docs/architecture/ARCHITECTURE-DIAGRAM.md) · [Background Architecture](../docs/architecture/background-processing/BACKGROUND-WORKER-ARCHITECTURE-OPTIONS-HINGLISH.md) · [Contracts](../contracts/README.md)
+[← Main README](../README.md) · [System Architecture Diagram](../docs/architecture/ARCHITECTURE-DIAGRAM.md) · [Background Architecture](../docs/architecture/background-processing/BACKGROUND-WORKER-ARCHITECTURE-OPTIONS-HINGLISH.md) · [Shared Contracts](../contracts/README.md)
 
 ---
 
-## 1. Overview & System Role
+## 1. Overview & Core Philosophy
 
-`05-outbox-dispatcher-nestjs` ek lightweight, standalone **NestJS Microservice** hai jo Supabase PostgreSQL Database ke `outbox_events` table ko background consumers (**Google Cloud Tasks** aur **FastAPI AI Worker**) se connect karta hai.
+`05-outbox-dispatcher-nestjs` ek dedicated, ultra-fast, stateless **Transactional Outbox Dispatcher Microservice** hai.
+
+### 🚫 Single Responsibility Rule:
+Dispatcher **kisi bhi tarah ka business logic, OCR, resume parsing, email sending, ya AI processing nahi karega**.
+
+**Iska akela kaam hai:**
+1. Supabase Database se pending `outbox_events` ko safely aur atomically **CLAIM** karna (`FOR UPDATE SKIP LOCKED`).
+2. Event type ko `contracts/events/` se `contracts/tasks/` ke payload aur target queue/URL mein **TRANSLATE** karna.
+3. Target destination par **PUBLISH** karna (Deterministic Task ID ke sath).
+4. Database mein status update karna (`published`, `failed` + backoff, ya `dead_letter`).
+
+---
+
+## 2. Master System Architecture Flow
 
 ```text
-Database Transaction Commit (outbox_events row INSERT)
-                     │
-                     ▼
-       Supabase Async Database Webhook
-                     │ (POST /internal/outbox/wake)
-                     ▼
-         NestJS Outbox Dispatcher
-                     │
-                     ├─ 1. Atomic Batch Claim: `SELECT * FROM claim_outbox_events('dispatcher-1', 50, 120)`
-                     ├─ 2. Event-to-Task Payload Translation (contracts/events -> contracts/tasks)
-                     └─ 3. Task Dispatch Strategy:
-                            ├─ Local Dev Mode: Direct HTTP POST to FastAPI (http://localhost:8080)
-                            └─ Cloud Prod Mode: Push deterministic task to Google Cloud Tasks Queue
-                     │
-                     ▼
-       Update outbox_events status to 'published'
+Trusted Producer (NestJS API / FastAPI)
+                 │
+                 ▼
+       [outbox_events INSERT] (status='pending')
+                 │
+                 ▼
+  Supabase Async Webhook / Post-Commit Wake-up
+                 │  (POST /internal/dispatcher/wake)
+                 ▼
+     05-outbox-dispatcher-nestjs
+                 │
+                 ├─ 1. Atomic Claim Transaction (Short DB Lock):
+                 │     `SELECT * FROM claim_outbox_events(:worker_id, 50, 120)`
+                 │
+                 ├─ 2. Config-Driven Event Routing Registry
+                 │
+                 ├─ 3. Task Publisher Strategy:
+                 │     ├─ Mode A (Local Dev): DirectHttpPublisher ➔ FastAPI (http://127.0.0.1:8080)
+                 │     ├─ Mode B (Hybrid Dev): CloudTasksPublisher (Local ADC) ➔ Real Cloud Tasks
+                 │     └─ Mode C (Production): CloudTasksPublisher (Cloud Run OIDC) ➔ Cloud Tasks Queue
+                 │
+                 ├─ 4. Google Cloud Tasks Deduplication (Custom Deterministic Task Name)
+                 │     `task_name = "task-{aggregate_type}-{aggregate_id}-{event_id}"`
+                 │     (Catches `409 ALREADY_EXISTS` as safe idempotent published-equivalent)
+                 │
+                 ▼
+    Update outbox_events status to 'published' (or retry backoff)
 ```
 
 ---
 
-## 2. Core Operational Modes
+## 3. The 3 Operational Environment Modes
 
-| Mode | Trigger Setting | Task Dispatch Target | Target Environment |
-|---|---|---|---|
-| **Local Dev Mode** | `DISPATCH_TARGET=direct_http` | `http://localhost:8080/internal/tasks/*` | Local Developer Machine (Zero GCP setup) |
-| **Cloud Production** | `DISPATCH_TARGET=cloud_tasks` | Google Cloud Tasks (with OIDC Auth) | Google Cloud Run (Managed Infrastructure) |
-
----
-
-## 3. Approved Event-to-Task Mappings
-
-Dispatcher `contracts/events/` ke events ko padh kar unhe corresponding `contracts/tasks/` format mein translate karta hai:
-
-| Domain Event (`contracts/events/`) | Target Task Route | Task Payload Contract (`contracts/tasks/`) | Target Consumer |
-|---|---|---|---|
-| `resume.parse.requested` | `/internal/tasks/resume/parse` | `resume-parse-task.v1.json` | FastAPI AI Worker |
-| `candidate.profile.changed` | `/internal/tasks/candidate/projection` | `candidate-projection-task.v1.json` | FastAPI AI Worker |
-| `job.ai.enrichment.requested` | `/internal/tasks/job/enrich` | `job-enrich-task.v1.json` | FastAPI AI Worker |
-| `job.screening_questions.requested` | `/internal/tasks/job/screening-questions` | `job-screening-questions-task.v1.json` | FastAPI AI Worker |
-| `match.analyze.requested` | `/internal/tasks/match/analyze` | `match-analyze-task.v1.json` | FastAPI AI Worker |
-| `interview.summary.requested` | `/internal/tasks/interview/summary` | `interview-summary-task.v1.json` | FastAPI AI Worker |
+| Mode | Environment Config | Dispatcher Behavior | Target Worker | Setup Requirement |
+|---|---|---|---|---|
+| **Mode A: Pure Local (Fastest Loop)** | `DISPATCH_MODE=direct`<br>`FASTAPI_LOCAL_URL=http://127.0.0.1:8080` | Directly calls local FastAPI HTTP endpoint. | Local FastAPI (`localhost:8080`) | **Zero Cloud setup**, no tunnels needed. |
+| **Mode B: Hybrid Integration** | `DISPATCH_MODE=cloud_tasks`<br>`GCP_AUTH=adc` | Uses Google Application Default Credentials (`gcloud auth`) to push real Cloud Tasks. | Deployed Dev Cloud Run Worker | Local `gcloud auth login`. |
+| **Mode C: Production** | `DISPATCH_MODE=cloud_tasks`<br>`GCP_AUTH=service_account` | Pushes to Cloud Tasks with signed Google OIDC tokens. | Private Cloud Run FastAPI Worker | Full Cloud Run IAM & Queues. |
 
 ---
 
-## 4. Component Structure
+## 4. Config-Driven Event Routing Registry
+
+Dispatcher ke andar giant switch-case nahi hoga; clean config registry `contracts/` ke hisaab se route resolve karegi:
+
+| Domain Event (`contracts/events/`) | Target Queue | Target Task Route | Payload Contract |
+|---|---|---|---|
+| `resume.parse.requested` | `resume-parsing-queue` | `/internal/tasks/resume/parse` | `resume-parse-task.v1.json` |
+| `candidate.profile.changed` | `candidate-projection-queue` | `/internal/tasks/candidate/projection` | `candidate-projection-task.v1.json` |
+| `job.ai.enrichment.requested` | `ai-heavy-queue` | `/internal/tasks/job/enrich` | `job-enrich-task.v1.json` |
+| `job.screening_questions.requested` | `ai-interactive-queue` | `/internal/tasks/job/screening-questions` | `job-screening-questions-task.v1.json` |
+| `match.analyze.requested` | `ai-matching-queue` | `/internal/tasks/match/analyze` | `match-analyze-task.v1.json` |
+| `interview.summary.requested` | `ai-heavy-queue` | `/internal/tasks/interview/summary` | `interview-summary-task.v1.json` |
+
+---
+
+## 5. Database Concurrency & State Machine
+
+File: `02-database/migrations/baseline/15_infrastructure.sql`
+
+### 1. Atomic Claim (Short Database Transaction):
+```sql
+-- Stored procedure execution with row-level concurrency protection
+SELECT * FROM claim_outbox_events(
+    p_worker_id := :instance_id,
+    p_batch_size := 50,
+    p_lease_seconds := 120
+);
+```
+
+### 2. Status Transitions & Failure Handling:
+- **Success:** `status='published'`, `published_at=now()`
+- **ALREADY_EXISTS (409):** Cloud Tasks dedupe match ➔ `status='published'`, `published_at=now()`
+- **Transient Failure:** `status='failed'`, `available_at = now() + (interval '1 second' * power(2, retry_count) * 10)`, `last_error=:error_msg`
+- **Max Retries Exceeded (`retry_count >= 5`):** `status='dead_letter'`
+
+---
+
+## 6. Stale Lease Recovery (Crash-Safety)
+
+Agar koi Dispatcher row claim karke `publishing` state mein crash ho jaye, toh **Stale Lease Recovery Service**:
+```sql
+SELECT id FROM outbox_events 
+WHERE status = 'publishing' 
+  AND locked_at < now() - interval '5 minutes';
+```
+Inhe automatically reclaim/reset karegi taaki koi bhi task network ya container crash mein permanently atka na rahe.
+
+---
+
+## 7. Recommended NestJS Component Structure
 
 ```text
 05-outbox-dispatcher-nestjs/
 ├── src/
-│   ├── main.ts                           # Bootstrap, validation pipes, graceful shutdown
-│   ├── app.module.ts                     # Root module wiring config, db, dispatcher, and cron
+│   ├── main.ts                           # Bootstrap, CORS, ValidationPipe, graceful shutdown
+│   ├── app.module.ts                     # Root module wiring config, database, dispatcher, recovery
+│   │
 │   ├── config/
 │   │   ├── configuration.ts              # Strongly typed config schema
-│   │   └── env.validation.ts             # Joi / class-validator schema for .env
+│   │   └── env.validation.ts             # Joi / class-validator validation
+│   │
 │   ├── database/
-│   │   ├── database.module.ts            # PostgreSQL pool provider
-│   │   ├── database.service.ts           # Query execution & transaction helper
-│   │   └── outbox-claim.repository.ts    # claim_outbox_events() & status update queries
+│   │   ├── database.module.ts            # Raw pg (node-postgres) connection pool
+│   │   ├── database.service.ts           # Pool management & transaction runner
+│   │   └── outbox.repository.ts          # claim_outbox_events, markPublished, markFailed
+│   │
+│   ├── routing/
+│   │   ├── event-route.registry.ts       # Event-to-Queue & Endpoint resolver
+│   │   └── queue-config.ts               # Queue names & OIDC audiences
+│   │
+│   ├── publishers/
+│   │   ├── task-publisher.interface.ts   # TaskPublisher abstraction
+│   │   ├── direct-http.publisher.ts      # Mode A: Direct HTTP caller (Local dev)
+│   │   └── cloud-tasks.publisher.ts      # Mode B & C: Google Cloud Tasks client
+│   │
 │   ├── dispatcher/
-│   │   ├── dispatcher.module.ts          # Core dispatcher orchestration module
-│   │   ├── dispatcher.service.ts         # Coordinates claim -> translate -> publish -> mark published
-│   │   ├── event-translator.service.ts   # Maps contracts/events to contracts/tasks
-│   │   └── publishers/
-│   │       ├── task-publisher.interface.ts # Abstract publisher contract
-│   │       ├── direct-http.publisher.ts    # Local dev publisher (calls FastAPI directly)
-│   │       └── cloud-tasks.publisher.ts    # Production publisher (Google Cloud Tasks API)
-│   ├── webhook/
-│   │   ├── webhook.controller.ts         # POST /internal/outbox/wake & GET /health
-│   │   └── webhook.module.ts             # Webhook endpoint module
-│   └── recovery/
-│       ├── recovery.cron.service.ts      # Periodic fallback drainer for missed wakeups
-│       └── recovery.module.ts            # ScheduleModule integration
+│   │   ├── dispatcher.module.ts          # Core orchestration module
+│   │   ├── dispatcher.controller.ts      # POST /internal/dispatcher/wake
+│   │   ├── dispatcher.service.ts         # Coordinates Claim ➔ Route ➔ Publish ➔ DB Update
+│   │   └── dispatcher.guard.ts           # Webhook Secret / OIDC Auth Guard
+│   │
+│   ├── recovery/
+│   │   ├── recovery.module.ts            # ScheduleModule integration
+│   │   └── stale-publisher.service.ts    # Background cron for stuck publishing recovery
+│   │
+│   └── health/
+│       ├── health.module.ts              # Health module
+│       └── health.controller.ts          # GET /health/live, GET /health/ready
+│
 ├── test/
-│   ├── unit/                             # Unit tests (Translator, Claim, Publishers)
-│   └── integration/                      # Live database claim & dispatch tests
+│   ├── unit/                             # Unit tests (Routing, Dedupe, Retries, Direct/Fake Publishers)
+│   └── integration/                      # Live Supabase DB claim concurrency tests
 ├── package.json
 ├── tsconfig.json
 ├── nest-cli.json
@@ -94,22 +165,13 @@ Dispatcher `contracts/events/` ke events ko padh kar unhe corresponding `contrac
 
 ---
 
-## 5. Phased Implementation Roadmap
+## 8. Implementation Phases
 
-1. **Phase 1 — Project Scaffolding & Configuration:**
-   - Setup `package.json`, `tsconfig.json`, `nest-cli.json` (NestJS 10, TypeScript 5, `pg`, `@nestjs/schedule`, `@nestjs/axios`, `@google-cloud/tasks`).
-   - Setup strongly-typed environment config & validation.
-2. **Phase 2 — Database Connection & Atomic Claim Engine:**
-   - PostgreSQL connection pool configured with SSL and timeouts.
-   - `claim_outbox_events()` execution with `FOR UPDATE SKIP LOCKED`.
-   - Outbox status updates (`pending` ➔ `publishing` ➔ `published` / `failed`).
-3. **Phase 3 — Event Translation Engine:**
-   - Strict mapping and schema validation for all 6 contract event types.
-4. **Phase 4 — Dual Task Publisher Strategy:**
-   - Direct HTTP Publisher (Local) + Google Cloud Tasks Publisher (Cloud).
-5. **Phase 5 — Webhook Wake-Up Controller & Recovery Cron:**
-   - `POST /internal/outbox/wake` endpoint + `@Cron('*/10 * * * *')` recovery fallback.
-6. **Phase 6 — Automated Unit & Integration Tests:**
-   - Jest test suites with coverage.
-7. **Phase 7 — Live E2E Verification:**
-   - End-to-end test with Supabase Database and FastAPI AI Worker.
+1. **Phase 0: Schema & Contract Freeze** — Verify `15_infrastructure.sql` and `contracts/events/`.
+2. **Phase 1: Project Scaffolding & Database Engine** — NestJS 10, TypeScript 5, raw `pg` pool, `outbox.repository.ts`.
+3. **Phase 2: Event Route Registry & Payload Translators** — Config-driven routing for all 6 events.
+4. **Phase 3: Publishers (Direct HTTP + Google Cloud Tasks)** — Interface-based dual publisher with deterministic task deduplication.
+5. **Phase 4: Dispatcher Core Engine & Controller** — Bounded batch processing (`LIMIT 50`, max 5 loops per wake).
+6. **Phase 5: Stale Lease Recovery & Webhook Security** — Secret guard + `@Cron('*/10 * * * *')` stale recovery.
+7. **Phase 6: Comprehensive Test Suite** — Jest unit tests + concurrency test with `FOR UPDATE SKIP LOCKED`.
+8. **Phase 7: Live Local E2E Verification** — Automated test with Supabase and FastAPI AI Worker.
