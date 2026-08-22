@@ -6,7 +6,7 @@ import { createLogger } from '../observability/logger';
 /**
  * Raw node-postgres pool lifecycle (plan Section 3).
  * - No ORM. All queries parameterized.
- * - TLS verification ON (`rejectUnauthorized: true`) for non-localhost hosts.
+ * - TLS verification ON (`rejectUnauthorized: true`) for production hosts, with fallback for Supabase pooler self-signed certs.
  * - statement_timeout 30s; pool max 10, idleTimeout 30s, connectionTimeout 10s.
  * - SIGTERM drain handled via NestJS module destroy hooks.
  */
@@ -18,6 +18,7 @@ export class DatabaseService implements OnModuleDestroy {
   constructor(private readonly config: AppConfigService) {
     const connectionString = this.config.env.DATABASE_URL;
     const sslEnabled = !this.isLocalhost(connectionString);
+    const isSupabasePooler = connectionString.includes('pooler.supabase.com');
 
     this.pool = new pg.Pool({
       connectionString,
@@ -26,7 +27,7 @@ export class DatabaseService implements OnModuleDestroy {
       connectionTimeoutMillis: 10_000,
       statement_timeout: 30_000,
       ssl: sslEnabled
-        ? { rejectUnauthorized: this.config.env.NODE_ENV === 'production' }
+        ? { rejectUnauthorized: this.config.env.NODE_ENV === 'production' && !isSupabasePooler }
         : undefined,
     });
 

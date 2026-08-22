@@ -81,6 +81,12 @@ export const PHASE_2_ROUTES: readonly EventRoute[] = [
     urlPath: '/internal/tasks/security/scan',
     taskContract: 'contracts/events/security-scan-requested.v1.json',
   },
+  {
+    eventType: 'candidate.projection.rebuilt',
+    queue: PROJECTION_QUEUE,
+    urlPath: '/internal/tasks/candidate/projection',
+    taskContract: 'contracts/events/candidate-projection-rebuilt.v1.json',
+  },
 ] as const;
 
 /** All contracted routes (Phase 1 + Phase 2). */

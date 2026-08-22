@@ -29,6 +29,7 @@ dependencies = [
     "pgvector>=0.2.1",
 
     # Authentication & Security
+    "pyjwt>=2.8.0",
     "python-jose[cryptography]>=3.3.0",
     "cryptography>=41.0.7",
     "google-auth>=2.25.0",
@@ -37,7 +38,7 @@ dependencies = [
     # Document processing
     "pdfplumber>=0.10.3",
     "python-docx>=0.8.11",
-    "PyPDF2>=3.0.0,<4.0.0",
+    "pypdf>=6.16.1,<7.0.0",
     "pytesseract>=0.3.10",
     "Pillow>=10.1.0",
 

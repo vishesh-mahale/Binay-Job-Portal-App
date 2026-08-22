@@ -21,6 +21,7 @@ htmlcov
 tests/
 docs/
 *.md
+!README.md
 .env
 .env.local
 .env.*.local

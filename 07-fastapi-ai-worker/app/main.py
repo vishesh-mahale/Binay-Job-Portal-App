@@ -113,12 +113,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     
     # ====== Middleware ======
     
-    # CORS (this is a private service; restrict accordingly)
+    # CORS (allow all HTTP methods for health and task endpoints)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=app_settings.get_cors_origins(),
         allow_credentials=True,
-        allow_methods=["POST"],  # Only POST for Cloud Tasks
+        allow_methods=["POST", "GET"],
         allow_headers=["*"],
     )
     
@@ -255,7 +255,4 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 # Application Instance
 # ============================================================================
 
-try:
-    app = create_app()
-except Exception:
-    app = None
+app = create_app()

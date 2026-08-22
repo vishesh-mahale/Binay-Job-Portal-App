@@ -17,10 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy pyproject.toml and build dependencies
-COPY pyproject.toml ./
+# Copy pyproject.toml, README.md, and source code
+COPY pyproject.toml README.md ./
+COPY app/ ./app/
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -e .
+    pip install .
 
 # ============================================================================
 # Runtime stage
@@ -58,10 +59,10 @@ USER appuser
 
 # Health check using curl
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health/liveness || exit 1
+    CMD curl -f http://localhost:8080/health/liveness || exit 1
 
-# Expose port
-EXPOSE 8000
+# Expose port (Cloud Run standard)
+EXPOSE 8080
 
 # Run FastAPI with uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]

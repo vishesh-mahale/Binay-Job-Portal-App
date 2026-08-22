@@ -10,13 +10,13 @@ import urllib.error
 import asyncpg
 from dotenv import load_dotenv
 
-load_dotenv('07-fastapi-ai-worker/.env')
-db_url = os.getenv('DATABASE_URL', '').replace('postgresql+asyncpg://', 'postgresql://')
+load_dotenv("05-outbox-dispatcher-nestjs/.env")
+db_url = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
 
 assert "prod" not in db_url.lower(), "Safety Guard: Do not run smoke suite against production database!"
 
 DISPATCHER_URL = os.getenv("DISPATCHER_URL", "http://localhost:3000")
-FASTAPI_WORKER_URL = os.getenv("FASTAPI_DEV_TUNNEL", "http://localhost:8080")
+FASTAPI_WORKER_URL = os.getenv("FASTAPI_WORKER_URL", "https://dev-fastapi-ai-worker-163481994238.asia-south1.run.app")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "dev-secret")
 
 def trigger_wake(secret=WEBHOOK_SECRET):

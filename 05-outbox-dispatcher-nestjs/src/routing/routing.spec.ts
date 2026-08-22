@@ -5,10 +5,11 @@ import { OutboxEvent } from '../database/outbox.types';
 describe('EventRouteRegistry (Phase 1 + Phase 2)', () => {
   const registry = new EventRouteRegistry();
 
-  it('registers exactly 7 contracted producer events (3 Phase 1 + 4 Phase 2)', () => {
+  it('registers exactly 8 contracted producer events (3 Phase 1 + 5 Phase 2)', () => {
     expect(registry.registeredEventTypes().sort()).toEqual(
       [
         'candidate.profile.changed',
+        'candidate.projection.rebuilt',
         'interview.summary.requested',
         'job.ai.enrichment.requested',
         'job.screening_questions.requested',
@@ -68,7 +69,7 @@ describe('EventRouteRegistry (Phase 1 + Phase 2)', () => {
 
   it('ALL_ROUTES contains Phase 1 + Phase 2', () => {
     expect(ALL_ROUTES.length).toBe(PHASE_1_ROUTES.length + PHASE_2_ROUTES.length);
-    expect(ALL_ROUTES.length).toBe(7);
+    expect(ALL_ROUTES.length).toBe(8);
   });
 });
 

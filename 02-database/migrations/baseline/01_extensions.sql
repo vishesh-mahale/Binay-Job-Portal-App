@@ -117,6 +117,12 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 -- We intentionally use gen_random_uuid() from pgcrypto instead of
 -- uuid_generate_v4() from uuid-ossp.
 --
+
+-- ============================================================================
+-- NOTE:
+-- We intentionally use gen_random_uuid() from pgcrypto instead of
+-- uuid_generate_v4() from uuid-ossp.
+--
 -- Reason:
 -- • Simpler setup
 -- • Modern PostgreSQL recommendation

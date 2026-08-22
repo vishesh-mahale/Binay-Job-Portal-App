@@ -33,10 +33,10 @@ GCP_CREDENTIALS_AVAILABLE = _has_gcp_credentials()
 )
 @pytest.mark.asyncio
 async def test_live_vertexai_llm_generation():
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID", "binay-job-portal-dev")
-    region = os.getenv("GCP_REGION", "asia-south1")
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID", "project-8b4c2600-aeab-484d-82e")
+    region = os.getenv("GCP_REGION", "us-central1")
 
-    provider = VertexAILLMProvider(project_id=project_id, location=region, model_name="gemini-2.0-flash")
+    provider = VertexAILLMProvider(project_id=project_id, location=region, model_name="gemini-2.5-flash")
 
     response = await provider.generate(
         LLMRequest(
@@ -49,7 +49,7 @@ async def test_live_vertexai_llm_generation():
 
     assert response.text is not None
     assert len(response.text) > 0
-    assert response.model == "gemini-2.0-flash"
+    assert response.model == "gemini-2.5-flash"
 
 
 @pytest.mark.integration
@@ -59,8 +59,8 @@ async def test_live_vertexai_llm_generation():
 )
 @pytest.mark.asyncio
 async def test_live_vertexai_embedding_768():
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID", "binay-job-portal-dev")
-    region = os.getenv("GCP_REGION", "asia-south1")
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID", "project-8b4c2600-aeab-484d-82e")
+    region = os.getenv("GCP_REGION", "us-central1")
 
     provider = VertexAIEmbeddingProvider(project_id=project_id, location=region)
 

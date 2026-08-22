@@ -7,7 +7,7 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-import PyPDF2
+import pypdf
 from docx import Document as DocxDocument
 from PIL import Image
 import pytesseract
@@ -117,7 +117,7 @@ class DocumentExtractor:
 
     def _extract_pdf_text(self, content: bytes) -> str:
         try:
-            reader = PyPDF2.PdfReader(io.BytesIO(content))
+            reader = pypdf.PdfReader(io.BytesIO(content))
             if len(reader.pages) > self.max_pdf_pages:
                 raise ValueError(f"PDF exceeds supported page limit: {len(reader.pages)} > {self.max_pdf_pages}")
 

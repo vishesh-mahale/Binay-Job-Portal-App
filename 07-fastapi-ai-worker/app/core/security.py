@@ -4,7 +4,7 @@ Defense-in-depth: Cloud Run IAM + Application-level OIDC verification.
 """
 
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from google.auth.transport import requests
@@ -143,7 +143,7 @@ class OIDCTokenValidator:
             # Step 5: Verify token age
             issued_at = claims.get("iat")
             if issued_at:
-                token_age = datetime.utcnow().timestamp() - issued_at
+                token_age = datetime.now(timezone.utc).timestamp() - issued_at
                 if token_age > self.MAX_TOKEN_AGE_SECONDS:
                     raise ValueError(f"Token too old: {token_age} seconds")
             
@@ -151,7 +151,7 @@ class OIDCTokenValidator:
             # but we double-check for defense-in-depth)
             expiry = claims.get("exp")
             if expiry:
-                now = datetime.utcnow().timestamp()
+                now = datetime.now(timezone.utc).timestamp()
                 if now > expiry:
                     raise ValueError("Token expired")
             

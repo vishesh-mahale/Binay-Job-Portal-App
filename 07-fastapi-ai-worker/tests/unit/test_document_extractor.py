@@ -3,7 +3,7 @@
 import io
 import pytest
 from docx import Document as DocxDocument
-import PyPDF2
+import pypdf
 
 from app.services.document_extractor import DocumentExtractor
 
