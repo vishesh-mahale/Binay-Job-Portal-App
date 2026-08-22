@@ -32,7 +32,7 @@
                             (outbox_events table)
                                        │
                                        │ Database Webhook (INSERT only)
-                                       │  + Cron 10-min recovery backstop
+                                       │  + Google Cloud Scheduler 10-min recovery backstop
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │              OUTBOX DISPATCHER (05-outbox-dispatcher-nestjs)                │
@@ -104,7 +104,7 @@ loop exits when:
   → elapsed > DRAIN_REQUEST_BUDGET_MS (default 240s < Cloud Run 300s)
 ```
 
-Self-POST is **intentionally absent** — with `max-instances=1`, a self-POST would hit the same single-flight flag and deadlock. Supabase Cron (10-min recovery) is the backstop for any work remaining after budget exhaustion.
+Self-POST is **intentionally absent** — with `max-instances=1`, a self-POST would hit the same single-flight flag and deadlock. GCP Cloud Scheduler (`dev-outbox-recovery-sweep` 10-min recovery) is the backstop for any work remaining after budget exhaustion.
 
 ### Bounded Drain
 - Default `DRAIN_MAX_BATCHES = 5`, `CLAIM_BATCH_SIZE = 50` → up to 250 events per iteration.
@@ -162,7 +162,7 @@ The repository is the **only** database surface of the dispatcher. Zero ad-hoc `
 | `claim_outbox_events(p_worker_id, p_batch_size [1..100], p_lease_seconds [30..900])` | Stale-sweep dead-letters exhausted `publishing` rows, then `FOR UPDATE SKIP LOCKED` claim due rows. |
 | `mark_outbox_event_published(p_event_id, p_worker_id, p_task_name)` | Idempotent for the same `(event_id, task_name)`; raises if the row is not `publishing` under this worker's lease. |
 | `mark_outbox_event_failed(p_event_id, p_worker_id, p_error, p_available_at)` | Requires `p_available_at >= NOW()`; increments `retry_count`; dead-letters when budget exhausted; `LEFT(error, 4000)`. |
-| `outbox_recovery_needed()` | `STABLE` boolean — indexed existence check used by readiness probes and Supabase Cron recovery. |
+| `outbox_recovery_needed()` | `STABLE` boolean — indexed existence check used by readiness probes and GCP Cloud Scheduler recovery. |
 
 Lease, retry, stale recovery, and dead-letter authority live in the SQL — the dispatcher reproduces none of them.
 
@@ -316,7 +316,7 @@ test/
 - OD-1 dedicated LOGIN role + GRANT EXECUTE migration (baseline uses `postgres` credential)
 - OD-10 connectivity spike with real Supabase credentials (Transaction Pooler 6543, TLS, function invocation)
 - `CloudTasksPublisher` implementation
-- Supabase webhook + cron provisioning (out of dispatcher scope; Supabase-side)
+- Supabase webhook + Google Cloud Scheduler provisioning (out of dispatcher scope; platform-side)
 - Cloud Run deployment
 - Metrics module (counters/histograms → Cloud Monitoring export)
 

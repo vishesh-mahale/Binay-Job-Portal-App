@@ -13,7 +13,7 @@
 ### Dispatcher kya karega (single responsibility)
 
 ```text
-wake signal (Supabase webhook / recovery cron / manual) receive karo
+wake signal (Supabase webhook / Google Cloud Scheduler recovery / manual) receive karo
 → DB se bounded batch claim karo (claim_outbox_events — short txn, turant COMMIT)
 → har event ka route resolve karo (event_type → queue + FastAPI endpoint, config-driven registry)
 → deterministic Cloud Task create karo (DB transaction ke BAHAR)
@@ -81,7 +81,7 @@ Design rules:
 
 - `task-publisher.interface.ts` hi woh seam hai jisse local HTTP mode aur production Cloud Tasks mode
   **same routing + payload code** share karte hain — production logic duplicate nahi hoti.
-- Koi `recovery.module`/in-process scheduler NAHI — recovery Supabase-side hai (Section 14).
+- Koi `recovery.module`/in-process scheduler NAHI — recovery Google Cloud Scheduler se hai (Section 14).
 - Shared event-contract lib abhi overengineering hai (04-nestjs-api unimplemented); dispatcher ke
   andar typed constants rahenge, baad mein promote honge.
 
@@ -154,7 +154,7 @@ review — 20×50 worst-case Cloud Tasks latency mein lease/timeout ke paas ja s
 (last batch full) ya drain ke dauran naya wake aane par **pending-wake latch** next iteration trigger
 karta hai (Section 5) — **self-POST removed** (chatgpt round-2: `max-instances=1` par self-POST current
 run ke dauran hi single-flight se discard ho jata aur bache events 10-min cron tak ruk jaate).
-Backstop: Supabase Cron 10-min recovery. Batch 50 hi rahega; lease 300s single bounded iteration ke
+Backstop: Google Cloud Scheduler 10-min recovery. Batch 50 hi rahega; lease 300s single bounded iteration ke
 liye comfortable hai.
 
 ---
@@ -188,14 +188,14 @@ async wake(reason: string) {
       result = await this.drainBounded(reason);          // max 5 batches (250 events)
       if (!this.wakePending && result.lastBatchWasFull) this.wakePending = true; // work remaining
     } while (this.wakePending && this.elapsed() < REQUEST_BUDGET_MS); // 240s < Cloud Run timeout 300s
-    // Budget cross par loop exit; baaki work ke liye Supabase Cron + agle webhooks backstop hain
+    // Budget cross par loop exit; baaki work ke liye Google Cloud Scheduler + agle webhooks backstop hain
     return result;
   } finally { this.dispatchRunning = false; }
 }
 ```
 
 - Latch ke baad self-POST ki zaroorat NAHI — dono cases (drain-during wake + work remaining) in-process
-  handle ho jaate hain; crash/scale-down par Supabase Cron 10-min recovery backstop hai.
+  handle ho jaate hain; crash/scale-down par Google Cloud Scheduler 10-min recovery backstop hai.
 
 - Scale-out (`max > 1`) tabhi jab 1000-burst load test SLO miss dikhaye; SKIP LOCKED ki wajah se
   code already instance-agnostic hai (optional advisory-lock coordination future tuning).
@@ -412,9 +412,9 @@ Target URL = default run.app URL (custom domain/internal LB par revisit karo)
 OIDC auth phir bhi MANDATORY — internal ingress auth replace nahi karta
 ```
 
-- Scale-to-zero allowed: webhook cold start acceptable; 10-min recovery cron safety net hai.
+- Scale-to-zero allowed: webhook cold start acceptable; Google Cloud Scheduler 10-min safety net hai.
 - Graceful shutdown: SIGTERM par current drain iteration complete; nayi wakes pending-wake latch mein
-  queue (discard NAHI); shutdown ke baad baaki work Supabase Cron backstop uthata hai.
+  queue (discard NAHI); shutdown ke baad baaki work Google Cloud Scheduler backstop uthata hai.
 - Docker: multi-stage, dist-only, non-root user, prod deps only.
 - Docs/deploy configs mein real project refs NAHI — `<YOUR_PROJECT_ID>` placeholders (AGENTS.md rule).
 
@@ -482,14 +482,14 @@ outbox_events INSERT (NestJS API ya FastAPI worker — koi bhi trusted writer)
 
 ---
 
-## 14. Recovery cron
+## 14. Google Cloud Scheduler Recovery
 
-**Resolved:** recovery hamesha **Supabase-side** hogi — in-process `@nestjs/schedule` rejected
+**Resolved:** recovery hamesha **Google Cloud Scheduler** se hogi — in-process `@nestjs/schedule` rejected
 (scale-to-zero instance mein cron chal hi nahi sakta; antigravity/freebuf flaw), self-polling rejected
 (approved "no busy polling" rule; kilocode flaw).
 
 ```text
-Supabase Cron (har 10 min):
+Google Cloud Scheduler (`dev-outbox-recovery-sweep`, har 10 min):
   SELECT public.outbox_recovery_needed();   -- indexed existence check (STABLE, SECURITY DEFINER)
   → true hone par: POST <DISPATCHER_URL>/internal/dispatcher/wake  (reason=recovery_cron, secret header)
 ```
@@ -643,7 +643,7 @@ Unit + integration + concurrency har PR; load/failure nightly-manual.
 
 - [ ] Baseline SQL 01–18 target DB par applied; `outbox_recovery_needed()` callable
 - [ ] Supabase webhook INSERT-only + secret header configured; rotation runbook ready
-- [ ] Supabase Cron 10-min conditional wake configured
+- [ ] Google Cloud Scheduler 10-min conditional wake configured
 - [ ] Queues created (baseline rates); dispatch deadline 30m
 - [ ] IAM: `cloudtasks.enqueuer` + `iam.serviceAccountUser` (actAs on OIDC task SA) + `run.invoker` (OIDC task SA par) — exactly itna hi
 - [ ] Cloud Run: min 0 / max 1, secret env, app-layer secret guard verified
@@ -677,7 +677,7 @@ Unit + integration + concurrency har PR; load/failure nightly-manual.
 | Source | Adopted | Rejected/Fixed |
 |---|---|---|
 | Quodro | base structure, decisions, open-items | — |
-| freebuf | security pillars intent, modes | in-process cron → Supabase Cron; invented queues |
+| freebuf | security pillars intent, modes | in-process cron → Google Cloud Scheduler; invented queues |
 | cline | fail-closed routing, source-of-truth table, `/recover`-style clarity | NOT READY stance; ingress flaw |
 | codex | "no invented role" posture, ALREADY_EXISTS caution, 110-recovery test, OIDC-bypass guard | `/internal/wake/outbox` name; route-specific fields claim |
 | antigravity | 3-modes table, bounded loop (5×50 spirit) | custom stale-reclaim SQL; in-process ScheduleModule |
@@ -692,7 +692,7 @@ Unit + integration + concurrency har PR; load/failure nightly-manual.
 | P1 | 3 uncontracted trigger events (screening/match/interview) sab plans mein route table mein | Phase 1 registry = sirf 3 contracted events; unknown fail-closed; Phase 2 contracts ke saath extend (G-1) |
 | P2 | Invented queue names (5 plans) | Approved hi use honge: `ai-heavy-queue`, `projection-queue`, `notification-queue` |
 | P3 | Flat vs versioned envelope conflict (cline B2) | Dispatcher ke liye non-issue (wo payload parse nahi karta; task payload uniform flat v1) — lekin producer-side envelope alignment **Gate G-1** ka hissa hai (E2E integration ke liye mandatory) |
-| P4 | Recovery cron in-process vs Supabase (freebuf/antigravity/kilocode) | Supabase Cron 10 min + `outbox_recovery_needed()` — final |
+| P4 | Recovery cron in-process vs database scheduler (freebuf/antigravity/kilocode) | Google Cloud Scheduler 10 min + `outbox_recovery_needed()` — final |
 | P5 | Custom stale-reclaim SQL (antigravity) | Rejected — recovery claim function ke andar |
 | P6 | Dispatcher ingress internal vs webhook reachability (cline/codex/kilocode) | Internet-reachable wake endpoint + app-layer shared-secret guard |
 | P7 | Webhook auth OIDC confusion (antigravity/kilocode) | Shared-secret header (Supabase OIDC issue nahi kar sakta) |

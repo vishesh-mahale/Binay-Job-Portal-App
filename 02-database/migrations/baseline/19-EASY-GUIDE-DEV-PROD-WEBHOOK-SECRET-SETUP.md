@@ -3,7 +3,7 @@
 > **Document Location:** `02-database/migrations/baseline/19-EASY-GUIDE-DEV-PROD-WEBHOOK-SECRET-SETUP.md`  
 > **Document Status:** Operational Implementation & Setup Guide  
 > **Target System:** `05-outbox-dispatcher-nestjs` & `02-database` (Supabase PostgreSQL)  
-> **Related Architecture ADRs:** `01_extensions_and_schemas.sql`, `15_infrastructure.sql`, `BACKGROUND-WORKER-IMPLEMENTATION-PLAN-HINGLISH.md`  
+> **Related Architecture ADRs:** `01_extensions.sql`, `15_infrastructure.sql`, `BACKGROUND-WORKER-IMPLEMENTATION-PLAN-HINGLISH.md`  
 
 ---
 
@@ -40,7 +40,7 @@ Google Secret Manager Google Cloud ki ek **High-Security Digital Tijori (Digital
 
 ### ❌ Galat Tarika (Hardcoding Raw Secrets in Code / Git / Markdown):
 ```python
-raw_secret = "7e36febbc2e4aa47655503d6a0d16add"
+raw_secret = "abcdef1234567890abcdef1234567890"
 ```
 *Nuksan:* Agar real secret GitHub, screenshots ya docs me expose hua, to secret **compromised** mana jayega aur immediately rotate karna padega.
 
@@ -65,8 +65,8 @@ flowchart TD
     C -->|"1. Instant Async Webhook (x-webhook-secret)"| D["🚀 05-outbox-dispatcher-nestjs (Cloud Run)"]
     C -.->|"2. Recovery Sweeper (10-Min Backup)"| D
     
-    D -->|"Read & Match Secret Token"| E["🔑 Google Secret Manager (DEV_OUTBOX_WEBHOOK_SECRET)"]
-    E -->|"Token Verified (200 OK)"| D
+    E["🔑 Google Secret Manager (DEV_OUTBOX_WEBHOOK_SECRET)"] -->|"Startup Binding (WEBHOOK_SECRET env)"| D
+    D -->|"In-Process RAM Token Guard (200 OK)"| D
     
     D -->|"Claim Batch (SKIP LOCKED) & Push Tasks"| F["📦 GCP Cloud Tasks (projection-queue)"]
     F -->|"Private OIDC Signed Token"| G["🤖 07-fastapi-ai-worker (Cloud Run AI Worker)"]
@@ -139,6 +139,47 @@ flowchart TD
      - Header 2: `Content-Type` ➔ `application/json`
 4. **Save Click Karein.**
 
+### 🧪 Verification Checklist (Instant Verification):
+1. **Insert Test Event (Orphan-Safe Query):** Supabase SQL Editor me run karein:
+   ```sql
+   INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload, status)
+   SELECT 'candidate', id, 'candidate.profile.changed', jsonb_build_object('candidate_id', id, 'test', 'verification'), 'pending'
+   FROM candidate_profiles
+   LIMIT 1;
+   ```
+2. **Verify Dispatcher Wake-Up:** Query HTTP Logs:
+   ```sql
+   SELECT status_code, content, created FROM net._http_response ORDER BY created DESC LIMIT 1;
+   ```
+   *(HTTP Status `200 OK` dikhna chahiye).*
+3. **Verify Event Processed:** Query Outbox Status:
+   ```sql
+   SELECT id, status, published_at FROM outbox_events ORDER BY occurred_at DESC LIMIT 1;
+   ```
+   *(Status `'published'` status me update ho jana chahiye).*
+
+---
+
+## ⏰ 8.5 GCP Cloud Scheduler Recovery Setup (Backup Safety Net)
+
+Webhook network glitch ya cold-start lag aane par backup safety net ke roop me GCP Cloud Scheduler job provision karein:
+
+```bash
+# Create New Job:
+gcloud scheduler jobs create http dev-outbox-recovery-sweep \
+  --schedule="*/10 * * * *" \
+  --uri="https://dev-outbox-dispatcher-163481994238.asia-south1.run.app/internal/dispatcher/wake" \
+  --http-method=POST \
+  --headers="x-webhook-secret=<DEV_OUTBOX_WEBHOOK_SECRET_FROM_SECRET_MANAGER>,Content-Type=application/json" \
+  --message-body="{}" \
+  --location=asia-south1
+
+# Update Existing Job (If already provisioned):
+gcloud scheduler jobs update http dev-outbox-recovery-sweep \
+  --headers="x-webhook-secret=<DEV_OUTBOX_WEBHOOK_SECRET_FROM_SECRET_MANAGER>,Content-Type=application/json" \
+  --location=asia-south1
+```
+
 ---
 
 ## 🏭 9. Production Setup & Secret Rotation Procedure (OP-3 Compliance)
@@ -146,10 +187,12 @@ flowchart TD
 1. **Fetch Production Webhook Secret:**
    `gcloud secrets versions access latest --secret=PROD_OUTBOX_WEBHOOK_SECRET`
 2. **Navigate to Production Supabase Dashboard:** Database ➔ Webhooks ➔ Create Webhook (`prod_outbox_events_insert_wake`).
-3. **Dual-Secret Zero-Downtime Rotation SOP:**
-   - Dispatcher me Old + New secret support deploy karein.
-   - Secret Manager (`PROD_OUTBOX_WEBHOOK_SECRET`) aur Supabase Webhook Header update karein.
-   - Webhook `200 OK` verify hone ke baad Dispatcher se Old Secret remove karein.
+3. **Dual-Secret Zero-Downtime Rotation SOP (3 Consumers Update):**
+   - **Consumer 1 (Dispatcher App):** Dispatcher me Old + New secret support deploy karein (Secret Manager `PROD_OUTBOX_WEBHOOK_SECRET` me naya secret create karein).
+   - **Consumer 2 (Supabase Webhook):** Supabase Dashboard Webhook Header `x-webhook-secret` me Naya Secret update karein.
+   - **Consumer 3 (GCP Cloud Scheduler Job Header):** Backup Sweeper Job Header update karein:
+     `gcloud scheduler jobs update http dev-outbox-recovery-sweep --headers="x-webhook-secret=<NEW_SECRET>,Content-Type=application/json" --location=asia-south1`
+   - **Cleanup:** Webhook `200 OK` verify hone ke baad Dispatcher se Old Secret remove karein.
 
 ---
 

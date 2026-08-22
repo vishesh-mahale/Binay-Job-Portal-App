@@ -150,7 +150,7 @@ Profile save + background event
 | Google Cloud Tasks | काम को buffer, rate-limit और retry करना |
 | FastAPI Worker | Resume parsing, AI, embedding, projection और worker-owned DB writes |
 | Supabase | Main data, evidence, jobs, events और projection store करना |
-| Recovery Cron | छूटी/stuck events को बाद में recover करना |
+| Google Cloud Scheduler Recovery | छूटी/stuck events को बाद में recover करना |
 
 ### Google Cloud Tasks को सही तरह समझें
 
@@ -209,7 +209,7 @@ Next.js → NestJS API
  Supabase Async Database Webhook
              |
              v
-      NestJS Outbox Dispatcher <─ Recovery Cron
+      NestJS Outbox Dispatcher <─ Google Cloud Scheduler Recovery
              |                     केवल missed/stuck recovery
              | pending batch claim
              | FOR UPDATE SKIP LOCKED
@@ -295,7 +295,7 @@ task names, `processed_events` और domain leases से आएगी। Multi
 के event के लिए वही logic दोबारा लिखना पड़ता। इसलिए इसे primary या required path
 नहीं रखा गया है।
 
-### Recovery तरीका: Supabase Cron
+### Recovery तरीका: Google Cloud Scheduler
 
 Cron main worker नहीं है। इसका काम केवल missed/stuck events recover करना है। शुरुआती
 implementation में एक lightweight recovery check **हर 10 मिनट** चलेगा:
@@ -310,7 +310,7 @@ implementation में एक lightweight recovery check **हर 10 मिन
 यह primary processing latency नहीं है; normal event को INSERT webhook तुरंत wake
 करती है। Production monitoring/SLA के आधार पर interval बाद में tune किया जा सकता है।
 
-[Supabase Cron](https://supabase.com/docs/guides/cron)
+[Google Cloud Scheduler](https://cloud.google.com/scheduler/docs)
 
 ## 9. Stale `publishing` event कैसे recover होगी?
 
@@ -687,7 +687,7 @@ Decision: future enterprise phase; अभी overbuilt।
 | Option | खाली polling | Retry | Burst control | Scale-to-zero | हमारा निर्णय |
 |---|---:|---:|---:|---:|---|
 | 5-second DB polling | हाँ | खुद बनाना | खुद बनाना | कमजोर | Avoid |
-| Supabase Cron | Scheduled | खुद बनाना | सीमित | अच्छा | Recovery |
+| Google Cloud Scheduler | Scheduled | GCP में configure | नियंत्रित | अच्छा | **Final Recovery** |
 | DB Webhook direct | नहीं | सीमित/custom | कमजोर | अच्छा | Wake-up |
 | Outbox + Cloud Tasks | नहीं | मजबूत | मजबूत | बहुत अच्छा | **Recommended** |
 | Supabase Queues | Consumer pull | मजबूत | अच्छा | मध्यम | Strong alternative |
@@ -912,7 +912,7 @@ Cloud Run idle पर scale-to-zero हो सकता है। Python concurr
 - worker claim/lease + `processed_events`;
 - revision guard;
 - searchable text/vector + fixed 768D embedding;
-- SLA-based recovery cron।
+- SLA-based Google Cloud Scheduler recovery।
 
 Success:
 
@@ -962,7 +962,7 @@ Dispatcher            = NestJS/TypeScript की अलग lightweight Cloud Run
 Managed queue         = Google Cloud Tasks
 Worker                = Google Cloud Run पर deployed private FastAPI
 Worker DB writes      = results/evidence/projection/processed_events/next outbox
-Recovery              = SLA-based Supabase Cron
+Recovery              = SLA-based Google Cloud Scheduler
 Queue dedupe           = deterministic task name
 Expensive-work guard   = domain job claim/lease
 Final idempotency      = processed_events + DB constraints
@@ -985,7 +985,7 @@ NestJS/FastAPI transaction + outbox
 ## 25. Official references
 
 - [Supabase Database Webhooks](https://supabase.com/docs/guides/database/webhooks)
-- [Supabase Cron](https://supabase.com/docs/guides/cron)
+- [Google Cloud Scheduler](https://cloud.google.com/scheduler/docs)
 - [Supabase Queues](https://supabase.com/docs/guides/queues)
 - [Supabase Edge background tasks](https://supabase.com/docs/guides/functions/background-tasks)
 - [Cloud Tasks configuration](https://docs.cloud.google.com/tasks/docs/configuring-queues)

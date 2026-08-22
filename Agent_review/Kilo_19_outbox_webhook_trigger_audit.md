@@ -120,7 +120,7 @@ However, the better fix is to use Supabase's webhook INSERT-only filter at the p
 - No dead-letter
 - No metric
 
-**Architecture requirement:** Webhook delivery failures should be visible and recoverable via Supabase Cron 10-min recovery.
+**Architecture requirement:** Webhook delivery failures should be visible and recoverable via Google Cloud Scheduler 10-min recovery.
 
 **Required fix:** Not applicable if using Supabase webhooks (Supabase handles retries). If `pg_net` is used, needs `EXCEPTION` handling + logging.
 

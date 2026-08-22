@@ -225,7 +225,7 @@ ADR/configuration में documented होगा। Current finalized mechani
 
 ```text
 Primary wake          = Supabase asynchronous INSERT webhook
-Recovery wake         = Supabase Cron का 10-minute due/stuck check
+Recovery wake         = Google Cloud Scheduler का 10-minute due/stuck check
 Post-commit wake-up   = required/primary path नहीं
 ```
 
@@ -302,7 +302,7 @@ Requirement बताती है **क्या चाहिए**; ADR बत�
 ADR: Supabase PostgreSQL
 ADR: PostgreSQL FTS + pgvector
 ADR: Transactional outbox
-ADR: Supabase webhook + recovery Cron
+ADR: Supabase webhook + Google Cloud Scheduler recovery
 ADR: Google Cloud Tasks Queue
 ADR: Separate FastAPI AI worker
 ```

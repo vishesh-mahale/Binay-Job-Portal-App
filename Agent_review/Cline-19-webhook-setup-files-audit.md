@@ -50,7 +50,7 @@
    - `CREATE SCHEMA IF NOT EXISTS supabase_functions` + `CREATE OR REPLACE FUNCTION supabase_functions.http_request()` — this is the exact known fix for the *"schema supabase_functions does not exist / function http_request() does not exist"* error that blocks Dashboard webhook creation.
    - Function calls `net.http_post(url :=, headers :=, body :=, timeout_milliseconds :=)` with **named arguments** → safe across old/new pg_net signatures; schema-qualified → low hijack risk.
    - Grants to `postgres, supabase_admin, service_role` are the correct Supabase roles.
-   - Commit-consistency semantics are correct: the request row is written in the same transaction as the outbox INSERT, so a rollback cancels the wake (no orphan wake for a rolled-back event); a commit guarantees wake (with the recovery cron as backstop).
+   - Commit-consistency semantics are correct: the request row is written in the same transaction as the outbox INSERT, so a rollback cancels the wake (no orphan wake for a rolled-back event); a commit guarantees wake (with Google Cloud Scheduler as backstop).
 
 ---
 
@@ -66,8 +66,8 @@ This is the **same URL/string the old trigger was rejected for** (see `Agent_rev
 
 ### ⚠️ 2. Webhook timeout `5000 ms` vs. synchronous drain latency — will produce noisy "failed" webhook events under backlog
 - The wake endpoint returns only **after** a drain completes when it is the first wake (`dispatcher.service.ts:106-108`; drain default budget = 240 s).
-- If the drain exceeds 5 s, Supabase's webhook client times out → logs "failed" and retries. Correctness survives (single-flight `wakePending` latch + `SKIP LOCKED` + recovery cron absorb duplicates; the drain keeps running server-side), **but** alerts/`webhook_log` will show repeated timeouts on healthy-but-busy systems, causing alert fatigue.
-- **Fix (doc):** explicitly state in §8 that a 5 s timeout is a *monitoring* threshold for the wake POST, not a drain deadline — a longer drain is expected and safe, and the recovery cron is the backstop. Optionally note the dashboard's larger timeout presets (15 s / custom) if the team prefers fewer retry-noise events.
+- If the drain exceeds 5 s, Supabase's webhook client times out → logs "failed" and retries. Correctness survives (single-flight `wakePending` latch + `SKIP LOCKED` + Google Cloud Scheduler absorbs missed work; the drain keeps running server-side), **but** alerts/`webhook_log` will show repeated timeouts on healthy-but-busy systems, causing alert fatigue.
+- **Fix (doc):** explicitly state in §8 that a 5 s timeout is a *monitoring* threshold for the wake POST, not a drain deadline — a longer drain is expected and safe, and Google Cloud Scheduler is the backstop. Optionally note the dashboard's larger timeout presets (15 s / custom) if the team prefers fewer retry-noise events.
 
 ### ⚠️ 3. PII/body-travel nuance of §13 is not restated near the webhook config
 - `IMPLEMENTATION-PLAN.md` §13: dashboard webhooks **send the inserted row (record)** over the wire; body must be discarded by the dispatcher (it is), and producer-side `outbox_events.payload` must stay IDs-only. Guide §8 gives URL/headers but not this one-line reminder. **Fix:** add a note: "Webhook body row payload travels over network; dispatcher discards it; never put raw resume/email/phone/signed URLs in `outbox_events.payload`."
@@ -91,6 +91,6 @@ This is the **same URL/string the old trigger was rejected for** (see `Agent_rev
 
 # **APPROVED WITH MINOR FIXES**
 
-The trio **implements the approved architecture correctly the second time around**: primary wake = Supabase Dashboard asynchronous Database Webhook (INSERT-only), correct endpoint/header/secret-placeholder, dual-secret rotation aligned with `WEBHOOK_SECRET_PREVIOUS`, recovery cron as backstop, and an idempotent, non-destructive prereq script that fixes the classic `supabase_functions` schema/function error. No blocking or security issues. Remaining items are documentation-grade (real-ref placeholders, anchor/link fixes, timeout-note, PII line, search_path hardening) — all cheap to apply and none change behavior.
+The trio **implements the approved architecture correctly the second time around**: primary wake = Supabase Dashboard asynchronous Database Webhook (INSERT-only), correct endpoint/header/secret-placeholder, dual-secret rotation aligned with `WEBHOOK_SECRET_PREVIOUS`, Google Cloud Scheduler as backstop, and an idempotent, non-destructive prereq script that fixes the classic `supabase_functions` schema/function error. No blocking or security issues. Remaining items are documentation-grade (real-ref placeholders, anchor/link fixes, timeout-note, PII line, search_path hardening) — all cheap to apply and none change behavior.
 
 Per the working rules I made **no source/doc edits** in this audit. If you approve, I can apply the fix list (§3) as one small PR-style edit.

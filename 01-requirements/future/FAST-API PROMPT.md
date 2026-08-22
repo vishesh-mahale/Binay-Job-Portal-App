@@ -955,7 +955,7 @@ Step Y: Release Processing Lease:
 
 ### 12.5 Stale Lease Cleanup
 
-Leases have `expires_at`. A Supabase Cron job or periodic cleanup task should:
+Leases have `expires_at`. A Google Cloud Scheduler recovery job should:
 
 ```sql
 DELETE FROM event_processing_leases

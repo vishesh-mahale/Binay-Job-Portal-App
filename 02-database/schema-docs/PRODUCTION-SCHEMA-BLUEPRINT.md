@@ -120,7 +120,8 @@ outbox_events INSERT
   -> Cloud Tasks
   -> private FastAPI worker
 
-Supabase Cron -> missed/stuck event recovery only
+Google Cloud Scheduler -> missed/stuck event recovery only (final backup)
+GCP Cloud Scheduler (dev-outbox-recovery-sweep every 10 min) -> Primary Recovery Sweeper (Option 5)
 ```
 
 Binay-App implements the Outbox Dispatcher as a separate lightweight
@@ -234,7 +235,7 @@ NestJS/FastAPI transaction + outbox_events INSERT
   -> private Cloud Run FastAPI worker via Google OIDC
   -> result/evidence/projection + processed_events
 
-Supabase Cron
+GCP Cloud Scheduler (dev-outbox-recovery-sweep every 10 min)
   -> slow recovery wake-up for missed/stuck due events only
 ```
 

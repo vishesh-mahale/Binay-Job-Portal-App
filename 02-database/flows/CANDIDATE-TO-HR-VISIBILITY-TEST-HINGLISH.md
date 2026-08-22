@@ -248,8 +248,8 @@ NestJS profile transaction COMMIT
 → Cloud Run पर FastAPI Candidate Projection Worker task consume करता है
 ```
 
-Normal path webhook है। Missed/stuck event के लिए Supabase Recovery Cron हर 10 मिनट
-lightweight check करके Dispatcher को wake कर सकती है।
+Normal path webhook hai. Missed/stuck event ke liye GCP Cloud Scheduler (`dev-outbox-recovery-sweep`) har 10 min
+lightweight check karke Dispatcher ko wake karti hai.
 
 Projection Worker पूरा canonical aggregate read karta hai:
 

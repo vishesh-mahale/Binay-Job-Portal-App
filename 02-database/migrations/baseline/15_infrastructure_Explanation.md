@@ -143,7 +143,7 @@ Maan lo Dispatcher ne row claim ki aur task mark karne se pehle crash ho gayi:
 
 ```text
 publishing + lease expiry
--> Recovery Cron detects stale row
+-> Google Cloud Scheduler detects stale row
 -> Dispatcher wakes
 -> stale row re-claim
 -> deterministic Cloud Task name se create/reconcile
@@ -177,7 +177,7 @@ Retry backoff Dispatcher calculate karegi. Example policy configuration ho sakti
 
 Exact per-event retry policy shared event/task contract me freeze hogi.
 
-## 8. Recovery Cron exactly kya karegi?
+## 8. Google Cloud Scheduler Recovery exactly kya karega?
 
 Har scheduled run heavy polling/processing nahi karega. Woh indexed function call karegi:
 
@@ -189,7 +189,7 @@ outbox_recovery_needed()
    +-- true  -> Dispatcher recovery endpoint ko wake
 ```
 
-Recovery Cron fallback hai. Normal event INSERT ka primary wake-up Supabase asynchronous Database Webhook hai.
+Google Cloud Scheduler (`dev-outbox-recovery-sweep` every 10 min) fallback hai. Normal event INSERT ka primary wake-up Supabase asynchronous Database Webhook hai.
 
 ## 9. `processed_events` kyun hai?
 
@@ -262,4 +262,3 @@ worker retry and domain completion latency
 ```
 
 Alert examples: oldest due event SLA cross kare, stale leases repeat hon ya dead-letter count zero se zyada ho.
-

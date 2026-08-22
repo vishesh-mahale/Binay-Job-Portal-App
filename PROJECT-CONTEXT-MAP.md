@@ -106,7 +106,7 @@ Supabase worker-owned transaction
    | processed_events
    | optional chained outbox event
 
-Supabase Cron
+ Google Cloud Scheduler (`dev-outbox-recovery-sweep`)
    -> slow due/stuck recovery check only
    -> normal delivery path नहीं
 ```

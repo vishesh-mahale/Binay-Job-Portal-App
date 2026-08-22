@@ -5,7 +5,7 @@ Validates all 6 Category B Production Deployment Gates against Live Infrastructu
   B-02: Cloud Run SIGTERM Graceful Drain Context & Lifecycle
   B-03: Multi-Event Stress Benchmark (50 Events Bounded Batch Drain)
   B-04: Supabase Browser Anon RLS Security Audit
-  B-05: Supabase pg_cron Schedule & Function Provisioning Audit
+  B-05: Google Cloud Scheduler Recovery & Function Provisioning Audit
   B-06: GCP Cloud Tasks Queue Retry & Rate Limits Live Audit
 """
 
@@ -182,8 +182,8 @@ async def test_b04_supabase_anon_rls_audit():
     finally:
         await conn.close()
 
-async def test_b05_pg_cron_schedule_audit():
-    print("\n--- [B-05] Supabase pg_cron Schedule & Function Provisioning Audit ---")
+async def test_b05_cloud_scheduler_audit():
+    print("\n--- [B-05] Google Cloud Scheduler Recovery & Function Audit ---")
     conn = await asyncpg.connect(db_url, statement_cache_size=0)
     try:
         # Verify public.outbox_recovery_needed() SQL function exists and is callable
@@ -196,17 +196,12 @@ async def test_b05_pg_cron_schedule_audit():
         )
         assert func_exists is True, "outbox_recovery_needed function does not exist!"
         
-        # Check pg_cron extension status
-        cron_ext = await conn.fetchval(
-            "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')"
-        )
-        
         # Call outbox_recovery_needed() to verify operational status
         res = await conn.fetchval("SELECT public.outbox_recovery_needed()")
         
-        record("B-05", "Supabase pg_cron Schedule Audit", "PASS", f"outbox_recovery_needed() callable (status: {res}); recovery scheduler mode: {'pg_cron installed' if cron_ext else 'External Scheduler / Cloud Scheduler / Dispatcher Sweep'}")
+        record("B-05", "Google Cloud Scheduler Recovery Audit", "PASS", f"outbox_recovery_needed() callable (status: {res}); Cloud Scheduler job existence/enablement must be verified with gcloud separately")
     except Exception as e:
-        record("B-05", "Supabase pg_cron Schedule Audit", "FAIL", f"Exception: {e}")
+        record("B-05", "Google Cloud Scheduler Recovery Audit", "FAIL", f"Exception: {e}")
     finally:
         await conn.close()
 
@@ -242,7 +237,7 @@ async def main():
     await test_b02_sigterm_graceful_drain()
     await test_b03_bulk_event_stress_benchmark()
     await test_b04_supabase_anon_rls_audit()
-    await test_b05_pg_cron_schedule_audit()
+    await test_b05_cloud_scheduler_audit()
     await test_b06_gcp_queue_retry_audit()
     
     print("\n" + "=" * 80)

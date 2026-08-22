@@ -59,7 +59,7 @@ export class OutboxRepository {
 
   /**
    * Indexed existence check used by readiness probes and (server-side)
-   * Supabase Cron recovery wakes. True when due pending/failed or stale
+    * Google Cloud Scheduler recovery wakes. True when due pending/failed or stale
    * publishing rows exist.
    */
   async recoveryNeeded(): Promise<boolean> {

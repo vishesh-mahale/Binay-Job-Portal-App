@@ -409,7 +409,7 @@ Expired/cancelled invitation का explicit reissue नई row/token से ह
 
 NestJS API outbox publish/dispatch नहीं करती। वह business transaction में event insert करती है। अलग
 NestJS Dispatcher pending events claim करके Google Cloud Tasks Queue में डालता है। Primary wake-up
-Supabase asynchronous INSERT webhook है; slow Supabase Cron recovery-only है।
+Supabase asynchronous INSERT webhook है; backup recovery sweeper Google Cloud Scheduler (`dev-outbox-recovery-sweep` every 10 min) है।
 
 FastAPI completed processing transaction downstream work शुरू करने के लिए chained outbox event लिख
 सकती है। इसलिए webhook सभी trusted writers cover करती है। Consumers `processed_events` से

@@ -21,7 +21,7 @@ import { nextAvailableAt } from './backoff.policy';
  * - Work-remaining continuation: a full last batch implies more due rows, so
  *   the latch is raised again — until the request budget expires.
  * - Budget: REQUEST_BUDGET_MS (default 240s) < Cloud Run request timeout
- *   (300s). Beyond budget, Supabase Cron (10 min) + future webhooks backstop.
+ *   (300s). Beyond budget, Google Cloud Scheduler (10 min) + future webhooks backstop.
  *
  * All state transitions go through the four approved SQL functions — lease,
  * retry budget and dead-letter authority live in the DB, not here.

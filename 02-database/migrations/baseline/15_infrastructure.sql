@@ -9,7 +9,7 @@
 --       -> private Cloud Run FastAPI/NestJS handler
 --       -> domain result + processed_events + optional chained outbox event
 --
--- Recovery Cron only checks whether due/stale work exists and wakes Dispatcher.
+-- Google Cloud Scheduler only checks whether due/stale work exists and wakes Dispatcher.
 -- Webhook/Cron payload is never business truth; Dispatcher rereads the DB.
 --
 -- Inventory: 3 tables, 6 lifecycle/dispatch functions, 2 triggers and 7 indexes.
@@ -310,7 +310,7 @@ CREATE TRIGGER processed_events_immutable
     FOR EACH ROW
     EXECUTE FUNCTION reject_processed_event_update();
 
--- Recovery Cron uses only this indexed existence check. It calls the Dispatcher
+-- Google Cloud Scheduler uses only this indexed existence check. It calls the Dispatcher
 -- recovery endpoint only when the result is true.
 CREATE OR REPLACE FUNCTION outbox_recovery_needed()
 RETURNS BOOLEAN

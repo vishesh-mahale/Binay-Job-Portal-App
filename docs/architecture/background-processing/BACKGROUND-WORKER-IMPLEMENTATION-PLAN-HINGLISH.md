@@ -25,7 +25,7 @@ Next.js → NestJS
  Supabase Async Database Webhook
              |
              v
-      Outbox Dispatcher ← Recovery Cron
+      Outbox Dispatcher ← Google Cloud Scheduler Recovery
              |
              v
    Google Cloud Tasks Queue
@@ -58,7 +58,7 @@ Next.js → NestJS
 | Cloud Tasks integration | अभी बनानी है |
 | Cloud Run deployment | अभी configure करना है |
 | Supabase async webhook | अभी configure करना है |
-| Recovery Cron | अभी configure करना है |
+| Google Cloud Scheduler Recovery | अभी configure करना है |
 
 FastAPI की active production base directory:
 
@@ -140,7 +140,7 @@ Task authenticate
 → जरूरत पर अगला outbox event insert
 ```
 
-### Recovery Cron
+### Google Cloud Scheduler Recovery
 
 Normal processing नहीं करेगा। केवल missed और stuck events के लिए Dispatcher को
 जगाएगा।
@@ -421,7 +421,7 @@ Webhook shared secret/signature authenticate
 
 ### Duplicate/parallel wake handling (mandatory)
 
-Supabase Webhook, Recovery Cron या delayed `pg_net` requests एक साथ कई wake calls
+Supabase Webhook, Google Cloud Scheduler या delayed `pg_net` requests एक साथ कई wake calls
 भेज सकती हैं। शुरुआत में Dispatcher Cloud Run configuration:
 
 ```text
@@ -602,7 +602,7 @@ Outbox transaction rollback
 
 Outbox commit लेकिन webhook fail
 -> event pending सुरक्षित
--> Recovery Cron बाद में Dispatcher जगाएगी
+-> Google Cloud Scheduler बाद में Dispatcher जगाएगा
 ```
 
 Database webhook row-level है। 1000 outbox inserts लगभग 1000 wake requests बना सकते
@@ -625,7 +625,7 @@ Test outbox INSERT
 → event published
 ```
 
-## 13. Phase 8 — Recovery Cron
+## 13. Phase 8 — Google Cloud Scheduler Recovery
 
 Cron primary dispatcher नहीं है। शुरुआती implementation में यह **हर 10 मिनट** एक
 छोटी indexed recovery query चलाएगा:
@@ -645,7 +645,7 @@ Supabase recommendation के अनुसार concurrent Cron jobs सीम
 
 Official reference:
 
-- [Supabase Cron](https://supabase.com/docs/guides/cron)
+- [Google Cloud Scheduler](https://cloud.google.com/scheduler/docs)
 
 ### Phase 8 test
 
@@ -761,7 +761,7 @@ Acceptance conditions:
 8. Artifact Registry + private Cloud Run
 9. Cloud Tasks + OIDC
 10. Supabase webhook
-11. Recovery Cron
+11. Google Cloud Scheduler Recovery
 12. Full end-to-end test
 13. Monitoring + load test
 ```
@@ -791,5 +791,5 @@ Google Cloud Run पर FastAPI
         v
 Supabase result + processed_events + optional next event
 
-Recovery Cron = केवल छूटा हुआ flow दोबारा जगाने के लिए
+Google Cloud Scheduler Recovery = केवल छूटा हुआ flow दोबारा जगाने के लिए
 ```

@@ -212,7 +212,7 @@
 - [ ] Outbox payload/last error में secrets, raw resume/contact payload या signed URL न हो; operational/admin reads limited हों।
 - [ ] Dead-letter replay ordinary UPDATE से न हो; future explicit audited replay function/operation separately approve हो।
 - [ ] Raw outbox/processed retention DELETE अलग maintenance role/job तक limited हो और FK-safe order follow करे।
-- [ ] Supabase asynchronous webhook secret verification और Recovery Cron database role browser keys reuse न करें।
+- [ ] Supabase asynchronous webhook secret verification और Google Cloud Scheduler recovery job में database/browser keys reuse न करें।
 
 ## 16 — Cross-domain indexes
 

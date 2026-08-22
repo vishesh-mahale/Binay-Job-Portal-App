@@ -218,7 +218,7 @@ Supabase Database Webhook ya Google Cloud Scheduler (har 1 minute) Dispatcher ke
 flowchart TD
     subgraph Supabase_Cloud["☁️ Supabase PostgreSQL Cloud (ap-south-1)"]
         DB[("outbox_events Table\n(status: pending)")]
-        DB_Trigger["Database Webhook / pg_cron\n(net.http_post / crontab)"]
+        DB_Trigger["Supabase Database Webhook\n(INSERT-only async wake)"]
         DB -->|"Row Inserted"| DB_Trigger
     end
 
@@ -310,4 +310,3 @@ Aapko kya test ya deploy karna hai?
    └─► 24x7 automated staging or production operation without laptop dependency?
        └─► USE OPTION 5 (Full Cloud — Cloud Run Dispatcher + Cloud Tasks + Cloud Run Worker)
 ```
-
