@@ -8,7 +8,7 @@
 | Old source | Classification | Clean destination/action |
 |---|---|---|
 | `Requirement/old_Requirement.txt` | MIXED | Full source `source-inputs/REQUIREMENT.txt` में सुरक्षित; current behavior master requirements में, explicit future items roadmap में और unresolved statements decision के बिना लागू नहीं |
-| `Requirement/old_All-Features.md` | MIXED | Full source `source-inputs/ALL-FEATURES.md` में सुरक्षित; stable capabilities master requirements में, page count/list implementation contract नहीं और explicit future features roadmap में |
+| `Requirement/old_All-Features.md` | MIXED | Categorized source `source-inputs/CLIENT-REQUIRED-FUTURE-CATEGORIZED.md` में सुरक्षित; stable capabilities master requirements में, page count/list implementation contract नहीं और explicit future features roadmap में |
 | `Requirement/Referral_requirement/Old_CLIENT-MANUAL-REFERRAL-REQUIREMENT.md` | APPROVED CURRENT | Full original detail preserved; separate Hinglish summary navigation के लिए |
 | `database/08_ACTIVE-RESUME-CANDIDATE-SEARCH-POLICY.md` | APPROVED PRODUCT DECISION | `PD-002` में migrated |
 | `Pending-item/-- pending-items-for-future.md` | MIGRATED + CLEANED | Detailed tracker `future/-- pending-items-for-future.md` में सुरक्षित; referral configuration, email templates और saved candidates current scope में move; duplicated/time-sensitive provider recommendation हटाई गई |

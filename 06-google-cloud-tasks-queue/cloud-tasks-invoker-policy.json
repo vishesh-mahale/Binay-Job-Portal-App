@@ -1,0 +1,8 @@
+{
+  "serviceAccount": "cloud-tasks-invoker@binay-job-portal.iam.gserviceaccount.com",
+  "role": "roles/run.invoker",
+  "targetService": "dev-fastapi-ai-worker",
+  "authMethod": "OIDC",
+  "tokenType": "ID_TOKEN",
+  "audience": "https://dev-fastapi-ai-worker-163481994238.asia-south1.run.app"
+}

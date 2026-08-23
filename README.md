@@ -29,6 +29,9 @@
 - [📌 01-requirements/](01-requirements/README.md) — All requirements & decisions
 - [🗄️ 02-database/](02-database/README.md) — Database schema & migrations
 - [🏗️ 04-nestjs-api/](04-nestjs-api/README.md) — NestJS implementation guide
+- [⚡ 05-outbox-dispatcher-nestjs/](05-outbox-dispatcher-nestjs/README.md) — Outbox Dispatcher service
+- [📦 06-google-cloud-tasks-queue/](06-google-cloud-tasks-queue/README.md) — GCP Cloud Tasks Queue & IaC configs
+- [🤖 07-fastapi-ai-worker/](07-fastapi-ai-worker/README.md) — AI Worker service
 - [📚 docs/](docs/) — Architecture, research & ADRs
 - [📝 contracts/](contracts/README.md) — API/Event/Task contracts
 - [🔍 Agent_review/](Agent_review/MERGED_COMPREHENSIVE_AUDIT.md) — Comprehensive audit
@@ -62,7 +65,7 @@ Binay-Job-Portal-App/
 │   │   ├── FUTURE-ROADMAP.md
 │   │   └── -- pending-items-for-future.md
 │   └── source-inputs/
-│       ├── ALL-FEATURES.md
+│       ├── CLIENT-REQUIRED-FUTURE-CATEGORIZED.md
 │       └── REQUIREMENT.txt
 │
 ├── 🗄️ 02-database/
@@ -123,6 +126,12 @@ Binay-Job-Portal-App/
 │   ├── LOCAL-TESTING-OPTIONS.md
 │   ├── TESTING-SCENARIOS.md
 │   └── TESTING-SCENARIOS-1.md
+│
+├── 📦 06-google-cloud-tasks-queue/
+│   ├── README.md
+│   ├── projection-queue.json
+│   ├── cloud-tasks-invoker-policy.json
+│   └── deploy-queue.sh
 │
 ├── 🤖 07-fastapi-ai-worker/
 │   ├── README.md
@@ -185,7 +194,7 @@ Binay-Job-Portal-App/
   - [FUTURE-ROADMAP.md](01-requirements/future/FUTURE-ROADMAP.md)
   - [pending-items-for-future.md](01-requirements/future/--pending-items-for-future.md)
 - Source Inputs
-  - [ALL-FEATURES.md](01-requirements/source-inputs/ALL-FEATURES.md)
+  - [CLIENT-REQUIRED-FUTURE-CATEGORIZED.md](01-requirements/source-inputs/CLIENT-REQUIRED-FUTURE-CATEGORIZED.md)
   - [REQUIREMENT.txt](01-requirements/source-inputs/REQUIREMENT.txt)
 
 🗄️ **DATABASE**

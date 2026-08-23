@@ -1,0 +1,16 @@
+{
+  "name": "projection-queue",
+  "location": "asia-south1",
+  "state": "RUNNING",
+  "rateLimits": {
+    "maxDispatchesPerSecond": 10.0,
+    "maxBurstSize": 10,
+    "maxConcurrentDispatches": 10
+  },
+  "retryConfig": {
+    "maxAttempts": 10,
+    "minBackoff": "5s",
+    "maxBackoff": "300s",
+    "maxDoublings": 16
+  }
+}

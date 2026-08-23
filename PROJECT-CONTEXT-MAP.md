@@ -54,7 +54,7 @@ exact conflict report करें।
 03-nextjs-web/                 # folder/code/docs बनना बाकी
 04-nestjs-api/                 # guide migrated; code/tests बाकी
 05-outbox-dispatcher-nestjs/  # component बनना बाकी
-06-google-cloud-tasks/         # queue/IAM config बनना बाकी
+06-google-cloud-tasks-queue/   # queue/IAM/deployment config migrated
 07-fastapi-ai-worker/          # old code audit/refine/migrate करना बाकी
 docs/architecture/
 docs/adr/
@@ -71,9 +71,9 @@ contracts/
 | Next.js | Folder/code/docs pending | Root plan only |
 | NestJS API | Implementation guide migrated; application code pending | [NestJS README](04-nestjs-api/README.md) |
 | Background architecture | Full guides migrated | [Architecture guide](docs/architecture/background-processing/BACKGROUND-WORKER-ARCHITECTURE-OPTIONS-HINGLISH.md) |
-| Outbox Dispatcher | Architecture/plan ready; component code/config pending | [Implementation plan](docs/architecture/background-processing/BACKGROUND-WORKER-IMPLEMENTATION-PLAN-HINGLISH.md) |
-| Google Cloud Tasks | Architecture/plan ready; queue/IAM config pending | Same implementation plan |
-| FastAPI AI worker | Old code/reference inventory अभी audit होना है; clean component pending | Same implementation plan + AI research |
+| Outbox Dispatcher | Component created & live verified | [Dispatcher README](05-outbox-dispatcher-nestjs/README.md) |
+| Google Cloud Tasks Queue | Component created & live verified | [Cloud Tasks README](06-google-cloud-tasks-queue/README.md) |
+| FastAPI AI worker | Component created & live verified | [AI Worker README](07-fastapi-ai-worker/README.md) |
 
 ## 6. Current system architecture
 

@@ -16,7 +16,7 @@ remove नहीं हुई।
 
 | Source | Destination | Status | Verification/result |
 |---|---|---|---|
-| `old_All-Features.md` | `01-requirements/source-inputs/ALL-FEATURES.md` | EXACT | 180/180 lines, matching SHA-256 |
+| `old_All-Features.md` | `01-requirements/source-inputs/CLIENT-REQUIRED-FUTURE-CATEGORIZED.md` | CATEGORY-PRESERVED | Client feature list reorganized by category; original markers and commercial notes retained in the categorized document |
 | `old_Requirement.txt` | `01-requirements/source-inputs/REQUIREMENT.txt` | EXACT | 339/339 lines, matching SHA-256 |
 | `Old_CLIENT-MANUAL-REFERRAL-REQUIREMENT.md` | `current/MANUAL-REFERRAL-REQUIREMENT.md` | FULL PRESERVED | All 294 source lines ordered; only navigation/status note added |
 | `old_3_AI model vs parser library.md` | `docs/research/ai/AI-MODEL-VS-PARSER-LIBRARY-RESEARCH.md` | FULL PRESERVED | Full 303-line source contained; non-authoritative research warning added |

@@ -38,7 +38,7 @@ clean source है। Technical implementation choices यहाँ duplicate �
 ## Migration evidence
 
 - [Old-source classification and traceability](SOURCE-CLASSIFICATION.md)
-- [Preserved All Features source](source-inputs/ALL-FEATURES.md)
+- [Client required/future categorized source](source-inputs/CLIENT-REQUIRED-FUTURE-CATEGORIZED.md)
 - [Preserved master Requirement source](source-inputs/REQUIREMENT.txt)
 
 ## Authority rule
