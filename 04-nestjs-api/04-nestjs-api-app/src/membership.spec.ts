@@ -67,3 +67,17 @@ test('membership add proceeds when all organizational references are active', as
   await expect(service.add('actor', 'company', { user_id: 'target' }))
     .resolves.toMatchObject({ id: 'member-1' });
 });
+
+test('membership deactivation succeeds when no active hierarchy references exist', async () => {
+  const client = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] }) // admin
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'member-1', user_id: 'target', is_active: true }] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ owner_id: 'owner' }] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ head: false, lead: false, manager: false }] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'member-1', is_active: false }] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [] }) };
+  const service = new MembershipService(db(client));
+
+  await expect(service.deactivate('owner', 'company', 'member-1'))
+    .resolves.toMatchObject({ id: 'member-1', is_active: false });
+});

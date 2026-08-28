@@ -17,3 +17,13 @@ test('ownership transfer updates owner and writes audit in one transaction', asy
   await expect(service.transfer('old','c',{ new_owner_user_id:'new' })).resolves.toMatchObject({ owner_id:'new' });
   expect(client.query).toHaveBeenLastCalledWith(expect.stringContaining('audit_logs'), ['c','old','new']);
 });
+
+test('ownership transfer rejects a target who is not an active company member', async () => {
+  const client = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'c', owner_id: 'old' }] })
+    .mockResolvedValueOnce({ rowCount: 0, rows: [] }) };
+  const service = new OwnershipService({ transaction: async (fn:any) => fn(client) } as any);
+
+  await expect(service.transfer('old', 'c', { new_owner_user_id: 'inactive-target' }))
+    .rejects.toThrow('NOT_FOUND');
+});
