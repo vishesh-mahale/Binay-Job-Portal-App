@@ -2,7 +2,7 @@
 
 **Repository:** `Binay-Job-Portal-App`  
 **Scope:** `04-nestjs-api/04-nestjs-api-app` aur uske required integrations  
-**Last updated:** 28 August 2026
+**Last updated:** 29 August 2026
 
 ## Is tracker ka purpose
 
@@ -56,6 +56,8 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
 - [ ] Cookie domain, secure/samesite settings aur deployment env values fill karna.
 - [ ] Same-commit review: FreeBuf + OpenCode + Codex; phir Antigravity fixes.
+
+**Latest verification evidence (29 Aug 2026):** `RUN_IDENTITY_COMPANY_INTEGRATION=true node scripts/identity-company-integration-smoke.js` Dev/Test Supabase database ke against pass hua. Cross-company branch assignment `company_members_branch_tenant_fk` se reject hua, hierarchy/ownership invariants verify hue, aur transaction rollback ke baad test rows retain nahi hue. Ye SQL-level evidence hai; HTTP auth/company integration gates abhi pending hain.
 
 ## Phase 09-C — Candidate, resume aur AI command completion
 
