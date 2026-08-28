@@ -24,3 +24,19 @@ test('company update succeeds for owner and returns shielded response fields', a
   expect(system.query).toHaveBeenCalledWith(expect.stringContaining('RETURNING id,name,slug'), expect.any(Array));
 });
 
+test('company update trims a provided name and rejects whitespace-only names', async () => {
+  const system = {
+    query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ id: 'comp-1', name: 'Acme' }] })
+      .mockResolvedValueOnce({ rows: [{ owner_id: 'user-1' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'comp-1', name: 'Acme Updated' }] })
+  } as any;
+  await expect(new CompanyService(system).update('user-1', 'comp-1', { name: ' Acme Updated ' }))
+    .resolves.toMatchObject({ name: 'Acme Updated' });
+  expect(system.query.mock.calls[2][1]).toEqual(['Acme Updated', 'comp-1']);
+
+  const invalid = { query: jest.fn().mockResolvedValueOnce({ rows: [{ id: 'comp-1', name: 'Acme' }] })
+    .mockResolvedValueOnce({ rows: [{ owner_id: 'user-1' }] }) } as any;
+  await expect(new CompanyService(invalid).update('user-1', 'comp-1', { name: '   ' }))
+    .rejects.toThrow('VALIDATION_ERROR');
+});

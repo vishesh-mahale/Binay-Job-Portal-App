@@ -50,7 +50,10 @@ export class CompanyService {
     const current = await this.get(userId, companyId);
     const ownerCheck = await this.system.query<{ owner_id: string }>('SELECT owner_id FROM public.companies WHERE id = $1 AND deleted_at IS NULL', [companyId]);
     if (!ownerCheck.rows[0] || ownerCheck.rows[0].owner_id !== userId) throw new ForbiddenException('FORBIDDEN');
-    const entries = Object.entries(dto).filter(([k,v]) => (COMPANY_FIELDS as readonly string[]).includes(k) && v !== undefined);
+    const normalized = { ...dto };
+    if (typeof normalized.name === 'string') normalized.name = normalized.name.trim();
+    if (normalized.name === '') throw new BadRequestException('VALIDATION_ERROR');
+    const entries = Object.entries(normalized).filter(([k,v]) => (COMPANY_FIELDS as readonly string[]).includes(k) && v !== undefined);
     if (!entries.length) return current;
     const sets = entries.map(([k],i) => `${k}=$${i+1}`).join(', ');
     const values = entries.map(([,v]) => v); values.push(companyId);
