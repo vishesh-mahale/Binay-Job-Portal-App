@@ -61,6 +61,8 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 RLS user-context smoke (`RUN_RLS_INTEGRATION=true node scripts/rls-integration-smoke.js`) bhi live rollback transaction me pass hua: `authenticated` role + JWT claims ke saath own `candidate_profiles` row 1 aur cross-user row 0.
 
+NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand` = **30 suites / 142 tests passed**, `npm.cmd run build` aur `npm.cmd run lint:types` bhi passed. Resume/guest/application guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
+
 ## Phase 09-C — Candidate, resume aur AI command completion
 
 **Status:** `CORE PRESENT — end-to-end gates baki`
