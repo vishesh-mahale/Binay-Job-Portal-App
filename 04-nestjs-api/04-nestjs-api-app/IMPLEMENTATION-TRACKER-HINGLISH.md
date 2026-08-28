@@ -63,6 +63,8 @@ RLS user-context smoke (`RUN_RLS_INTEGRATION=true node scripts/rls-integration-s
 
 NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand` = **30 suites / 142 tests passed**, `npm.cmd run build` aur `npm.cmd run lint:types` bhi passed. Resume/guest/application guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
 
+Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/integration/test_vertexai_live.py` proxy variables clear karke **2/2 passed**. Ye Vertex provider proof hai; security-scan/ClamAV runtime aur guest end-to-end flow abhi separately pending hain.
+
 ## Phase 09-C — Candidate, resume aur AI command completion
 
 **Status:** `CORE PRESENT — end-to-end gates baki`
