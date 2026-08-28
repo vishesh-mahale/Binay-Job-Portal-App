@@ -99,6 +99,39 @@ describe('ResumeService confirmation guards', () => {
   });
 
   it.each([
+    [false, false],
+    [true, true],
+  ])('keeps an existing active resume unless explicitly selected (%s)', async (useAsActive, shouldUnlinkCurrent) => {
+    const query = jest.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'candidate-1' }] })
+      .mockResolvedValueOnce({ rows: [{ count: 1 }] });
+    const clientQuery = jest.fn()
+      .mockResolvedValueOnce({ rows: [{ id: 'document-2', security_scan_status: 'pending', processing_status: 'uploaded' }] });
+    if (shouldUnlinkCurrent) clientQuery.mockResolvedValueOnce({ rows: [] });
+    clientQuery
+      .mockResolvedValueOnce({ rows: [{ version: 2 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    const storage = { put: jest.fn().mockResolvedValue(undefined), remove: jest.fn() };
+    const service = new ResumeService({ query, transaction: jest.fn(async (work: any) => work({ query: clientQuery })) } as any, storage as any);
+    const previousLimit = process.env.RESUME_MAX_BYTES;
+    const previousBucket = process.env.RESUME_STORAGE_BUCKET;
+    process.env.RESUME_MAX_BYTES = '1024';
+    process.env.RESUME_STORAGE_BUCKET = 'private-documents';
+    try {
+      await expect(service.upload({ user: { sub: 'user-1' } } as any, {
+        originalname: 'resume.pdf', mimetype: 'application/pdf', buffer: Buffer.from('%PDF-1.7'),
+      }, useAsActive)).resolves.toEqual(expect.objectContaining({ document_id: 'document-2', reused: false }));
+      const unlinkCalls = clientQuery.mock.calls.filter(([sql]) => String(sql).includes('SET is_current = FALSE'));
+      expect(unlinkCalls).toHaveLength(shouldUnlinkCurrent ? 1 : 0);
+    } finally {
+      process.env.RESUME_MAX_BYTES = previousLimit;
+      process.env.RESUME_STORAGE_BUCKET = previousBucket;
+    }
+  });
+
+  it.each([
     ['pending', 'SCAN_PENDING'],
     ['scanning', 'SCAN_PENDING'],
     ['infected', 'INFECTED_FILE'],
