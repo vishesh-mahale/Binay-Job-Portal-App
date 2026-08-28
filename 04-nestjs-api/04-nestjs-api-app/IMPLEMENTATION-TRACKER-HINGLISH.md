@@ -83,7 +83,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 **Status:** `CORE COMMANDS PRESENT — contract/coverage hardening baki`
 
 - [ ] Job create/update, approval, publish, pause, resume, close aur archive ke full transition tests.
-- [ ] Approval default conflict resolve karna: `04_companies.sql` me `job_approval_required DEFAULT true` hai, jabki `DECISION-07-JOBS-SEARCH-FINAL.md` direct publish/default false direction batata hai; migration, API behavior aur tests ko ek approved decision ke saath sync karna.
+- [x] Approval policy freeze: `company_settings.job_approval_required` ka default `true` (approval required) rahega; company owner/admin (authorized employer-side actor) ise change kar sakta hai. `false` par direct publish, `true` par approval workflow hoga. Existing submitted jobs ka current workflow change nahi hoga.
 - [ ] `daily_job_expiry_sweep` / `expire_due_jobs()` ka schedule, timezone aur notification behavior verify karna.
 - [ ] Expired job candidate search se hide ho, lekin existing applications me safe visibility rahe.
 - [ ] Public job search aur recruiter candidate search ke exact routes/DTOs freeze karna.
