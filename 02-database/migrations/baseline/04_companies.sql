@@ -336,7 +336,7 @@ CREATE TABLE company_settings (
     company_id      UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE, -- 1:1 extension of companies
     
     -- Recruitment preferences
-    job_approval_required    BOOLEAN NOT NULL DEFAULT true,  -- Owner must approve jobs?
+    job_approval_required    BOOLEAN NOT NULL DEFAULT false, -- Direct publish by default; owner/admin may enable approval
     auto_shortlist_enabled   BOOLEAN NOT NULL DEFAULT false,
     ai_matching_enabled      BOOLEAN NOT NULL DEFAULT true,
     

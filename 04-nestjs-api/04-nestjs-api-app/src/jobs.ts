@@ -106,15 +106,15 @@ export class JobService {
       if (!actor.rows[0]) throw new ForbiddenException('FORBIDDEN');
       const result = await client.query(`
         UPDATE public.jobs j
-        SET status = CASE WHEN COALESCE(cs.job_approval_required, TRUE) THEN 'pending_approval'::job_status ELSE 'published'::job_status END,
-            published_at = CASE WHEN COALESCE(cs.job_approval_required, TRUE) THEN NULL ELSE NOW() END,
-            published_by = CASE WHEN COALESCE(cs.job_approval_required, TRUE) THEN NULL ELSE $3 END,
+        SET status = CASE WHEN COALESCE(cs.job_approval_required, FALSE) THEN 'pending_approval'::job_status ELSE 'published'::job_status END,
+            published_at = CASE WHEN COALESCE(cs.job_approval_required, FALSE) THEN NULL ELSE NOW() END,
+            published_by = CASE WHEN COALESCE(cs.job_approval_required, FALSE) THEN NULL ELSE $3 END,
             updated_at = NOW()
         FROM public.company_settings cs
         JOIN public.companies c ON c.id = j.company_id
         WHERE j.id = $1 AND j.company_id = $2 AND cs.company_id = j.company_id
           AND j.status = 'draft' AND j.deleted_at IS NULL
-          AND (COALESCE(cs.job_approval_required, TRUE) OR c.verification_status = 'verified')
+          AND (COALESCE(cs.job_approval_required, FALSE) OR c.verification_status = 'verified')
           AND (j.created_by = $3 OR EXISTS (SELECT 1 FROM public.companies c2 WHERE c2.id = j.company_id AND c2.owner_id = $3 AND c2.deleted_at IS NULL)
             OR EXISTS (SELECT 1 FROM public.company_members cm WHERE cm.company_id = j.company_id AND cm.user_id = $3 AND cm.is_active = TRUE AND cm.left_at IS NULL))
         RETURNING ${JOB_FIELDS.replaceAll('j.', '')}`, [jobId, companyId, userId]);

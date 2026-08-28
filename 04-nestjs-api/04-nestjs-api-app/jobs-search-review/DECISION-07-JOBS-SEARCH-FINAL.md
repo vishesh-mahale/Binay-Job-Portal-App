@@ -39,19 +39,19 @@ reopened; repost creates a new job id.
 
 ## J3 — Approval
 
-Approved product policy is approval-required by default:
+Approved product policy is direct publish by default:
 
 ```text
-job_approval_required = true (default)
-  draft -> pending_approval -> approve -> published
-
-direct publish enabled by company owner/admin
-  job_approval_required = false
+job_approval_required = false (default)
   draft -> published
+
+approval enabled by company owner/admin
+  job_approval_required = true
+  draft -> pending_approval -> approve -> published
 ```
 
-Executable mapping is frozen as: `job_approval_required = true` (the SQL default) means approval
-required; `false` means direct publish. The company owner/admin (authorized employer-side actor) may
+Executable mapping is frozen as: `job_approval_required = false` (the SQL default) means direct
+publish; `true` means approval required. The company owner/admin (authorized employer-side actor) may
 change this setting. Already submitted jobs keep their current workflow; the setting applies to future
 publish submissions. Rejected edits require resubmission/approval.
 
