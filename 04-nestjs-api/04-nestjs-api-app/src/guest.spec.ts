@@ -82,4 +82,26 @@ describe('GuestSessionService security boundaries', () => {
     })).rejects.toThrow('SCAN_PENDING');
     expect(query).toHaveBeenCalledTimes(3);
   });
+
+  it('rejects an expired pending claim without mutating claim state', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [{
+      id: 'claim-1', status: 'pending', expires_at: new Date(Date.now() - 60_000).toISOString(),
+      guest_email_normalized: 'candidate@example.com', application_id: 'app-1', user_email: 'candidate@example.com', candidate_id: 'candidate-1',
+    }] });
+    const service = new GuestSessionService({ transaction: jest.fn(async (work: any) => work({ query })) } as any, {} as any);
+    await expect(service.claim('user-1', 'claim-token')).rejects.toThrow('CLAIM_INVALID');
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns an idempotent response for an already merged claim', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [{
+      id: 'claim-1', status: 'merged', expires_at: new Date(Date.now() - 60_000).toISOString(),
+      guest_email_normalized: 'candidate@example.com', application_id: 'app-1', user_email: 'candidate@example.com', candidate_id: 'candidate-1',
+    }] });
+    const service = new GuestSessionService({ transaction: jest.fn(async (work: any) => work({ query })) } as any, {} as any);
+    await expect(service.claim('user-1', 'claim-token')).resolves.toEqual({
+      application_id: 'app-1', claim_status: 'merged', candidate_id: 'candidate-1', already_claimed: true,
+    });
+    expect(query).toHaveBeenCalledTimes(1);
+  });
 });
