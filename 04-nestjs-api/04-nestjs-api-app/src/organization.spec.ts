@@ -12,3 +12,29 @@ test('organization member reference must belong to same company', async () => {
     .mockResolvedValueOnce({ rowCount:0, rows:[] }) } as any;
   await expect(new OrganizationService(db).departmentCreate('u','company',{ name:'Engineering', head_member_id:'foreign-member' })).rejects.toBeInstanceOf(ForbiddenException);
 });
+
+test('team creation rejects an inactive parent department', async () => {
+  const db = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] }) // admin
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] }) // lead member belongs to company
+    .mockResolvedValueOnce({ rowCount: 0, rows: [] }) } as any; // inactive/missing department
+  const service = new OrganizationService(db);
+
+  await expect(service.teamCreate('u', 'company', {
+    department_id: 'department', name: 'Platform', lead_member_id: 'member'
+  })).rejects.toBeInstanceOf(ForbiddenException);
+  expect(db.query.mock.calls[2][0]).toContain('is_active=true');
+});
+
+test('team creation proceeds with an active parent department', async () => {
+  const db = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'team-1', department_id: 'department', name: 'Platform' }] }) } as any;
+  const service = new OrganizationService(db);
+
+  await expect(service.teamCreate('u', 'company', {
+    department_id: 'department', name: 'Platform', lead_member_id: 'member'
+  })).resolves.toMatchObject({ id: 'team-1' });
+});
