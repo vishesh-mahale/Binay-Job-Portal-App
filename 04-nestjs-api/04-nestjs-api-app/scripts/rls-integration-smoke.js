@@ -15,11 +15,11 @@ async function main() {
   try {
     await client.query('BEGIN');
 
-    // 1. Create test user and uploaded_documents fixtures under postgres/service role
+    // 1. Create test users and candidate profile fixtures under postgres/service role.
+    // uploaded_documents is intentionally default-deny for direct authenticated reads;
+    // candidate_profiles is the approved personal-read RLS surface.
     const mockUserA = '11111111-1111-4111-8111-111111111111';
     const mockUserB = '99999999-9999-4999-8999-999999999999';
-    const sha256A = 'a'.repeat(64);
-    const sha256B = 'b'.repeat(64);
 
     await client.query(`
       INSERT INTO public.users (id, email, password_hash, role, status)
@@ -30,12 +30,12 @@ async function main() {
     `, [mockUserA, mockUserB]);
 
     await client.query(`
-      INSERT INTO public.uploaded_documents (id, uploaded_by_user_id, document_type, original_file_name, storage_bucket, storage_path, file_size_bytes, mime_type, checksum_sha256)
+      INSERT INTO public.candidate_profiles (id, user_id, professional_title)
       VALUES
-        ('a1111111-1111-4111-8111-111111111111', $1, 'resume', 'a.pdf', 'resumes', 'resumes/a.pdf', 1024, 'application/pdf', $3),
-        ('b2222222-2222-4222-8222-222222222222', $2, 'resume', 'b.pdf', 'resumes', 'resumes/b.pdf', 1024, 'application/pdf', $4)
+        ('a1111111-1111-4111-8111-111111111111', $1, 'RLS smoke User A'),
+        ('b2222222-2222-4222-8222-222222222222', $2, 'RLS smoke User B')
       ON CONFLICT (id) DO NOTHING
-    `, [mockUserA, mockUserB, sha256A, sha256B]);
+    `, [mockUserA, mockUserB]);
 
     // 2. Switch to authenticated role as User A
     await client.query('SET LOCAL ROLE authenticated');
@@ -45,19 +45,19 @@ async function main() {
     const contextCheck = await client.query('SELECT current_user, current_setting($1, true) as claims', ['request.jwt.claims']);
     if (contextCheck.rows[0]?.current_user !== 'authenticated') throw new Error('RLS role context not set to authenticated');
 
-    // 3. Assert RLS isolation: User A CAN read User A's uploaded document (1 row)
-    const ownDocs = await client.query('SELECT * FROM public.uploaded_documents WHERE uploaded_by_user_id = $1', [mockUserA]);
-    if (ownDocs.rows.length !== 1) {
-      throw new Error(`RLS ERROR: User A could not read own uploaded document (expected 1 row, got ${ownDocs.rows.length})`);
+    // 3. Assert RLS isolation: User A CAN read User A's candidate profile (1 row)
+    const ownProfiles = await client.query('SELECT * FROM public.candidate_profiles WHERE user_id = $1', [mockUserA]);
+    if (ownProfiles.rows.length !== 1) {
+      throw new Error(`RLS ERROR: User A could not read own candidate profile (expected 1 row, got ${ownProfiles.rows.length})`);
     }
 
-    // 4. Assert RLS isolation: User A CANNOT read User B's uploaded document (must return 0 rows)
-    const otherDocs = await client.query('SELECT * FROM public.uploaded_documents WHERE uploaded_by_user_id = $1', [mockUserB]);
-    if (otherDocs.rows.length !== 0) {
-      throw new Error(`RLS BREACH: User A accessed ${otherDocs.rows.length} document(s) belonging to User B`);
+    // 4. Assert RLS isolation: User A CANNOT read User B's candidate profile (must return 0 rows)
+    const otherProfiles = await client.query('SELECT * FROM public.candidate_profiles WHERE user_id = $1', [mockUserB]);
+    if (otherProfiles.rows.length !== 0) {
+      throw new Error(`RLS BREACH: User A accessed ${otherProfiles.rows.length} candidate profile(s) belonging to User B`);
     }
 
-    console.log('PASS: RLS user-context role, jwt claims, own-row read (1 row) and cross-user uploaded_documents isolation (0 rows) verified with live fixtures inside transaction');
+    console.log('PASS: RLS user-context role, jwt claims, own-row candidate_profiles read (1 row) and cross-user isolation (0 rows) verified with live fixtures inside transaction');
     await client.query('ROLLBACK');
   } catch (error) {
     await client.query('ROLLBACK');
