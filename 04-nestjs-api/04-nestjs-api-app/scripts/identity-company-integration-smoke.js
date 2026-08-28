@@ -14,15 +14,19 @@ async function main() {
   await client.connect();
   try {
     await client.query('BEGIN');
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const owner = await client.query(`SELECT id FROM public.users WHERE role='employer' AND status='active' AND deleted_at IS NULL LIMIT 1`);
     const member = await client.query(`SELECT id FROM public.users WHERE role='candidate' AND status='active' AND deleted_at IS NULL AND id <> $1 LIMIT 1`, [owner.rows[0]?.id]);
-    if (!owner.rows[0] || !member.rows[0]) {
-      console.log('SKIPPED: active employer and candidate fixtures are required');
+    let outsider = await client.query(`SELECT id FROM public.users WHERE status='active' AND deleted_at IS NULL AND id <> $1 AND id <> $2 LIMIT 1`, [owner.rows[0]?.id, member.rows[0]?.id]);
+    if (!outsider.rows[0]) {
+      outsider = await client.query(`INSERT INTO public.users (id, email, first_name, last_name, role, status) VALUES (gen_random_uuid(), $1, 'Smoke', 'Outsider', 'candidate', 'active') RETURNING id`, [`identity-smoke-${suffix}@example.invalid`]);
+    }
+    if (!owner.rows[0] || !member.rows[0] || !outsider.rows[0]) {
+      console.log('SKIPPED: active employer and two distinct non-deleted user fixtures are required');
       await client.query('ROLLBACK');
       return;
     }
 
-    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const company = await client.query(`
       INSERT INTO public.companies (name, slug, owner_id, email)
       VALUES ($1, $2, $3, $4) RETURNING id, owner_id`,
@@ -62,7 +66,7 @@ async function main() {
       JOIN public.teams t ON t.id=cm.team_id
       WHERE c.id=$1`, [companyId, targetMember.rows[0].id]);
     const row = hierarchy.rows[0];
-    if (!row || String(row.branch_company_id) !== String(companyId) || String(row.department_company_id) !== String(companyId)
+    if (!row || String(row.owner_id) !== String(owner.rows[0].id) || String(row.branch_company_id) !== String(companyId) || String(row.department_company_id) !== String(companyId)
       || String(row.member_department_id) !== String(row.team_department_id)
       || String(row.lead_member_id) !== String(targetMember.rows[0].id)
       || String(row.head_member_id) !== String(targetMember.rows[0].id)) {
@@ -78,11 +82,11 @@ async function main() {
       INSERT INTO public.company_branches (company_id, name, city, country)
       VALUES ($1, 'Other HQ', 'Delhi', 'IN') RETURNING id`, [otherCompany.rows[0].id]);
     try {
-      await client.query(`INSERT INTO public.company_members (company_id, user_id, branch_id, is_active, joined_at) VALUES ($1, $2, $3, true, NOW())`, [companyId, owner.rows[0].id, otherBranch.rows[0].id]);
+      await client.query(`INSERT INTO public.company_members (company_id, user_id, branch_id, is_active, joined_at) VALUES ($1, $2, $3, true, NOW())`, [companyId, outsider.rows[0].id, otherBranch.rows[0].id]);
       throw new Error('cross-company branch assignment unexpectedly succeeded');
     } catch (error) {
-      if (!String(error.message).includes('cross-company branch assignment')) console.log('PASS: cross-company branch assignment rejected by FK');
-      else throw error;
+      if (error.code !== '23503' || error.constraint !== 'company_members_branch_tenant_fk') throw error;
+      console.log('PASS: cross-company branch assignment rejected by company_members_branch_tenant_fk');
     }
     await client.query('ROLLBACK TO SAVEPOINT cross_company_fk');
 
