@@ -154,6 +154,13 @@ Ye NestJS API ke saath release se pehle parallel infrastructure gates hain:
 
 ## Common definition of done (har phase)
 
+### Latest rollback-safe smoke evidence (29 Aug 2026)
+
+Identity/company smoke aur interview smoke dono Dev/Test Supabase connection ke against pass hue.
+Company hierarchy, cross-company FK, ownership transfer, interview booking/participant/confirmation/
+reschedule lineage verify hue aur dono transactions rollback ho gaye. Ye HTTP auth integration ya
+production deployment proof nahi hai.
+
 1. Approved requirements, SQL baseline, contracts aur existing service behavior cross-check.
 2. Implementation + unit tests + relevant integration/E2E tests complete.
 3. No invented table, column, event, route, permission ya provider behavior.
