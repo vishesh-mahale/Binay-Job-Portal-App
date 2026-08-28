@@ -24,10 +24,10 @@ export class MembershipService {
       const target = await client.query('SELECT id,status,deleted_at FROM public.users WHERE id=$1', [dto.user_id]);
       if (!target.rowCount || target.rows[0].status !== 'active' || target.rows[0].deleted_at) throw new BadRequestException('NOT_FOUND');
       const refs = await client.query(`SELECT
-        ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM public.company_branches b WHERE b.id=$2 AND b.company_id=$1)) AS branch_ok,
-        ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM public.departments d WHERE d.id=$3 AND d.company_id=$1)) AS department_ok,
-        ($4::uuid IS NULL OR EXISTS (SELECT 1 FROM public.teams t JOIN public.departments d ON d.id=t.department_id WHERE t.id=$4 AND d.company_id=$1)) AS team_ok,
-        ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM public.company_members m WHERE m.id=$5 AND m.company_id=$1)) AS manager_ok`, [cid,dto.branch_id ?? null,dto.department_id ?? null,dto.team_id ?? null,dto.manager_member_id ?? null]);
+        ($2::uuid IS NULL OR EXISTS (SELECT 1 FROM public.company_branches b WHERE b.id=$2 AND b.company_id=$1 AND b.is_active=true)) AS branch_ok,
+        ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM public.departments d WHERE d.id=$3 AND d.company_id=$1 AND d.is_active=true)) AS department_ok,
+        ($4::uuid IS NULL OR EXISTS (SELECT 1 FROM public.teams t JOIN public.departments d ON d.id=t.department_id WHERE t.id=$4 AND d.company_id=$1 AND t.is_active=true AND d.is_active=true)) AS team_ok,
+        ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM public.company_members m WHERE m.id=$5 AND m.company_id=$1 AND m.is_active=true)) AS manager_ok`, [cid,dto.branch_id ?? null,dto.department_id ?? null,dto.team_id ?? null,dto.manager_member_id ?? null]);
       if (!refs.rows[0].branch_ok || !refs.rows[0].department_ok || !refs.rows[0].team_ok || !refs.rows[0].manager_ok) throw new BadRequestException('VALIDATION_ERROR');
       const existing = await client.query('SELECT * FROM public.company_members WHERE company_id=$1 AND user_id=$2 FOR UPDATE', [cid,dto.user_id]);
       if (existing.rowCount && existing.rows[0].is_active) throw new BadRequestException('IDEMPOTENCY_CONFLICT');
