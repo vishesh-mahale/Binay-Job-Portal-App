@@ -86,6 +86,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 - [ ] `daily_job_expiry_sweep` / `expire_due_jobs()` ka schedule, timezone aur notification behavior verify karna.
 - [ ] Expired job candidate search se hide ho, lekin existing applications me safe visibility rahe.
 - [ ] Public job search aur recruiter candidate search ke exact routes/DTOs freeze karna.
+- [ ] Current note: `src/job-search-query.ts` aur `src/candidate-search-query.ts` me bounded SQL builders hain, lekin unke liye controller/service wiring abhi intentionally absent hai; approved route/DTO/permission contract freeze hone ke baad hi wire karna hai.
 - [ ] FTS ranking, semantic ranking, filters, cursor validation aur visibility negative tests.
 - [ ] Registered apply ka idempotent retry aur immutable snapshot test.
 - [ ] Application status transition: allowed actors, terminal states, rejection reason, history/audit aur concurrency test.
