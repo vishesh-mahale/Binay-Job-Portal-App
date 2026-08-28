@@ -87,7 +87,7 @@ describe('ResumeService confirmation guards', () => {
       }, false)).resolves.toEqual(expect.objectContaining({ document_id: 'document-1', stage: 'UPLOADED', reused: false }));
       const eventCall = clientQuery.mock.calls[4];
       expect(eventCall[0]).toContain("'security.scan.requested'");
-      expect(eventCall[1][1]).toBe('document-1');
+      expect(eventCall[1][1]).toMatch(/^[0-9a-f-]{36}$/i);
       const serializedPayload = String(eventCall[1][2]);
       expect(serializedPayload).toContain('security.scan.requested');
       expect(serializedPayload).not.toContain('%PDF-1.7');
