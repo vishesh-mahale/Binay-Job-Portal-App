@@ -3,7 +3,8 @@
 ## 1. Is file ka kaam
 
 `09_applications.sql` candidate/guest application, submitted documents, frozen
-snapshots, status timeline, guest-account claim, saved jobs aur referrals रखती है.
+snapshots, status timeline, guest-account claim, saved jobs, saved candidates aur
+referrals रखती है.
 
 ```text
 Live candidate profile
@@ -243,6 +244,23 @@ updated_at tracks edits/archive changes
 ```
 
 Saved job application नहीं है.
+
+## 8A. `saved_candidates`
+
+Recruiter candidate search/profile se private, non-job-specific bookmark create
+करता है. Row owner `recruiter_user_id` होता है; `company_id` tenant boundary के
+लिए रहता है. Same recruiter और same candidate का केवल एक record हो सकता है,
+जबकि दूसरा HR उसी candidate को अपनी private list में अलग से save कर सकता है.
+
+```text
+recruiter_user_id + candidate_id unique
+job_id नहीं है
+private_note optional है
+```
+
+Save/unsave NestJS authorization और trusted transaction path से होंगे. Search और
+profile responses `is_saved` दे सकते हैं. यह bookmark अपने-आप application,
+shortlist या outbox event नहीं बनाता.
 
 ## 9. Manual referrals
 

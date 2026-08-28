@@ -1,6 +1,6 @@
 # Implementation Pending — `05-outbox-dispatcher-nestjs`
 
-> **Last reviewed:** 22 August 2026 (Post-Deployment Live Verification)  
+> **Last reviewed:** 27 August 2026 (Webhook Live Verification)  
 > **Purpose:** केवल genuinely बाकी काम यहाँ रखे जाएँ। Complete काम नीचे अलग record में है।
 
 ## Current status
@@ -17,8 +17,8 @@ Supabase outbox_events
 
 Live & Unit Verification Summary:
 
-- **Dispatcher Jest Unit Tests:** **103/103 passed (100%)** across all environments.
-- **FastAPI Pytest Suite:** **306/308 passed offline/proxied** (2 live Vertex tests fail gracefully when outbound traffic is routed through local proxy `127.0.0.1:9` or without ADC); **308/308 passed** under direct Google Cloud network/ADC access.
+- **Dispatcher Jest Unit Tests:** **104/104 passed (100%)** across 12 suites.
+- **FastAPI Pytest Suite:** **311 non-integration tests passed**. Two live Vertex AI integration tests remain environment-blocked because outbound traffic is routed through local proxy `127.0.0.1:9`; they were not counted as passing.
 - **Lockfile & Dependencies:** `uv.lock` regenerated with `uv lock` (stale `pypdf2` removed, locked `pypdf v6.16.1`, `pyproject.toml` policy `"pypdf>=6.16.1,<7.0.0"`).
 - **Cloud Run Dispatcher:** Revision `dev-outbox-dispatcher-00003-rv9` live deployed, 100% traffic, strict TLS verification.
 - **Cloud Run AI Worker:** Revision `dev-fastapi-ai-worker-00007-dmd` live deployed, 100% traffic, private ingress (OIDC authenticated), `postgresql+asyncpg://` DB driver.
@@ -51,16 +51,16 @@ Live report के अनुसार environment variable injection me plain te
 - deterministic task name और queue location (`asia-south1`) match हो।
 - dispatcher service account को केवल required Cloud Tasks permissions मिले हों।
 
-### P1-6. Supabase webhook को scheduler से अलग verify करना
+### P1-6. Supabase webhook को scheduler से अलग verify करना — CLOSED (27 Aug 2026)
 
-Cloud Scheduler recovery job का live evidence पर्याप्त नहीं है। Independently verify करें:
+Webhook configuration और live INSERT-trigger path independently verify हो चुका है:
 
 - `outbox_events` पर केवल INSERT async webhook configured हो।
 - target dispatcher wake URL सही हो।
 - strong `x-webhook-secret` configured हो।
 - webhook failure के बावजूद scheduler recovery काम करे।
 
-जब तक webhook configuration का evidence उपलब्ध न हो, wake strategy को **scheduler verified / webhook not verified** माना जाए।
+Live evidence: valid `candidate.profile.changed` INSERT से Dispatcher wake हुआ, event `publishing → published` हुआ, deterministic Cloud Task बना और FastAPI ने `processed_events` में `candidate_projection` row लिखी। Recovery Scheduler अलग backstop के रूप में retained है।
 
 ### G-1(b). Producer event-envelope alignment
 
@@ -213,13 +213,13 @@ GitHub Actions में कम-से-कम:
 - Dispatcher core NestJS implementation
 - Local Dispatcher → Cloud Tasks → DevTunnel → FastAPI smoke flow
 - deterministic task naming और `ALREADY_EXISTS` tests
-- local Jest suite (**103/103 passed**)
-- FastAPI pytest suite (**308/308 passed**)
+- local Jest suite (**104/104 passed; 12 suites**)
+- FastAPI unit/non-integration pytest suite (**311 passed**; live Vertex tests environment-blocked)
 - dispatcher `.dockerignore` & worker port consistency (`8080`)
 - CORS methods restricted to `POST` aur `GET`
 - **P0-1 (Worker OIDC enforcement):** `dev-fastapi-ai-worker` Cloud Run `--no-allow-unauthenticated`, `allUsers` removed, 403 on unauthenticated request, live verified.
 - **P0-3 (Current source & revision parity):** `dev-outbox-dispatcher-00003-rv9` aur `dev-fastapi-ai-worker-00007-dmd` live deployed directly from Git source.
-- **P1-1 (`candidate.projection.rebuilt` route policy):** Added `candidate.projection.rebuilt` mapping in `event-route.registry.ts` targeting `PROJECTION_QUEUE`, 8 contracted routes verified via Jest.
+- **P1-1 (`candidate.projection.rebuilt` route policy):** Corrected in the Stage-2 contract pass: this is a FastAPI output event, not a dispatcher input. The route was removed from the registry to prevent a projection loop; routing tests must now verify 7 input routes.
 - **P1-2 (Wake-up & recovery strategy):** Cloud Scheduler cron `dev-outbox-recovery-sweep` (`*/10 * * * *`) created, verified, and running live.
 - **P1-3 (Category-B live gates):** `scratch/test_option_5_full_cloud_live.py` passes all 6 gates live in 2.92s.
 - **P1-4 (Dead-Letter Runbook):** Created `05-outbox-dispatcher-nestjs/RUNBOOK-DEAD-LETTER.md` (identification, error classification, immutable audit replay SQL).
@@ -235,11 +235,11 @@ Production-ready declaration तभी करें जब:
 [x] P0-1 OIDC enforcement live verified
 [ ] P0-2 secrets moved + DB password/webhook secret rotated
 [x] P0-3 deployed revision matches current source
-[x] P1-1 projection follow-up route policy implemented
+[x] P1-1 projection output event excluded from dispatcher input routes
 [x] P1-2 webhook + recovery scheduler verified
 [x] P1-3 strong Category-B gates pass
 [ ] P1-5 queue provisioning/rate/deadline/IAM re-verified
-[ ] P1-6 Supabase INSERT webhook independently verified
+[x] P1-6 Supabase INSERT webhook independently verified (live event c561c77a…)
 [ ] G-1(b) producer envelope contracts frozen
 [ ] G-5 producer unroutable-event discipline verified
 [ ] OD-1 dedicated least-privilege DB role applied
@@ -253,4 +253,4 @@ Production-ready declaration तभी करें जब:
 [ ] P3-4 CI/CD security gates pass
 ```
 
-**Current honest status:** Core Dispatcher, Worker, Cloud Tasks, Cloud Scheduler, TLS/CORS security, OIDC protection, `pypdf` upgrade, and `uv.lock` cleanup are **100% complete and deployed**. Unit test suites pass 103/103 (NestJS) and 306-308/308 (FastAPI, environment ADC/proxy dependent). Cloud E2E pipeline passes 6/6 steps when executed under direct outbound HTTPS network access (bypassing local loopback proxy `127.0.0.1:9`). Remaining tasks are for production Secret Manager migration, load testing, and CI/CD automation.
+**Current honest status:** Dispatcher registry, contract drafts, FastAPI security-scan handler/model, ClamAV adapter configuration, and security queue artifact were added in this pass. A Cloud Run multi-container sidecar template and a local Compose setup now document how the actual ClamAV daemon is supplied. Dispatcher tests (12 suites/104 tests), dispatcher-to-contract compatibility, and FastAPI non-integration tests (311) pass. Live Vertex tests are blocked by the local proxy, while dependency lock refresh, ClamAV runtime verification, sidecar deployment validation, and final security-scan E2E remain pending. Existing live E2E claims do not prove the new security-scan path until these gates pass.

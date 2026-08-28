@@ -10,10 +10,13 @@
 
 `07-fastapi-ai-worker` is a **private, zero-trust, asynchronous background worker** deployed on Google Cloud Run. It executes resource-intensive AI and vector-embedding workloads dispatched via Google Cloud Tasks by the NestJS core backend.
 
+Security-scan deployment artifacts: [`deployment/README.md`](deployment/README.md) · [`deployment/cloud-run-sidecar.yaml`](deployment/cloud-run-sidecar.yaml) · [`docker-compose.security-scan.yml`](docker-compose.security-scan.yml)
+
 ### Primary Responsibilities:
 1. **Resume Parsing (PD-001)**: Extracts unstructured text, performs OCR fallback, runs structured candidate data extraction via LLM, and persists immutable parsing results and artifacts.
 2. **Candidate Search Projection (PD-002)**: Rebuilds search profiles by merging canonical profile facts with active resume data, generating symmetric semantic text, and producing 768-dimensional vector embeddings stored in `candidate_search_profiles`.
 3. **Job AI Enrichment (JD-001)**: Enriches job descriptions into structured `ai_ideal_candidate_profile` JSONB (contract v1) and generates 768-dimensional semantic embeddings stored directly in `jobs`.
+4. **Resume Security Scan**: Calls the private ClamAV daemon through the `clamd` client before parsing is queued. The daemon is supplied by the Cloud Run `clamav` sidecar; the Python image alone is not a scanner.
 
 ---
 
@@ -53,6 +56,13 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+Security-scan deployment topology (Cloud Run multi-container service):
+
+```text
+Cloud Tasks (OIDC) -> FastAPI ingress :8080 -> clamd sidecar :3310 (localhost)
+                                             -> scan result + status transaction
+```
+
 ---
 
 ## 3. Task Endpoints & Workloads
@@ -64,6 +74,7 @@ All endpoints are hosted under the `/internal` prefix and expect structured task
 | `POST /internal/tasks/resume/parse` | `contracts/tasks/resume-parse-task.v1.json` | `07_resume_processing.sql` | `candidate.resume.parsed` |
 | `POST /internal/tasks/candidate/projection` | `contracts/tasks/candidate-projection-task.v1.json` | `08_candidates.sql` | `candidate.projection.rebuilt` |
 | `POST /internal/tasks/job/enrich` | `contracts/tasks/job-enrich-task.v1.json` | `05_jobs.sql` | `job.enriched` |
+| `POST /internal/tasks/security/scan` | `contracts/tasks/security-scan-task.v1.json` | `06_documents.sql` | `resume.parse.requested` after clean scan |
 
 ### Health Probes:
 - `GET /health/liveness` — Returns HTTP 200 if ASGI process is alive.
@@ -191,6 +202,13 @@ cp .env.example .env
 - **Runtime Stage**: Copies `/opt/venv`, installs `curl`, `tesseract-ocr`, `libtesseract5`, `postgresql-client`.
 - **User**: `appuser` (UID 1000).
 - **Healthcheck**: `HEALTHCHECK --interval=30s --timeout=10s CMD curl -f http://localhost:8000/health/liveness || exit 1`.
+
+> This Dockerfile intentionally contains the FastAPI application only. It does
+> not install or run the ClamAV daemon. For the security-scan route, deploy the
+> application with the `clamav` sidecar using
+> [`deployment/cloud-run-sidecar.yaml`](deployment/cloud-run-sidecar.yaml), or
+> use [`docker-compose.security-scan.yml`](docker-compose.security-scan.yml)
+> locally. The sidecar image must be pinned by digest before production.
 
 ### Cloud Run Deployment Command:
 ```bash

@@ -645,7 +645,7 @@ CREATE INDEX idx_jobs_category ON jobs(category_id)
 
 -- Jobs: Upcoming expiry for notifications
 CREATE INDEX idx_jobs_expiring ON jobs(expires_at) 
-    WHERE status = 'published' AND expires_at IS NOT NULL AND deleted_at IS NULL;
+    WHERE status IN ('published', 'paused') AND expires_at IS NOT NULL AND deleted_at IS NULL;
 
 -- Jobs: Featured jobs
 CREATE INDEX idx_jobs_featured ON jobs(is_featured, created_at DESC) 

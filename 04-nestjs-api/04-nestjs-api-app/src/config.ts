@@ -1,0 +1,27 @@
+import { z } from 'zod';
+
+export const envSchema = z.object({
+  NODE_ENV: z.enum(['development','test','preprod','production']).default('development'),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  DATABASE_URL: z.string().url().or(z.string().startsWith('postgres')),
+  SUPABASE_JWT_SECRET: z.string().min(16),
+  SUPABASE_JWT_ISSUER: z.string().url().optional(),
+  SUPABASE_JWT_AUDIENCE: z.string().min(1).optional(),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+  RESUME_STORAGE_BUCKET: z.string().min(1).max(100).optional(),
+  RESUME_MAX_BYTES: z.coerce.number().int().positive().optional(),
+  GUEST_UPLOAD_SESSION_TTL_SECONDS: z.coerce.number().int().positive().optional(),
+  GUEST_CLAIM_TTL_SECONDS: z.coerce.number().int().positive().optional(),
+  LOG_LEVEL: z.enum(['debug','info','warn','error']).default('info'),
+  CORS_ORIGINS: z.string().optional(),
+  TRUST_PROXY: z.coerce.boolean().default(false),
+  ALLOWED_OAUTH_PROVIDERS: z.string().optional(),
+  OAUTH_CALLBACK_URL: z.string().url().optional(),
+  OAUTH_FRONTEND_SUCCESS_URL: z.string().url().optional(),
+  OAUTH_FRONTEND_ERROR_URL: z.string().url().optional(),
+  OAUTH_STATE_SECRET: z.string().min(32).optional(),
+  OAUTH_STATE_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
+});
+export type AppConfig = z.infer<typeof envSchema>;
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig { return envSchema.parse(env); }

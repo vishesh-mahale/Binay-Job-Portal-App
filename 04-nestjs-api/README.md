@@ -9,6 +9,8 @@ use cases के through चलेंगे।
 ## Start here
 
 - [NestJS implementation guide](NESTJS-IMPLEMENTATION-GUIDE.md)
+- [Phase 09 coding start gate](PHASE-09-CODING-START-GATE.md)
+- [Phase 09 foundation slice scope](PHASE-09-FOUNDATION-SLICE-SCOPE.md)
 
 ## Service boundary
 
@@ -32,6 +34,5 @@ NestJS Dispatcher, Google Cloud Tasks Queue और Cloud Run FastAPI worker व�
 
 ## Status
 
-यह document current finalized architecture के अनुसार refined है। Application code अभी बनना बाकी है;
-implementation के साथ API/event contracts और integration tests add किए जाएँगे।
-
+यह document current finalized architecture के अनुसार refined है। Phase 09 Foundation implementation शुरू हो चुकी है;
+business API modules और integration tests approved phase gates के अनुसार आगे जुड़ेंगे।

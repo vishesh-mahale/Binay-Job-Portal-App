@@ -10,7 +10,7 @@
 --   Applications: job_applications, application_status_history,
 --                 application_documents, application_profile_snapshots
 --   Guest claim:  guest_candidate_claims
---   Personal:     saved_jobs
+--   Personal:     saved_jobs, saved_candidates
 --   Referrals:    referral_batches, referral_invitations, referral_rewards
 --
 -- FUNCTIONS CREATED HERE:
@@ -219,6 +219,22 @@ CREATE TABLE saved_jobs (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, job_id)
+);
+
+-- Private recruiter bookmark. This is intentionally not job-specific: an HR
+-- can save a candidate from search/profile and consider that candidate later
+-- for any job. Visibility is owned by recruiter_user_id, with company_id kept
+-- as the tenant boundary; NestJS enforces active membership and authorization.
+CREATE TABLE saved_candidates (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    recruiter_user_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    company_id          UUID NOT NULL REFERENCES companies(id) ON DELETE RESTRICT,
+    candidate_id        UUID NOT NULL REFERENCES candidate_profiles(id) ON DELETE RESTRICT,
+    private_note        TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT saved_candidates_owner_candidate_unique
+        UNIQUE (recruiter_user_id, candidate_id)
 );
 
 -- One manual form submission may contain one or many candidates. Referral is an
@@ -980,6 +996,8 @@ CREATE TRIGGER job_applications_status_update_guard
     FOR EACH ROW EXECUTE FUNCTION enforce_application_status_update_path();
 CREATE TRIGGER saved_jobs_updated_at BEFORE UPDATE ON saved_jobs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER saved_candidates_updated_at BEFORE UPDATE ON saved_candidates
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER referral_batches_updated_at BEFORE UPDATE ON referral_batches
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER referral_batches_initial_status_guard
@@ -1060,6 +1078,8 @@ CREATE INDEX idx_applications_candidate
     ON job_applications(candidate_id, applied_at DESC) WHERE candidate_id IS NOT NULL AND deleted_at IS NULL;
 CREATE INDEX idx_applications_user
     ON job_applications(user_id, applied_at DESC) WHERE user_id IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX idx_saved_candidates_owner_created
+    ON saved_candidates(recruiter_user_id, created_at DESC);
 CREATE INDEX idx_application_status_history
     ON application_status_history(application_id, created_at);
 CREATE INDEX idx_application_documents_document

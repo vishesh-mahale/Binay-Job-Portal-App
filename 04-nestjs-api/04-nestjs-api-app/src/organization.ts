@@ -1,0 +1,36 @@
+import { BadRequestException, Body, Controller, ForbiddenException, Injectable, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import { AuthGuard, RequestUser } from './auth';
+import { SystemClient } from './clients';
+
+export class CreateBranchDto { name!: string; city!: string; country!: string; is_headquarters?: boolean; address_line1?: string; address_line2?: string; state?: string; postal_code?: string; latitude?: number; longitude?: number; phone?: string; email?: string; timezone?: string; }
+export class UpdateBranchDto extends CreateBranchDto { is_active?: boolean; [key: string]: unknown; }
+export class CreateDepartmentDto { name!: string; head_member_id?: string; description?: string; }
+export class UpdateDepartmentDto extends CreateDepartmentDto { is_active?: boolean; [key: string]: unknown; }
+export class CreateTeamDto { department_id!: string; name!: string; lead_member_id?: string; description?: string; }
+export class UpdateTeamDto { name?: string; lead_member_id?: string; description?: string; is_active?: boolean; [key: string]: unknown; }
+type AuthReq = Request & { user?: RequestUser };
+
+@Injectable()
+export class OrganizationService {
+  constructor(private readonly db: SystemClient) {}
+  private async admin(userId: string, companyId: string) {
+    const r = await this.db.query(`SELECT 1 FROM public.companies c WHERE c.id=$1 AND c.deleted_at IS NULL AND (c.owner_id=$2 OR EXISTS (SELECT 1 FROM public.company_members m WHERE m.company_id=c.id AND m.user_id=$2 AND m.is_active=true AND (m.is_primary_hr=true OR COALESCE((m.permissions->>'manage_company')::boolean,false)=true)))`, [companyId,userId]);
+    if (!r.rowCount) throw new ForbiddenException('FORBIDDEN');
+  }
+  private async memberBelongs(memberId: string | undefined, companyId: string) {
+    if (!memberId) return;
+    const r = await this.db.query('SELECT 1 FROM public.company_members WHERE id=$1 AND company_id=$2 AND is_active=true', [memberId,companyId]);
+    if (!r.rowCount) throw new ForbiddenException('FORBIDDEN');
+  }
+  async branchCreate(uid:string,cid:string,d:CreateBranchDto){ await this.admin(uid,cid); if(!d.name||!d.city||!d.country) throw new BadRequestException('VALIDATION_ERROR'); const r=await this.db.query('INSERT INTO public.company_branches (company_id,name,city,country,is_headquarters,address_line1,address_line2,state,postal_code,latitude,longitude,phone,email,timezone) VALUES ($1,$2,$3,$4,COALESCE($5,false),$6,$7,$8,$9,$10,$11,$12,$13,COALESCE($14,\'Asia/Kolkata\')) RETURNING *',[cid,d.name,d.city,d.country,d.is_headquarters,d.address_line1,d.address_line2,d.state,d.postal_code,d.latitude,d.longitude,d.phone,d.email,d.timezone]); return r.rows[0]; }
+  async branchUpdate(uid:string,cid:string,id:string,d:UpdateBranchDto){ await this.admin(uid,cid); const allowed=['name','city','country','is_headquarters','address_line1','address_line2','state','postal_code','latitude','longitude','phone','email','timezone','is_active']; return this.update('company_branches',allowed,id,cid,d as Record<string,unknown>,'company_id'); }
+  async departmentCreate(uid:string,cid:string,d:CreateDepartmentDto){ await this.admin(uid,cid); await this.memberBelongs(d.head_member_id,cid); const r=await this.db.query('INSERT INTO public.departments (company_id,name,head_member_id,description) VALUES ($1,$2,$3,$4) RETURNING *',[cid,d.name,d.head_member_id,d.description]); return r.rows[0]; }
+  async departmentUpdate(uid:string,cid:string,id:string,d:UpdateDepartmentDto){ await this.admin(uid,cid); await this.memberBelongs(d.head_member_id,cid); return this.update('departments',['name','head_member_id','description','is_active'],id,cid,d as Record<string,unknown>,'company_id'); }
+  async teamCreate(uid:string,cid:string,d:CreateTeamDto){ await this.admin(uid,cid); await this.memberBelongs(d.lead_member_id,cid); const parent=await this.db.query('SELECT 1 FROM public.departments WHERE id=$1 AND company_id=$2 AND is_active=true',[d.department_id,cid]); if(!parent.rowCount) throw new ForbiddenException('FORBIDDEN'); const r=await this.db.query('INSERT INTO public.teams (department_id,name,lead_member_id,description) VALUES ($1,$2,$3,$4) RETURNING *',[d.department_id,d.name,d.lead_member_id,d.description]); return r.rows[0]; }
+  async teamUpdate(uid:string,cid:string,id:string,d:UpdateTeamDto){ await this.admin(uid,cid); await this.memberBelongs(d.lead_member_id,cid); return this.update('teams',['name','lead_member_id','description','is_active'],id,cid,d as Record<string,unknown>,'id',true); }
+  private async update(table:string,allowed:string[],id:string,scope:string,d:any,scopeColumn:string,team=false){ const entries=Object.entries(d).filter(([k,v])=>allowed.includes(k)&&v!==undefined); if(!entries.length){ const q=team?'SELECT t.* FROM public.teams t JOIN public.departments dep ON dep.id=t.department_id WHERE t.id=$1 AND dep.company_id=$2':'SELECT * FROM public.'+table+' WHERE id=$1 AND '+scopeColumn+'=$2'; const r=await this.db.query(q,[id,scope]); if(!r.rowCount) throw new ForbiddenException('NOT_FOUND'); return r.rows[0]; } const sets=entries.map(([k],i)=>`${k}=$${i+1}`).join(','); const vals=entries.map(([,v])=>v); vals.push(id,scope); const where=team?`id=$${vals.length-1} AND department_id IN (SELECT id FROM public.departments WHERE company_id=$${vals.length})`:`id=$${vals.length-1} AND ${scopeColumn}=$${vals.length}`; const r=await this.db.query(`UPDATE public.${table} SET ${sets} WHERE ${where} RETURNING *`,vals); if(!r.rowCount) throw new ForbiddenException('NOT_FOUND'); return r.rows[0]; }
+}
+
+@Controller('api/v1/companies/:companyId') @UseGuards(AuthGuard)
+export class OrganizationController { constructor(private readonly org:OrganizationService){} @Post('branches') branch(@Req()r:AuthReq,@Param('companyId')c:string,@Body()d:CreateBranchDto){return this.org.branchCreate(r.user!.sub,c,d);} @Patch('branches/:branchId') branchU(@Req()r:AuthReq,@Param('companyId')c:string,@Param('branchId')i:string,@Body()d:UpdateBranchDto){return this.org.branchUpdate(r.user!.sub,c,i,d);} @Post('departments') dep(@Req()r:AuthReq,@Param('companyId')c:string,@Body()d:CreateDepartmentDto){return this.org.departmentCreate(r.user!.sub,c,d);} @Patch('departments/:departmentId') depU(@Req()r:AuthReq,@Param('companyId')c:string,@Param('departmentId')i:string,@Body()d:UpdateDepartmentDto){return this.org.departmentUpdate(r.user!.sub,c,i,d);} @Post('teams') team(@Req()r:AuthReq,@Param('companyId')c:string,@Body()d:CreateTeamDto){return this.org.teamCreate(r.user!.sub,c,d);} @Patch('teams/:teamId') teamU(@Req()r:AuthReq,@Param('companyId')c:string,@Param('teamId')i:string,@Body()d:UpdateTeamDto){return this.org.teamUpdate(r.user!.sub,c,i,d);}}

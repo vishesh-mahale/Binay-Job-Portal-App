@@ -85,7 +85,7 @@ CREATE TABLE companies (
     -- Settings (JSONB for flexible configuration)
     settings            JSONB DEFAULT '{}'::JSONB,
     -- Example: {"timezone": "America/New_York", "date_format": "MM/DD/YYYY",
-    --           "language": "en", "auto_approve_jobs": false}
+    --           "language": "en", "auto_approve_jobs": true}
     
     -- Status
     is_active           BOOLEAN NOT NULL DEFAULT true, -- Temporarily disabled vs permanently deleted
@@ -260,6 +260,9 @@ CREATE TABLE company_members (
     -- Optional HR/operational fields (medium-priority)
     left_at             TIMESTAMPTZ, -- When the member left the company
     employment_status    employment_status,
+    -- Rejoin flow: former member requests; owner/admin approves separately.
+    rejoin_requested_at  TIMESTAMPTZ,
+    rejoin_requested_by  UUID REFERENCES public.users(id) ON DELETE SET NULL,
     work_email           CITEXT,      -- Company-assigned work email
     work_phone           VARCHAR(50), -- Company-assigned phone number
 
@@ -279,6 +282,10 @@ CREATE TABLE company_members (
     ),
     CONSTRAINT company_members_left_inactive CHECK (
         left_at IS NULL OR is_active = FALSE
+    ),
+    CONSTRAINT company_members_rejoin_request_state CHECK (
+        rejoin_requested_at IS NULL
+        OR (is_active = FALSE AND left_at IS NOT NULL AND rejoin_requested_by IS NOT NULL)
     ),
     CONSTRAINT company_members_team_requires_department CHECK (
         team_id IS NULL OR department_id IS NOT NULL
@@ -390,4 +397,7 @@ CREATE INDEX idx_company_members_team ON company_members(team_id);
 CREATE INDEX idx_company_members_manager ON company_members(manager_member_id);
 -- Medium-priority indexes: employment status and recent leavers
 CREATE INDEX idx_company_members_employment_status ON company_members(employment_status) WHERE is_active = true;
+CREATE INDEX idx_company_members_rejoin_requested
+    ON company_members(company_id, rejoin_requested_at)
+    WHERE rejoin_requested_at IS NOT NULL AND is_active = FALSE;
 

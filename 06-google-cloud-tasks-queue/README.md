@@ -20,8 +20,9 @@
 
 ```mermaid
 flowchart LR
-    A["🚀 05-outbox-dispatcher\n(Cloud Run)"] -->|"Enqueue Task (gcloud tasks)"| B["📦 GCP Cloud Tasks\n(projection-queue in asia-south1)"]
-    B -->|"Rate-Limited OIDC Token HTTP POST"| C["🤖 07-fastapi-ai-worker\n(Private Cloud Run)"]
+    A["🚀 05-outbox-dispatcher\n(Cloud Run)"] -->|"Enqueue Task (gcloud tasks)"| B["📦 GCP Cloud Tasks\n(projection-queue / security-scan-queue)"]
+    B -->|"Rate-Limited OIDC Token HTTP POST"| C["🤖 07-fastapi-ai-worker\n(Private Cloud Run ingress)"]
+    C -->|"security.scan only: localhost:3310"| S["🛡️ ClamAV sidecar\n(no public port)"]
     C -->|"Generate 768-dim Vector"| D["✨ Google Vertex AI\n(text-embedding-004)"]
 
     style A fill:#0f172a,stroke:#475569,color:#f8fafc
@@ -45,6 +46,14 @@ flowchart LR
 | `maxAttempts` | `10` | Bounded retries before dead-lettering |
 | `minBackoff` | `5s` | Initial delay for transient network glitches |
 | `maxBackoff` | `300s` (5m) | Maximum backoff delay cap |
+
+### Security scan queue
+
+[`security-scan-queue.json`](./security-scan-queue.json) provisions the dedicated
+security-scan queue in `asia-south1`. It is intentionally capped at 5 dispatches
+per second and 5 concurrent tasks until ClamAV resource/load tests establish a
+different safe limit. The same [`deploy-queue.sh`](./deploy-queue.sh) provisions
+both queues.
 
 ---
 

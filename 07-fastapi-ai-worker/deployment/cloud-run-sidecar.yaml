@@ -1,0 +1,32 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  # Template only. Replace SERVICE_NAME before deployment.
+  name: SERVICE_NAME
+spec:
+  template:
+    metadata:
+      annotations:
+        # Keep the worker private; grant run.invoker only to the Cloud Tasks SA.
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      # Replace with the runtime service account used by the worker.
+      serviceAccountName: WORKER_RUNTIME_SERVICE_ACCOUNT
+      containers:
+        - name: fastapi-worker
+          # Replace with the immutable Artifact Registry image digest.
+          image: WORKER_IMAGE
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CLAMAV_HOST
+              value: "127.0.0.1"
+            - name: CLAMAV_PORT
+              value: "3310"
+            - name: CLAMAV_TIMEOUT_SECONDS
+              value: "60"
+          # Secrets and environment-specific values must be configured with
+          # Cloud Run Secret Manager bindings; never commit them here.
+        - name: clamav
+          # Pin this image by digest before production deployment.
+          image: clamav/clamav:stable-debian13-slim

@@ -133,7 +133,7 @@ python scratch/run_all_scenarios_suite.py
 cd 05-outbox-dispatcher-nestjs
 npm test
 
-# FastAPI AI Worker Unit & Integration Tests (308 collected / 306 passed)
+# FastAPI AI Worker Unit & Non-Integration Tests (311 passed; 2 live Vertex tests environment-blocked)
 cd ../07-fastapi-ai-worker
 pytest
 ```

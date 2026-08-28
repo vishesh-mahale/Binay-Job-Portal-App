@@ -145,6 +145,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(..., min_length=32)
     ALLOWED_ORIGINS: str = Field("http://localhost:3000")
 
+    # Antivirus scanner (ClamAV daemon is an external private dependency).
+    CLAMAV_HOST: str = Field("127.0.0.1")
+    CLAMAV_PORT: int = Field(3310, ge=1, le=65535)
+    CLAMAV_TIMEOUT_SECONDS: int = Field(60, ge=5, le=300)
+
     # ========================================================================
     # Retention Policies
     # ========================================================================

@@ -30,17 +30,12 @@
     },
     "payload": {
       "type": "object",
-      "required": ["document_id", "storage_url"],
+      "required": ["document_id"],
       "properties": {
         "document_id": {
           "type": "string",
           "format": "uuid",
           "description": "The uploaded_document row UUID"
-        },
-        "storage_url": {
-          "type": "string",
-          "format": "uri",
-          "description": "GCS/S3 signed URL or object path for the uploaded file"
         },
         "uploaded_by_user_id": {
           "type": ["string", "null"],
@@ -65,5 +60,5 @@
     }
   },
   "additionalProperties": false,
-  "_draft_note": "Dedicated handler (not inline) — separate workflow step before resume.parse.requested. G-1 pending producer freeze."
+  "_draft_note": "Draft amendment recorded 2026-08-26: document identity only; no storage_url. Dedicated handler remains an implementation gate before producer freeze."
 }

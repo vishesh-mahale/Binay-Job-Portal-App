@@ -32,6 +32,8 @@ Conflict hone par current repository ke rules ke अनुसार priority:
 | `REVIEW-EVIDENCE` | Agent/audit evidence; authority nahi |
 | `NEEDS-REVIEW` | Source scan ho gaya, interpretation pending |
 
+Inventory tables mein `Classification` source ka last-known status hai, aur `NestJS API use` column us source ka related domain/implementation impact capture karta hai.
+
 ## A. Repository governance and navigation
 
 | Source | Classification | NestJS API use |
@@ -53,9 +55,10 @@ Conflict hone par current repository ke rules ke अनुसार priority:
 | `01-requirements/current/NON-FUNCTIONAL-REQUIREMENTS.md` | `CURRENT-REQUIREMENT` | Performance, availability, security, scalability and operational constraints |
 | `01-requirements/current/MANUAL-REFERRAL-REQUIREMENT.md` | `CURRENT-REQUIREMENT` | Manual referral input, invitation and application behavior |
 | `01-requirements/current/MANUAL-REFERRAL-SUMMARY-HINGLISH.md` | `SUPPORTING` | Referral flow explanation/navigation |
+| `01-requirements/README.md` | `SUPPORTING` | Requirements navigation, classification and links |
 | `01-requirements/source-inputs/REQUIREMENT.txt` | `NEEDS-REVIEW` raw input | Detailed raw vision, roles, workflows, AI, search, security and scale requirements |
 | `01-requirements/source-inputs/CLIENT-REQUIRED-FUTURE-CATEGORIZED.md` | `NEEDS-REVIEW` raw client ledger | Feature/page inventory; current vs future classification input |
-| `01-requirements/Binay-discussion/` | `NEEDS-REVIEW` | Original client documents, chat and audio evidence; transcribe/review before claiming coverage |
+| `01-requirements/Binay-discussion/` | `PRIVATE-PERSONAL-NOTES` | Owner ke personal discussion notes/recordings; implementation requirements ka source nahi, agents ko ignore karna hai |
 | `01-requirements/product-decisions/PD-001-ACCOUNT-AND-REFERRAL-ROLES.md` | `PRODUCT-DECISION` | Account role and referral eligibility |
 | `01-requirements/product-decisions/PD-002-ACTIVE-RESUME-SEARCH.md` | `PRODUCT-DECISION` | Active resume/search visibility behavior |
 | `01-requirements/product-decisions/PD-003-APPLICATION-HISTORY.md` | `PRODUCT-DECISION` | Application snapshot/history semantics |
@@ -128,6 +131,7 @@ Existing versions must not be silently mutated when a breaking change requires a
 | `05-outbox-dispatcher-nestjs/IMPLEMENTATION-PENDING.md` | `REVIEW-EVIDENCE / pending gates` | Remaining production work; not API business requirements |
 | `05-outbox-dispatcher-nestjs/src/` and tests | `EXECUTABLE code` | Existing route/event/task behavior to integrate with |
 | `05-outbox-dispatcher-nestjs/TESTING-SCENARIOS-1.md` | `SUPPORTING test contract` | Failure, concurrency and E2E scenarios |
+| `05-outbox-dispatcher-nestjs/LOCAL-TESTING-OPTIONS.md` | `SUPPORTING test contract` | Local dispatcher, direct HTTP, Cloud Tasks and worker integration test modes |
 | `05-outbox-dispatcher-nestjs/RUNBOOK-DEAD-LETTER.md` | `SUPPORTING operational contract` | Dead-letter handling and replay constraints |
 | `docs/architecture/background-processing/` | `CURRENT architecture` | Webhook wake, Google Cloud Scheduler recovery, Cloud Tasks and FastAPI flow |
 | `06-google-cloud-tasks-queue/` | `EXECUTABLE infrastructure config` | Queue, IAM, retry and deployment configuration |
@@ -148,6 +152,7 @@ Existing versions must not be silently mutated when a breaking change requires a
 | Source | Classification | Rule |
 |---|---|---|
 | `docs/research/ai/` | `RESEARCH` | Provider/parser research; current behavior requires ADR/contract approval |
+| `docs/research/README.md` | `SUPPORTING` | Research index and navigation |
 | `Agent_review/` | `REVIEW-EVIDENCE` | Cross-check findings; never override SQL/ADR/contract |
 | `scratch/` | `TEST/DIAGNOSTIC` | Development verification only; no business requirement authority |
 | Old `Binay-App/` | `REFERENCE ONLY` | Do not copy blindly; use only to trace migration/history |
@@ -156,13 +161,14 @@ Existing versions must not be silently mutated when a breaking change requires a
 
 Phase 0 inventory is structurally complete. The following items remain **review tasks**, not silently accepted requirements:
 
-1. `01-requirements/Binay-discussion/` audio/docx evidence coverage;
-2. section-by-section coverage of `NESTJS-IMPLEMENTATION-GUIDE.md`;
-3. all `PRODUCT-REQUIREMENTS.md` rules mapped to DB/contracts/API candidates;
-4. current vs future classification from raw sources reconciled with product decisions;
-5. Supabase access model (user JWT/RLS vs trusted backend database role) recorded as an explicit decision;
-6. transport choice (WebSocket/SSE/Supabase Realtime) recorded as an ADR;
-7. contract versioning and API contract gaps recorded.
+1. section-by-section coverage of `NESTJS-IMPLEMENTATION-GUIDE.md`;
+2. all `PRODUCT-REQUIREMENTS.md` rules mapped to DB/contracts/API candidates;
+3. current vs future classification from raw sources reconciled with product decisions;
+4. Supabase access model (user JWT/RLS vs trusted backend database role) recorded as an explicit decision;
+5. transport choice (WebSocket/SSE/Supabase Realtime) recorded as an ADR;
+6. contract versioning and API contract gaps recorded.
+
+`01-requirements/Binay-discussion/` is intentionally excluded from these review tasks because it contains private owner notes, not the shared implementation requirement set.
 
 **Phase 0 status:** `INVENTORY COMPLETE — CONSOLIDATION NOT STARTED`
 

@@ -124,12 +124,13 @@ Files are reviewed in the old repository first and copied here only after approv
 Old `Binay-App/database` अब database migration evidence है। उसे पूरे repository migration, final coverage
 verification और project-owner deletion approval से पहले delete नहीं किया जाएगा।
 
-## Open cross-file schema item
+## Saved candidates schema status
 
-- `PRODUCT-REQUIREMENTS.md` में recruiter **saved candidates** current scope में है, लेकिन approved
-  `01–11` schema में अभी `saved_candidates` model मौजूद नहीं है; `saved_jobs` यह requirement satisfy नहीं करता।
-  इसे notifications में गलत जगह जोड़ने के बजाय candidate/recruiter ownership, company scope, optional notes,
-  uniqueness, indexes, NestJS API और RLS सहित अलग reviewed schema amendment के रूप में finalize करना है।
+- `PRODUCT-REQUIREMENTS.md` में recruiter **saved candidates** current scope में है।
+  Approved `09_applications.sql` में अब `saved_candidates` model, recruiter ownership,
+  company scope, optional notes, uniqueness और indexes मौजूद हैं; `17_rls.sql` में
+  owner-only authenticated read policy मौजूद है. Exact NestJS API paths API Catalog में
+  finalize होंगे.
 
 ## Current status
 

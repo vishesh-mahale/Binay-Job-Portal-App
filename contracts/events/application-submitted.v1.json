@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/events/application-submitted.v1.json",
+  "title": "ApplicationSubmittedEventV1",
+  "description": "Transactional outbox event emitted when a registered or guest candidate submits a job application",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_type", "aggregate_id", "event_type", "payload", "occurred_at"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique UUID for this outbox event"
+    },
+    "aggregate_type": {
+      "type": "string",
+      "const": "job_application"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The job_application row UUID"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "application.submitted"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["application_id", "job_id", "company_id", "is_guest", "submitted_at"],
+      "properties": {
+        "application_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The job_application row UUID"
+        },
+        "job_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The target job UUID"
+        },
+        "company_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The hiring company UUID"
+        },
+        "candidate_id": {
+          "type": ["string", "null"],
+          "format": "uuid",
+          "description": "The candidate UUID if registered, or null if unlinked guest application"
+        },
+        "is_guest": {
+          "type": "boolean",
+          "description": "True if submitted via guest application flow"
+        },
+        "referral_invitation_id": {
+          "type": ["string", "null"],
+          "format": "uuid",
+          "description": "Attributed referral invitation UUID if applicable"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The immutable application profile snapshot UUID"
+        },
+        "submitted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "trace_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Distributed tracing UUID"
+        }
+      },
+      "additionalProperties": false
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

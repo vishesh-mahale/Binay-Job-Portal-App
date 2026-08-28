@@ -30,13 +30,17 @@ flowchart TD
     end
 
     subgraph AI_Worker_Layer["5. AI & Heavy Processing Worker (FastAPI / Python)"]
-        FastAPI_Worker["FastAPI AI Worker (Cloud Run)\n- Document Extraction (PyPDF / Tesseract OCR)\n- Idempotency via processed_events\n- Resume Parser & Job Enricher\n- Candidate Projection Rebuilder"]
+        FastAPI_Worker["FastAPI AI Worker (Cloud Run ingress)\n- Document Extraction (PyPDF / Tesseract OCR)\n- Security scan via local ClamAV sidecar\n- Idempotency via processed_events\n- Resume Parser & Job Enricher\n- Candidate Projection Rebuilder"]
+        ClamAV_Sidecar["ClamAV clamd sidecar\nlocalhost:3310\nprivate, no public port"]
     end
 
     subgraph Google_AI_Layer["6. Foundation AI Infrastructure (Google Vertex AI)"]
         Gemini_Flash["Google Vertex AI Gemini Flash\n(Structured JSON Extraction & Reasoning)"]
         Vertex_Embedding["Google Vertex AI text-embedding-004\n(768-dimensional Vector Embeddings)"]
     end
+
+    Expiry_Scheduler["Supabase pg_cron\ndaily_job_expiry_sweep\n35 18 UTC / 12:05 AM IST"]
+    Expiry_Function["public.expire_due_jobs()\nstatus + audit + in-app notification"]
 
     %% Flow Connections
     UI_Candidate & UI_Employer & UI_Admin -->|HTTPS / REST / JWT| NestJS_API
@@ -47,6 +51,7 @@ flowchart TD
     Postgres_DB -->|1. Outbox Event Insert Webhook / Claim| Outbox_Dispatcher
     Outbox_Dispatcher -->|2. Push Task with Payload| Cloud_Tasks
     Cloud_Tasks -->|3. POST /internal/tasks/* with OIDC| FastAPI_Worker
+    FastAPI_Worker -->|security scan over localhost:3310| ClamAV_Sidecar
 
     FastAPI_Worker -->|Download Resume PDF| Supabase_Storage
     FastAPI_Worker -->|LLM Structured Extraction| Gemini_Flash
@@ -54,6 +59,8 @@ flowchart TD
 
     FastAPI_Worker -->|4. Write Immutable Artifacts, Vectors & Projections| Postgres_DB
     Postgres_DB -.->|5. pgvector 768-dim Cosine Match Search| NestJS_API
+    Expiry_Scheduler -->|scheduled SQL call| Expiry_Function
+    Expiry_Function -->|expire due published/paused jobs| Postgres_DB
 ```
 
 ---
@@ -75,6 +82,10 @@ flowchart TD
 * **Scale & Schema:** 82 Normalized relational tables, 82/82 Row Level Security (RLS) policies enabled.
 * **AI & Search Extensions:** `pgvector` (for 768-dimensional Vector Cosine Similarity), `pg_trgm` (fuzzy matching), `to_tsvector` (PostgreSQL Full-Text Search).
 * **Storage:** Supabase Storage Private Bucket (`job-portal-uploads`) for resumes, certificates, and company verification documents.
+* **Job expiry:** Supabase `pg_cron` runs `daily_job_expiry_sweep` at `35 18 * * *` UTC
+  (12:05 AM Asia/Kolkata) and calls `public.expire_due_jobs()`. The function atomically updates
+  due published/paused jobs, writes `audit_logs`, and creates the approved creator-only in-app
+  notification. This deterministic path does not use the Dispatcher or Cloud Tasks.
 
 ### 4. Async Event Dispatcher Layer (`05-outbox-dispatcher` & `06-google-cloud-tasks`)
 * **Dispatcher:** Lightweight NestJS microservice running on Google Cloud Run.

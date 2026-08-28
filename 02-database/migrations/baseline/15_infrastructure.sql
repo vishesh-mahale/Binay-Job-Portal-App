@@ -375,3 +375,114 @@ REVOKE ALL ON FUNCTION claim_outbox_events(VARCHAR, INTEGER, INTEGER) FROM PUBLI
 REVOKE ALL ON FUNCTION mark_outbox_event_published(UUID, VARCHAR, VARCHAR) FROM PUBLIC;
 REVOKE ALL ON FUNCTION mark_outbox_event_failed(UUID, VARCHAR, TEXT, TIMESTAMPTZ) FROM PUBLIC;
 REVOKE ALL ON FUNCTION outbox_recovery_needed() FROM PUBLIC;
+
+-- ============================================================================
+-- Job expiry lifecycle (called by the approved Supabase pg_cron schedule)
+-- ============================================================================
+-- The function is intentionally idempotent: only due published/paused rows are
+-- locked, transitioned once, audited, and notified. No outbox/Cloud Tasks path
+-- is used for this deterministic database-clock workflow.
+CREATE OR REPLACE FUNCTION public.expire_due_jobs()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_job RECORD;
+    v_expired INTEGER := 0;
+    v_key TEXT;
+    v_now TIMESTAMPTZ := clock_timestamp();
+BEGIN
+    FOR v_job IN
+        SELECT j.id, j.company_id, j.created_by, j.status, j.expires_at
+        FROM public.jobs j
+        WHERE j.status IN ('published', 'paused')
+          AND j.expires_at IS NOT NULL
+          AND j.expires_at <= v_now
+          AND j.deleted_at IS NULL
+        ORDER BY j.id
+        LIMIT 100
+        FOR UPDATE SKIP LOCKED
+    LOOP
+        UPDATE public.jobs
+           SET status = 'expired', updated_at = NOW()
+         WHERE id = v_job.id
+           AND status IN ('published', 'paused')
+           AND expires_at IS NOT NULL
+           AND expires_at <= v_now
+           AND deleted_at IS NULL;
+
+        IF FOUND THEN
+            v_expired := v_expired + 1;
+
+            INSERT INTO public.audit_logs (
+                company_id, actor_service, action, entity_type, entity_id,
+                old_values, new_values, changes, metadata
+            ) VALUES (
+                v_job.company_id, 'expire_due_jobs', 'job.expired', 'job', v_job.id,
+                jsonb_build_object('status', v_job.status, 'expires_at', v_job.expires_at),
+                jsonb_build_object('status', 'expired'),
+                jsonb_build_object('status', jsonb_build_object('from', v_job.status, 'to', 'expired')),
+                jsonb_build_object('reason', 'scheduled_expiry')
+            );
+
+            -- Creator-only notification is the approved recipient policy.
+            IF EXISTS (
+                SELECT 1 FROM public.users u
+                   WHERE u.id = v_job.created_by
+                   AND u.status = 'active'
+                   AND u.deleted_at IS NULL
+                   AND (
+                       EXISTS (
+                           SELECT 1 FROM public.companies c
+                            WHERE c.id = v_job.company_id
+                              AND c.owner_id = u.id
+                              AND c.is_active = TRUE
+                              AND c.deleted_at IS NULL
+                       )
+                       OR EXISTS (
+                           SELECT 1 FROM public.company_members cm
+                            WHERE cm.company_id = v_job.company_id
+                              AND cm.user_id = u.id
+                              AND cm.is_active = TRUE
+                              AND cm.left_at IS NULL
+                       )
+                   )
+            ) THEN
+                v_key := format('job-expired:%s:%s', v_job.id, v_job.created_by);
+                INSERT INTO public.notifications (
+                    idempotency_key, user_id, company_id, entity_type, entity_id,
+                    title, body, action_url, action_type, event_type, category,
+                    channels, delivery_status
+                ) VALUES (
+                    v_key, v_job.created_by, v_job.company_id, 'job', v_job.id,
+                    'Job expired', 'This job has reached its expiry time.',
+                    NULL, 'open_job', 'job.expired', 'job',
+                    '{"in_app": true}'::jsonb, '{"in_app": "pending"}'::jsonb
+                ) ON CONFLICT (idempotency_key) DO NOTHING;
+            END IF;
+        END IF;
+    END LOOP;
+    RETURN v_expired;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.expire_due_jobs() FROM PUBLIC;
+
+-- Approved daily expiry schedule. pg_cron is enabled by 01_extensions.sql.
+-- Database timezone is UTC; 18:35 UTC = 12:05 AM Asia/Kolkata.
+-- The guard makes baseline re-execution safe and prevents duplicate schedules.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM cron.job WHERE jobname = 'daily_job_expiry_sweep'
+    ) THEN
+        PERFORM cron.schedule(
+            'daily_job_expiry_sweep',
+            '35 18 * * *',
+            'SELECT public.expire_due_jobs();'
+        );
+    END IF;
+END;
+$$;

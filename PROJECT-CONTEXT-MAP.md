@@ -98,8 +98,8 @@ NestJS Outbox Dispatcher on Cloud Run
 Google Cloud Tasks Queue
    | rate limit + bounded retry + Google OIDC
    v
-Private Cloud Run FastAPI Worker
-   | parsing / OCR / AI / embeddings / projections
+Private Cloud Run FastAPI Worker (Cloud Run ingress + ClamAV sidecar)
+   | security scan / parsing / OCR / AI / embeddings / projections
    v
 Supabase worker-owned transaction
    | immutable result/evidence/projection
@@ -114,6 +114,15 @@ Supabase worker-owned transaction
 Primary wake-up Supabase asynchronous Database Webhook है। Old NestJS post-commit wake-up final
 correctness path नहीं है। Dispatcher lightweight separate NestJS/TypeScript service है। Cloud Tasks
 Google-managed queue है; FastAPI private Cloud Run worker है।
+
+Job expiry database-clock path:
+
+```text
+Supabase pg_cron `daily_job_expiry_sweep` (35 18 UTC / 12:05 AM IST)
+        -> public.expire_due_jobs()
+        -> jobs status + audit_logs + creator in-app notification
+        -> Dispatcher/Cloud Tasks is not involved
+```
 
 ## 7. Database file order और ownership
 

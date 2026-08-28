@@ -66,8 +66,10 @@ supabase/.temp/
 *.tfstate.*
 .terraform/
 
+# Local OpenCode configuration
+opencode.json
+
 # Test and tool caches
 .cache/
 .turbo/
 .eslintcache
-

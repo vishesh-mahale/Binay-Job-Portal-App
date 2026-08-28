@@ -1,0 +1,20 @@
+services:
+  fastapi-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Compose uses service DNS; Cloud Run sidecar uses 127.0.0.1 instead.
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      CLAMAV_TIMEOUT_SECONDS: "60"
+      # Load DATABASE_URL, OIDC and provider settings from a local .env file.
+    depends_on:
+      clamav:
+        condition: service_started
+
+  clamav:
+    image: clamav/clamav:stable-debian13-slim
+    # Do not publish clamd outside the compose network.

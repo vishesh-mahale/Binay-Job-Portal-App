@@ -1,0 +1,16 @@
+{
+  "name": "security-scan-queue",
+  "location": "asia-south1",
+  "state": "RUNNING",
+  "rateLimits": {
+    "maxDispatchesPerSecond": 5.0,
+    "maxBurstSize": 5,
+    "maxConcurrentDispatches": 5
+  },
+  "retryConfig": {
+    "maxAttempts": 10,
+    "minBackoff": "5s",
+    "maxBackoff": "300s",
+    "maxDoublings": 16
+  }
+}

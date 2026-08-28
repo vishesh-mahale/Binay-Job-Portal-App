@@ -44,8 +44,10 @@ from app.schemas.tasks import (
     MatchAnalyzeTaskPayload,
     InterviewSummaryTaskPayload,
     JobScreeningQuestionsTaskPayload,
+    SecurityScanTaskPayload,
 )
 from app.services.document_extractor import DocumentExtractor
+from app.services.security_scanner import ClamAVScannerProvider, ScannerUnavailable
 from app.services.projection_service import CandidateProjectionService
 from app.services.job_ai_service import JobAIService
 from app.services.match_service import MatchService
@@ -55,6 +57,132 @@ from app.storage.supabase_storage import SupabaseStorageClient
 
 router = APIRouter(prefix="/internal")
 logger = get_logger(__name__)
+
+
+@router.post("/tasks/security/scan", status_code=200)
+async def handle_security_scan_task(
+    payload: SecurityScanTaskPayload,
+    request: Request,
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+):
+    """Scan one uploaded document and atomically hand clean files to parsing."""
+    settings = get_settings()
+    db_manager = get_db_manager()
+    validator = get_oidc_validator(settings)
+    processed_repo = ProcessedEventsRepository(db_manager)
+    storage = SupabaseStorageClient(settings)
+
+    if settings.OIDC_AUTH_ENABLED:
+        try:
+            validator.validate_bearer_token(authorization)
+        except Exception as exc:
+            raise HTTPException(status_code=401, detail={"code": "OIDC_UNAUTHORIZED", "message": str(exc)}) from exc
+
+    if await processed_repo.is_processed("security_scanner", payload.event_id):
+        return {"status": "success", "skipped": True, "event_id": payload.event_id}
+
+    # Claim the document before downloading/scanning. A second task sees scanning
+    # and retries; terminal states are acknowledged idempotently.
+    async with db_manager.transaction() as session:
+        claimed = await session.execute(
+            text("""
+                UPDATE uploaded_documents
+                SET security_scan_status = 'scanning', updated_at = NOW()
+                WHERE id = :document_id
+                  AND deleted_at IS NULL
+                  AND security_scan_status IN ('pending', 'failed')
+                RETURNING storage_path, checksum_sha256
+            """),
+            {"document_id": payload.aggregate_id},
+        )
+        document = claimed.mappings().first()
+        if not document:
+            current = await session.execute(
+                text("SELECT security_scan_status FROM uploaded_documents WHERE id = :document_id"),
+                {"document_id": payload.aggregate_id},
+            )
+            row = current.mappings().first()
+            if row and row["security_scan_status"] in ("clean", "infected", "quarantined"):
+                return {"status": "success", "skipped": True, "reason": "terminal_scan_state"}
+            if row and row["security_scan_status"] == "scanning":
+                raise HTTPException(status_code=503, detail={"code": "SCAN_IN_PROGRESS", "message": "Scan already in progress"})
+            raise HTTPException(status_code=404, detail={"code": "DOCUMENT_NOT_FOUND", "message": "Document not found"})
+
+    try:
+        document_name, document_bytes = await storage.download(str(document["storage_path"]))
+        scanner = ClamAVScannerProvider(settings)
+        scan = await scanner.scan(document_bytes, str(document["checksum_sha256"]))
+    except ScannerUnavailable as exc:
+        async with db_manager.transaction() as session:
+            await session.execute(
+                text("""
+                    UPDATE uploaded_documents
+                    SET security_scan_status = 'failed',
+                        security_scan_result = :result,
+                        updated_at = NOW()
+                    WHERE id = :document_id
+                """),
+                {"document_id": payload.aggregate_id, "result": json.dumps({"schema_version": 1, "verdict": "error", "error": {"code": "SCANNER_UNAVAILABLE", "retryable": True}})},
+            )
+        raise HTTPException(status_code=503, detail={"code": "SCANNER_UNAVAILABLE", "message": "Security scanner unavailable"}) from exc
+
+    result_metadata = {
+        "schema_version": 1,
+        "verdict": scan.verdict,
+        "scanner": {"provider": scan.provider, "engine_version": scan.engine_version, "signature_version": scan.signature_version},
+        "scanned_at": scan.scanned_at,
+        "duration_ms": scan.duration_ms,
+        "file_size_bytes": scan.file_size_bytes,
+        "checksum_sha256": scan.checksum_sha256,
+        "threats": scan.threats,
+        "error": scan.error,
+    }
+
+    async with db_manager.transaction() as session:
+        status = "clean" if scan.verdict == "clean" else "infected"
+        await session.execute(
+            text("""
+                UPDATE uploaded_documents
+                SET security_scan_status = :status,
+                    security_scan_result = :result,
+                    updated_at = NOW()
+                WHERE id = :document_id
+            """),
+            {"document_id": payload.aggregate_id, "status": status, "result": json.dumps(result_metadata)},
+        )
+
+        if status == "clean":
+            parsing = await session.execute(
+                text("""
+                    INSERT INTO resume_parsing_jobs
+                      (document_id, parser_provider, parser_model, parser_version,
+                       extraction_version, status, idempotency_key)
+                    VALUES
+                      (:document_id, 'internal_fastapi', 'pending', '1', '1', 'queued', :idempotency_key)
+                    ON CONFLICT (idempotency_key) DO NOTHING
+                    RETURNING id
+                """),
+                {"document_id": payload.aggregate_id, "idempotency_key": f"security_scan:{payload.event_id}"},
+            )
+            parsing_row = parsing.mappings().first()
+            if parsing_row:
+                parsing_id = str(parsing_row["id"])
+                await OutboxRepository(db_manager).emit_event(
+                    aggregate_type="resume_parsing_job",
+                    aggregate_id=parsing_id,
+                    event_type="resume.parse.requested",
+                    payload={"document_id": payload.aggregate_id, "trace_id": payload.trace_id},
+                    session=session,
+                )
+
+        await processed_repo.record_processed(
+            consumer_name="security_scanner",
+            event_id=payload.event_id,
+            result_metadata={"document_id": payload.aggregate_id, "verdict": scan.verdict, "trace_id": payload.trace_id},
+            session=session,
+        )
+
+    return {"status": "success", "document_id": payload.aggregate_id, "verdict": scan.verdict}
 
 
 def _get_llm_provider(settings) -> LLMProvider:

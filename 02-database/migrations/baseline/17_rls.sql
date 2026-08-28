@@ -111,6 +111,7 @@ ALTER TABLE public.application_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.application_profile_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guest_candidate_claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saved_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saved_candidates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.referral_batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.referral_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.referral_rewards ENABLE ROW LEVEL SECURITY;
@@ -168,6 +169,7 @@ GRANT SELECT ON
  public.candidate_certification_evidence,
  public.profile_change_history, public.job_applications, public.application_status_history,
  public.application_documents, public.application_profile_snapshots, public.saved_jobs,
+ public.saved_candidates,
  public.referral_batches, public.referral_invitations, public.referral_rewards,
  public.conversations, public.conversation_participants, public.messages,
  public.message_attachments, public.message_read_receipts, public.message_reactions
@@ -203,6 +205,11 @@ CREATE POLICY application_history_candidate_read ON public.application_status_hi
 CREATE POLICY application_documents_candidate_read ON public.application_documents FOR SELECT TO authenticated USING (public.can_read_application(application_id));
 CREATE POLICY application_snapshots_candidate_read ON public.application_profile_snapshots FOR SELECT TO authenticated USING (public.can_read_application(application_id));
 CREATE POLICY saved_jobs_own_read ON public.saved_jobs FOR SELECT TO authenticated USING (user_id=auth.uid());
+-- Browser roles have SELECT only for the creator. Company membership,
+-- candidate visibility and all writes are enforced by NestJS authorization on
+-- the trusted SystemClient path; INSERT/UPDATE/DELETE stay backend-only.
+CREATE POLICY saved_candidates_own_read ON public.saved_candidates FOR SELECT TO authenticated
+    USING (recruiter_user_id = auth.uid());
 CREATE POLICY referral_batches_own_read ON public.referral_batches FOR SELECT TO authenticated USING (referrer_user_id=auth.uid());
 CREATE POLICY referral_invitations_own_read ON public.referral_invitations FOR SELECT TO authenticated USING (referrer_user_id=auth.uid());
 CREATE POLICY referral_rewards_own_read ON public.referral_rewards FOR SELECT TO authenticated USING
@@ -237,6 +244,8 @@ GRANT EXECUTE ON FUNCTION public.claim_outbox_events(VARCHAR,INTEGER,INTEGER) TO
 GRANT EXECUTE ON FUNCTION public.mark_outbox_event_published(UUID,VARCHAR,VARCHAR) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mark_outbox_event_failed(UUID,VARCHAR,TEXT,TIMESTAMPTZ) TO service_role;
 GRANT EXECUTE ON FUNCTION public.outbox_recovery_needed() TO service_role;
+GRANT EXECUTE ON FUNCTION public.expire_due_jobs() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.expire_due_jobs() FROM anon, authenticated;
 
 -- Service-only/default-deny: organization/job internals, guest secrets, parsing,
 -- recruiter search, interviews/feedback, templates/delivery, analytics/audit,

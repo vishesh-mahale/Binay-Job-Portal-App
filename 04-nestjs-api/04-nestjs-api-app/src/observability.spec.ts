@@ -1,0 +1,2 @@
+import { redact } from './observability';
+test('redacts credentials from log text', () => { const output = redact('password=abc bearer secret-token api_key=xyz'); expect(output).not.toContain('abc'); expect(output).not.toContain('xyz'); expect(output).toContain('[REDACTED]'); });

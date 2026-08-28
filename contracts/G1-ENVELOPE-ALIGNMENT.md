@@ -87,7 +87,9 @@ Phase 1 trigger event contracts (to be created/aligned):
 ## Related Gates
 
 - **G-1(a)**: DONE — Phase 2 trigger contracts created (DRAFT)
-- **G-1(a.1)**: DONE — security.scan.requested contract + dedicated handler
+- **G-1(a.1)**: IMPLEMENTED — security.scan.requested contract, task contract,
+  Pydantic payload model and dedicated handler are present; ClamAV/runtime and
+  compatibility tests remain required before production freeze.
 - **G-1(b)**: PENDING — Phase 1 trigger contracts alignment (this document)
 - **G-2**: DONE — aggregate_id semantics documented
 

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/schemas/security-scan-result.v1.json",
+  "title": "Security Scan Result V1",
+  "description": "Bounded result metadata for an uploaded-document security scan. Raw file content and secrets are never part of this contract.",
+  "type": "object",
+  "required": ["schema_version", "verdict", "scanner", "scanned_at"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "verdict": { "type": "string", "enum": ["clean", "infected", "error"] },
+    "scanner": {
+      "type": "object",
+      "required": ["provider", "engine_version", "signature_version"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "engine_version": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "signature_version": { "type": "string", "minLength": 1, "maxLength": 200 }
+      },
+      "additionalProperties": false
+    },
+    "scanned_at": { "type": "string", "format": "date-time" },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "file_size_bytes": { "type": "integer", "minimum": 0 },
+    "checksum_sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+    "threats": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 100 },
+        "retryable": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

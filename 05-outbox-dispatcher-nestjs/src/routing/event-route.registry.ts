@@ -4,12 +4,13 @@ import { Injectable, Optional } from '@nestjs/common';
  * Typed event route registry (plan Section 9).
  *
  * Phase 1: 3 contracted producer events (resume.parse, candidate.projection, job.enrich).
- * Phase 2: 4 additional routes (match.analyze, interview.summary, job.screening, security.scan).
+ * Phase 2: additional request routes whose consumers are explicitly approved.
  *
  * Queue names are the approved ones (`ai-heavy-queue`, `projection-queue`,
  * `notification-queue` is provision-only). Security scanning uses a dedicated
- * `security-scan-queue` (Phase 2). Endpoint paths verified against
- * 07-fastapi-ai-worker/app/api/v1/task_handlers.py.
+ * `security-scan-queue` (Phase 2). Endpoint paths are registered only after
+ * their consumer implementation is verified. Output events are not registered
+ * as dispatcher input routes.
  *
  * NOT registered (unresolved — Gate G-1/G-5): notification.email.requested (OD-3).
  * Unknown event types are handled fail-closed by the dispatcher, never silently skipped.
@@ -53,8 +54,8 @@ export const PHASE_1_ROUTES: readonly EventRoute[] = [
 ] as const;
 
 /**
- * Phase 2 routes — contracts exist (DRAFT/G-1 pending producer freeze).
- * FastAPI handlers verified in 07-fastapi-ai-worker/app/api/v1/task_handlers.py.
+ * Phase 2 request routes. A route is registered only with an approved task
+ * contract and consumer implementation.
  */
 export const PHASE_2_ROUTES: readonly EventRoute[] = [
   {
@@ -79,13 +80,7 @@ export const PHASE_2_ROUTES: readonly EventRoute[] = [
     eventType: 'security.scan.requested',
     queue: SECURITY_SCAN_QUEUE,
     urlPath: '/internal/tasks/security/scan',
-    taskContract: 'contracts/events/security-scan-requested.v1.json',
-  },
-  {
-    eventType: 'candidate.projection.rebuilt',
-    queue: PROJECTION_QUEUE,
-    urlPath: '/internal/tasks/candidate/projection',
-    taskContract: 'contracts/events/candidate-projection-rebuilt.v1.json',
+    taskContract: 'contracts/tasks/security-scan-task.v1.json',
   },
 ] as const;
 

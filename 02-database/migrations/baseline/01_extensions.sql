@@ -112,6 +112,11 @@ CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 --   )
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
+-- 🔷 pg_cron — Database Scheduler
+-- Required for the approved daily job-expiry sweep. This only enables the
+-- scheduler; the actual cron job is created separately after deployment.
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
 -- ============================================================================
 -- NOTE:
 -- We intentionally use gen_random_uuid() from pgcrypto instead of

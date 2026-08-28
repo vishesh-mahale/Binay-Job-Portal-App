@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/tasks/security-scan-task.v1.json",
+  "title": "Security Scan Task V1",
+  "description": "Cloud Task payload for scanning an uploaded document. The worker resolves storage metadata from the database.",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_id", "trace_id"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "uploaded_documents.id"
+    },
+    "trace_id": { "type": "string", "format": "uuid" }
+  },
+  "additionalProperties": false
+}

@@ -140,6 +140,8 @@ Phase 0 inventory mein `docs/adr/`, `docs/architecture/`, webhook setup guide, `
 
 ## 5. Phase 1 — Detailed requirements consolidation
 
+Phase 1 source-level consolidation hai, final acceptance/API specification nahi. Isliye Phase 1 table mein related fields ko compact form mein combine kiya ja sakta hai (for example DB + API + async impact), lekin information omit nahi hogi. `User flow`, `Security`, `Idempotency`, `Rate limit`, `Audit requirement` aur per-requirement `Acceptance criteria` Phase 2 traceability matrix mein separately mandatory honge. Phase 1 mein unke unresolved/source references preserve karna hoga.
+
 Har requirement ko stable ID do, for example:
 
 ```text
@@ -177,8 +179,21 @@ Har item mein ye fields mandatory hon:
 | Idempotency | Duplicate request/event ka behavior |
 | Rate limit | Request frequency, burst aur abuse-control rule |
 | Audit requirement | Kaunsi audit/security history mandatory hai |
-| Acceptance criteria | Testable success/failure conditions |
+| Acceptance criteria | Phase 2 mein per-requirement testable success/failure conditions |
 | Status | `REQUIRED`, `FUTURE`, `REJECTED`, `NEEDS_CLARIFICATION`, `CONFLICT` |
+
+Phase 1 richer working labels use kar sakta hai, lekin canonical mapping mandatory hai:
+
+```text
+APPROVED / APPROVED DIRECTION / PLANNED CURRENT -> REQUIRED
+FUTURE                                           -> FUTURE
+NEEDS_DECISION                                  -> NEEDS_CLARIFICATION
+GAP                                              -> REQUIRED + unresolved implementation gap
+REJECTED                                        -> REJECTED
+CONFLICT                                        -> CONFLICT
+```
+
+Phase 2 matrix mein canonical status ke saath optional detail label retain kiya ja sakta hai.
 
 ### Deliverable
 
@@ -188,9 +203,9 @@ Approved source ka full meaning preserve rahega. Summary banate waqt original ru
 
 ## 6. Phase 2 — Traceability matrix
 
-Har requirement ko implementation surface se map karo:
+Har requirement ko implementation surface se map karo. Is phase mein Phase 1 ke compact fields ko mandatory traceable fields mein expand karo. Readability ke liye fields ko normalized grouped columns/policy references mein present kiya ja sakta hai; 16 physical visual columns mandatory nahi hain, lekin har field ka value ya explicit `TBD/NEEDS_DECISION` per requirement traceable hona chahiye:
 
-| Requirement | Source | DB support | NestJS use case/API | Outbox event | Dispatcher route | FastAPI/consumer | Auth/RLS | Tests | Status |
+| Requirement | Flow + business rule | Source | DB/API/transaction/event/consumer mapping | Security + idempotency + rate/audit controls | Acceptance criteria/tests | Status |
 |---|---|---|---|---|---|---|---|---|---|
 
 Matrix mein ye gaps explicitly mark karo:

@@ -8,8 +8,12 @@
 api/     → OpenAPI और request/response schemas
 events/  → outbox event names और versioned payload schemas
 tasks/   → Google Cloud Tasks HTTP payload/auth/response contracts
+schemas/ → Reusable result/metadata schemas (new schemas use Draft 2020-12)
 ```
 
 जहाँ practical हो JSON Schema/OpenAPI machine-readable source होगा। Breaking change
 के लिए नया contract version आवश्यक होगा। Actual files component migration के समय
 बनेंगी।
+
+Security-scan contracts use document identity only. Storage URLs, signed URLs,
+credentials, tokens और raw resume content shared task payload में नहीं जाते।

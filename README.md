@@ -279,6 +279,8 @@ Binay-Job-Portal-App/
 🏗️ **NESTJS API**
 - [API README](04-nestjs-api/README.md)
 - [Implementation Guide](04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md)
+- [Phase 09 coding start gate](04-nestjs-api/PHASE-09-CODING-START-GATE.md)
+- [Phase 09 foundation slice scope](04-nestjs-api/PHASE-09-FOUNDATION-SLICE-SCOPE.md)
 
 ⚡ **OUTBOX DISPATCHER (05-outbox-dispatcher-nestjs)**
 - [Dispatcher README](05-outbox-dispatcher-nestjs/README.md)

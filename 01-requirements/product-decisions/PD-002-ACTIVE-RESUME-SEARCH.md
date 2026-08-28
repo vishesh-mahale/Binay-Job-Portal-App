@@ -22,6 +22,42 @@ Resume canonical tables silently overwrite नहीं करेगी।
 
 ## Candidate choice
 
+## Profile resume library limit and removal policy
+
+The candidate's **profile-resume library has a maximum of 10 active library resumes**.
+This limit applies only to resumes currently visible/manageable in the candidate's
+profile library. Application-only documents and archived historical documents are
+not counted in this limit.
+
+When a candidate removes a resume from the library:
+
+- the resume is hidden/archived from the profile library;
+- it is no longer selectable as an active profile resume;
+- if it has never been used by an application, it may enter the normal retention
+  cleanup flow;
+- if it is linked to an application or immutable snapshot, the document, storage
+  object and historical links are preserved;
+- application history and submitted snapshots are never deleted through the
+  candidate-facing library action.
+
+Therefore, “remove from library” is a soft archive operation, not an immediate
+physical deletion. A later audited retention process may permanently purge files
+only after all legal, audit and application-retention references are clear.
+
+If the library already contains 10 resumes, the candidate must archive/remove an
+existing library item before adding another profile-library resume. A new
+application-specific tailored resume remains allowed separately, subject to file
+size, upload-rate and storage-abuse limits.
+
+### Application-only resume promotion
+
+An application-specific resume **cannot be promoted directly** into the
+candidate's profile-resume library. It remains limited to the related application
+and its immutable historical snapshot. If the candidate wants to use that content
+as a profile resume, they must upload it again through the normal profile-resume
+flow and explicitly select it for the library/active-profile role. This prevents
+an application submission from silently changing recruiter-search visibility.
+
 Upload के समय candidate “Use as active profile resume” select कर सके:
 
 - selected: current profile resume version बने, parse के बाद global recruiter-search

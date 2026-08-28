@@ -51,3 +51,11 @@ class JobScreeningQuestionsTaskPayload(BaseModel):
     event_id: str
     aggregate_id: str
     trace_id: str | None = None
+
+
+class SecurityScanTaskPayload(BaseModel):
+    """Cloud Task payload for uploaded-document security scanning."""
+    schema_version: int = Field(1, ge=1)
+    event_id: str
+    aggregate_id: str
+    trace_id: str

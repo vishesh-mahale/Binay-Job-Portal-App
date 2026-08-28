@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/events/candidate-resume-parsed.v1.json",
+  "title": "Candidate Resume Parsed Event V1",
+  "description": "Event emitted by the worker after a candidate resume parse completes successfully.",
+  "type": "object",
+  "required": ["schema_version", "event_id", "aggregate_type", "aggregate_id", "event_type", "payload", "occurred_at"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "aggregate_type": { "type": "string", "const": "candidate" },
+    "aggregate_id": { "type": "string", "format": "uuid" },
+    "event_type": { "type": "string", "const": "candidate.resume.parsed" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "payload": {
+      "type": "object",
+      "required": ["candidate_id", "reason", "trace_id"],
+      "properties": {
+        "candidate_id": { "type": "string", "format": "uuid" },
+        "reason": { "type": "string", "const": "active_resume_parsed" },
+        "trace_id": { "type": "string", "format": "uuid" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
