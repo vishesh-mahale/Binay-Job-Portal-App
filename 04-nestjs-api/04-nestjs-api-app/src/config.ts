@@ -22,6 +22,14 @@ export const envSchema = z.object({
   OAUTH_FRONTEND_ERROR_URL: z.string().url().optional(),
   OAUTH_STATE_SECRET: z.string().min(32).optional(),
   OAUTH_STATE_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
+}).superRefine((data, ctx) => {
+  if ((data.NODE_ENV === 'preprod' || data.NODE_ENV === 'production') && !data.SUPABASE_JWT_ISSUER) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'SUPABASE_JWT_ISSUER is required in preprod and production', path: ['SUPABASE_JWT_ISSUER'] });
+  }
+  if ((data.NODE_ENV === 'preprod' || data.NODE_ENV === 'production') && !data.SUPABASE_JWT_AUDIENCE) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'SUPABASE_JWT_AUDIENCE is required in preprod and production', path: ['SUPABASE_JWT_AUDIENCE'] });
+  }
 });
 export type AppConfig = z.infer<typeof envSchema>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig { return envSchema.parse(env); }
+

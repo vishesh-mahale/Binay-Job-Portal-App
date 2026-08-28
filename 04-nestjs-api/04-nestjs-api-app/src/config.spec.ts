@@ -16,3 +16,9 @@ test('rejects a weak OAuth state secret when configured', () => {
 test('accepts validated OAuth URLs and TTL', () => {
   expect(loadConfig({ ...baseEnv, OAUTH_CALLBACK_URL: 'https://api.example.com/api/v1/auth/oauth/callback', OAUTH_FRONTEND_SUCCESS_URL: 'https://app.example.com/dashboard', OAUTH_FRONTEND_ERROR_URL: 'https://app.example.com/auth/error', OAUTH_STATE_SECRET: '12345678901234567890123456789012', OAUTH_STATE_TTL_SECONDS: '900' })).toMatchObject({ OAUTH_STATE_TTL_SECONDS: 900 });
 });
+test('enforces mandatory issuer and audience in preprod and production environments', () => {
+  expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production' })).toThrow();
+  expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'preprod' })).toThrow();
+  expect(loadConfig({ ...baseEnv, NODE_ENV: 'production', SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated' })).toMatchObject({ SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated' });
+});
+
