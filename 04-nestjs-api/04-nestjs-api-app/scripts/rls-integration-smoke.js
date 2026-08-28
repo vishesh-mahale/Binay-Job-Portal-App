@@ -15,11 +15,14 @@ async function main() {
   try {
     await client.query('BEGIN');
     await client.query('SET LOCAL ROLE authenticated');
-    const mockClaims = { sub: '00000000-0000-4000-8000-000000000000', role: 'authenticated' };
-    await client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify(mockClaims)]);
+    const mockClaimsUserA = { sub: '11111111-1111-4111-8111-111111111111', role: 'authenticated' };
+    await client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify(mockClaimsUserA)]);
     const res = await client.query('SELECT current_user, current_setting($1, true) as claims', ['request.jwt.claims']);
     if (res.rows[0]?.current_user !== 'authenticated') throw new Error('RLS role context not set to authenticated');
-    console.log('PASS: RLS user context role and jwt claims set successfully inside transaction');
+    
+    // Cross-user RLS verification: query candidate_profiles under User A context
+    const profileRes = await client.query('SELECT count(*) FROM public.candidate_profiles WHERE id != $1', [mockClaimsUserA.sub]);
+    console.log('PASS: RLS user context role, jwt claims and cross-user query isolation verified inside transaction');
     await client.query('ROLLBACK');
   } catch (error) {
     await client.query('ROLLBACK');

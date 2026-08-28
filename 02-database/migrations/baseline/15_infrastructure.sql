@@ -391,30 +391,34 @@ AS $$
 DECLARE
     v_job RECORD;
     v_expired INTEGER := 0;
+    v_batch_count INTEGER := 0;
     v_key TEXT;
     v_now TIMESTAMPTZ := clock_timestamp();
 BEGIN
-    FOR v_job IN
-        SELECT j.id, j.company_id, j.created_by, j.status, j.expires_at
-        FROM public.jobs j
-        WHERE j.status IN ('published', 'paused')
-          AND j.expires_at IS NOT NULL
-          AND j.expires_at <= v_now
-          AND j.deleted_at IS NULL
-        ORDER BY j.id
-        LIMIT 100
-        FOR UPDATE SKIP LOCKED
     LOOP
-        UPDATE public.jobs
-           SET status = 'expired', updated_at = NOW()
-         WHERE id = v_job.id
-           AND status IN ('published', 'paused')
-           AND expires_at IS NOT NULL
-           AND expires_at <= v_now
-           AND deleted_at IS NULL;
+        v_batch_count := 0;
+        FOR v_job IN
+            SELECT j.id, j.company_id, j.created_by, j.status, j.expires_at
+            FROM public.jobs j
+            WHERE j.status IN ('published', 'paused')
+              AND j.expires_at IS NOT NULL
+              AND j.expires_at <= v_now
+              AND j.deleted_at IS NULL
+            ORDER BY j.id
+            LIMIT 100
+            FOR UPDATE SKIP LOCKED
+        LOOP
+            UPDATE public.jobs
+               SET status = 'expired', updated_at = NOW()
+             WHERE id = v_job.id
+               AND status IN ('published', 'paused')
+               AND expires_at IS NOT NULL
+               AND expires_at <= v_now
+               AND deleted_at IS NULL;
 
-        IF FOUND THEN
-            v_expired := v_expired + 1;
+            IF FOUND THEN
+                v_expired := v_expired + 1;
+                v_batch_count := v_batch_count + 1;
 
             INSERT INTO public.audit_logs (
                 company_id, actor_service, action, entity_type, entity_id,
@@ -464,7 +468,9 @@ BEGIN
             END IF;
         END IF;
     END LOOP;
-    RETURN v_expired;
+    EXIT WHEN v_batch_count < 100;
+END LOOP;
+RETURN v_expired;
 END;
 $$;
 

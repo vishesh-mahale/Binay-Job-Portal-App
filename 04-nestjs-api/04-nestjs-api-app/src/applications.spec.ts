@@ -35,3 +35,17 @@ describe('ApplicationService', () => {
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('application.submitted'), expect.any(Array));
   });
 });
+
+describe('CompanyApplicationReadController', () => {
+  it('includes guest applications in company application read list query', async () => {
+    const { CompanyApplicationReadController } = require('./applications');
+    const system = { query: jest.fn().mockResolvedValue({ rows: [{ application_id: UUID, is_guest: true }] }) } as any;
+    const controller = new CompanyApplicationReadController(system);
+    const req = { user: { sub: UUID } } as any;
+    const res = await controller.list(req, '44444444-4444-4444-8444-444444444444');
+    expect(res).toHaveLength(1);
+    expect(res[0].is_guest).toBe(true);
+    expect(system.query).toHaveBeenCalledWith(expect.not.stringContaining('is_guest = FALSE'), expect.any(Array));
+  });
+});
+

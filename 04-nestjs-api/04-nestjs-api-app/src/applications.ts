@@ -213,14 +213,14 @@ export class CompanyApplicationReadController {
   async list(@Req() req: AuthRequest, @Param('companyId') companyId: string) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     const result = await this.system.query(`
-      SELECT a.id AS application_id, a.job_id, a.candidate_id, a.status, a.applied_at,
+      SELECT a.id AS application_id, a.job_id, a.candidate_id, a.status, a.is_guest, a.applied_at,
              j.title AS job_title, s.id AS snapshot_id, s.source_profile_revision,
              s.snapshot_version, s.schema_version, s.generated_by, s.generated_at
       FROM public.job_applications a
       JOIN public.jobs j ON j.id = a.job_id AND j.company_id = $1
       JOIN public.users u ON u.id = $2 AND u.status = 'active' AND u.deleted_at IS NULL
       LEFT JOIN public.application_profile_snapshots s ON s.application_id = a.id AND s.snapshot_type = 'submitted'
-      WHERE a.is_guest = FALSE AND a.deleted_at IS NULL
+      WHERE a.deleted_at IS NULL
         AND (u.role = 'admin' OR EXISTS (SELECT 1 FROM public.companies c WHERE c.id = $1 AND c.owner_id = $2 AND c.deleted_at IS NULL)
           OR EXISTS (SELECT 1 FROM public.company_members cm WHERE cm.company_id = $1 AND cm.user_id = $2 AND cm.is_active = TRUE AND cm.left_at IS NULL))
       ORDER BY a.applied_at DESC, a.id DESC LIMIT 100
@@ -232,13 +232,13 @@ export class CompanyApplicationReadController {
   async detail(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('applicationId') applicationId: string) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     const result = await this.system.query(`
-      SELECT a.id AS application_id, a.job_id, a.candidate_id, a.status, a.applied_at,
+      SELECT a.id AS application_id, a.job_id, a.candidate_id, a.status, a.is_guest, a.applied_at,
              j.title AS job_title, s.id AS snapshot_id, s.source_profile_revision, s.snapshot_version, s.schema_version, s.generated_by, s.generated_at
       FROM public.job_applications a
       JOIN public.jobs j ON j.id = a.job_id AND j.company_id = $1
       JOIN public.users u ON u.id = $2 AND u.status = 'active' AND u.deleted_at IS NULL
       LEFT JOIN public.application_profile_snapshots s ON s.application_id = a.id AND s.snapshot_type = 'submitted'
-      WHERE a.id = $3 AND a.is_guest = FALSE AND a.deleted_at IS NULL
+      WHERE a.id = $3 AND a.deleted_at IS NULL
         AND (u.role = 'admin' OR EXISTS (SELECT 1 FROM public.companies c WHERE c.id = $1 AND c.owner_id = $2 AND c.deleted_at IS NULL)
           OR EXISTS (SELECT 1 FROM public.company_members cm WHERE cm.company_id = $1 AND cm.user_id = $2 AND cm.is_active = TRUE AND cm.left_at IS NULL))
     `, [companyId, req.user.sub, applicationId]);

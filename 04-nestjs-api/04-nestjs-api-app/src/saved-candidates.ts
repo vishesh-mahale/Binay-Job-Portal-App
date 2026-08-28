@@ -32,7 +32,7 @@ export class SavedCandidateService {
       const result = await client.query(`
         INSERT INTO public.saved_candidates (recruiter_user_id, company_id, candidate_id, private_note)
         VALUES ($1,$2,$3,$4)
-        ON CONFLICT (recruiter_user_id, candidate_id) DO UPDATE SET private_note = EXCLUDED.private_note, updated_at = NOW()
+        ON CONFLICT (recruiter_user_id, candidate_id) DO UPDATE SET company_id = EXCLUDED.company_id, private_note = EXCLUDED.private_note, updated_at = NOW()
         RETURNING id, recruiter_user_id, company_id, candidate_id, private_note, created_at, updated_at
       `, [userId, companyId, candidateId, note?.trim() || null]);
       return result.rows[0];
