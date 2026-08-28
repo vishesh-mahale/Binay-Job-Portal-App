@@ -72,6 +72,7 @@ describe('ResumeService confirmation guards', () => {
       .mockResolvedValueOnce({ rows: [{ id: 'document-1', security_scan_status: 'pending', processing_status: 'uploaded' }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ version: 1 }] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
     const storage = { put: jest.fn().mockResolvedValue(undefined), remove: jest.fn() };
     const transaction = jest.fn(async (work: any) => work({ query: clientQuery }));
@@ -84,7 +85,7 @@ describe('ResumeService confirmation guards', () => {
       await expect(service.upload({ user: { sub: 'user-1' } } as any, {
         originalname: 'resume.pdf', mimetype: 'application/pdf', buffer: Buffer.from('%PDF-1.7'),
       }, false)).resolves.toEqual(expect.objectContaining({ document_id: 'document-1', stage: 'UPLOADED', reused: false }));
-      const eventCall = clientQuery.mock.calls[3];
+      const eventCall = clientQuery.mock.calls[4];
       expect(eventCall[0]).toContain("'security.scan.requested'");
       expect(eventCall[1][1]).toBe('document-1');
       const serializedPayload = String(eventCall[1][2]);
