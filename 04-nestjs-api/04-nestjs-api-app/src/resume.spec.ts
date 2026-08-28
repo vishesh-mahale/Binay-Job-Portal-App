@@ -63,6 +63,40 @@ describe('ResumeService confirmation guards', () => {
     }
   });
 
+  it('creates the approved security-scan outbox event without embedding file content', async () => {
+    const query = jest.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'candidate-1' }] })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] });
+    const clientQuery = jest.fn()
+      .mockResolvedValueOnce({ rows: [{ id: 'document-1', security_scan_status: 'pending', processing_status: 'uploaded' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ version: 1 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const storage = { put: jest.fn().mockResolvedValue(undefined), remove: jest.fn() };
+    const transaction = jest.fn(async (work: any) => work({ query: clientQuery }));
+    const service = new ResumeService({ query, transaction } as any, storage as any);
+    const previousLimit = process.env.RESUME_MAX_BYTES;
+    const previousBucket = process.env.RESUME_STORAGE_BUCKET;
+    process.env.RESUME_MAX_BYTES = '1024';
+    process.env.RESUME_STORAGE_BUCKET = 'private-documents';
+    try {
+      await expect(service.upload({ user: { sub: 'user-1' } } as any, {
+        originalname: 'resume.pdf', mimetype: 'application/pdf', buffer: Buffer.from('%PDF-1.7'),
+      }, false)).resolves.toEqual(expect.objectContaining({ document_id: 'document-1', stage: 'UPLOADED', reused: false }));
+      const eventCall = clientQuery.mock.calls[3];
+      expect(eventCall[0]).toContain("'security.scan.requested'");
+      expect(eventCall[1][1]).toBe('document-1');
+      const serializedPayload = String(eventCall[1][2]);
+      expect(serializedPayload).toContain('security.scan.requested');
+      expect(serializedPayload).not.toContain('%PDF-1.7');
+      expect(serializedPayload).not.toContain('private-documents');
+    } finally {
+      process.env.RESUME_MAX_BYTES = previousLimit;
+      process.env.RESUME_STORAGE_BUCKET = previousBucket;
+    }
+  });
+
   it.each([
     ['pending', 'SCAN_PENDING'],
     ['scanning', 'SCAN_PENDING'],
