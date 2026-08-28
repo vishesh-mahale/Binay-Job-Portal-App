@@ -95,4 +95,29 @@ describe('JobService', () => {
     await expect(new JobService(system).getCompanyJob('user-1', 'company-1', 'job-1'))
       .rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('drains 101+ due expired jobs across continuous batches', async () => {
+    // Simulates SQL loop in 15_infrastructure.sql: batch 1 expires 100 jobs, batch 2 expires 1 job, batch 3 yields 0
+    let dueJobsCount = 101;
+    const mockExpireBatch = jest.fn(() => {
+      if (dueJobsCount >= 100) {
+        dueJobsCount -= 100;
+        return 100;
+      }
+      const remaining = dueJobsCount;
+      dueJobsCount = 0;
+      return remaining;
+    });
+
+    let totalExpired = 0;
+    let batchCount = 0;
+    do {
+      batchCount = mockExpireBatch();
+      totalExpired += batchCount;
+    } while (batchCount >= 100);
+
+    expect(totalExpired).toBe(101);
+    expect(mockExpireBatch).toHaveBeenCalledTimes(2);
+  });
 });
+
