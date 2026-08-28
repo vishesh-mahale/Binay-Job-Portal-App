@@ -213,7 +213,7 @@ export class CompanyApplicationReadController {
   async list(@Req() req: AuthRequest, @Param('companyId') companyId: string) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     const result = await this.system.query(`
-      SELECT a.id AS application_id, a.job_id, a.candidate_id, a.status, a.is_guest, a.applied_at,
+      SELECT a.id AS application_id, a.job_id, CASE WHEN a.is_guest THEN NULL ELSE a.candidate_id END AS candidate_id, a.status, a.is_guest, a.applied_at,
              j.title AS job_title, s.id AS snapshot_id, s.source_profile_revision,
              s.snapshot_version, s.schema_version, s.generated_by, s.generated_at
       FROM public.job_applications a
@@ -232,7 +232,7 @@ export class CompanyApplicationReadController {
   async detail(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('applicationId') applicationId: string) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     const result = await this.system.query(`
-      SELECT a.id AS application_id, a.job_id, a.candidate_id, a.status, a.is_guest, a.applied_at,
+      SELECT a.id AS application_id, a.job_id, CASE WHEN a.is_guest THEN NULL ELSE a.candidate_id END AS candidate_id, a.status, a.is_guest, a.applied_at,
              j.title AS job_title, s.id AS snapshot_id, s.source_profile_revision, s.snapshot_version, s.schema_version, s.generated_by, s.generated_at
       FROM public.job_applications a
       JOIN public.jobs j ON j.id = a.job_id AND j.company_id = $1

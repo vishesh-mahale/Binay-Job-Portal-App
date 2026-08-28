@@ -9,14 +9,14 @@ describe('SavedCandidateService', () => {
     const system = { transaction: jest.fn() } as any;
     await expect(new SavedCandidateService(system).save('bad', USER, CANDIDATE)).rejects.toThrow('VALIDATION_ERROR');
   });
-  it('saves an open-to-work candidate and updates company_id on conflict', async () => {
+  it('saves an open-to-work candidate and preserves company tenant boundary on conflict', async () => {
     const client = { query: jest.fn()
       .mockResolvedValueOnce({ rows: [{ ok: 1 }] })
       .mockResolvedValueOnce({ rows: [{ id: CANDIDATE }] })
       .mockResolvedValueOnce({ rows: [{ id: '44444444-4444-4444-8444-444444444444', company_id: COMPANY, candidate_id: CANDIDATE }] }) };
     const service = new SavedCandidateService({ transaction: (fn: any) => fn(client) } as any);
     await expect(service.save(COMPANY, USER, CANDIDATE)).resolves.toMatchObject({ candidate_id: CANDIDATE });
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT (recruiter_user_id, candidate_id) DO UPDATE SET company_id = EXCLUDED.company_id'), expect.any(Array));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT (recruiter_user_id, candidate_id) DO UPDATE SET private_note'), expect.any(Array));
   });
   it('lists only the current recruiter company scope', async () => {
     const client = { query: jest.fn().mockResolvedValueOnce({ rows: [{ ok: 1 }] }).mockResolvedValueOnce({ rows: [{ candidate_id: CANDIDATE }] }) };

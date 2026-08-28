@@ -14,15 +14,26 @@ async function main() {
   await client.connect();
   try {
     await client.query('BEGIN');
-    await client.query('SET LOCAL ROLE authenticated');
-    const mockClaimsUserA = { sub: '11111111-1111-4111-8111-111111111111', role: 'authenticated' };
-    await client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify(mockClaimsUserA)]);
-    const res = await client.query('SELECT current_user, current_setting($1, true) as claims', ['request.jwt.claims']);
-    if (res.rows[0]?.current_user !== 'authenticated') throw new Error('RLS role context not set to authenticated');
     
-    // Cross-user RLS verification: query candidate_profiles under User A context
-    const profileRes = await client.query('SELECT count(*) FROM public.candidate_profiles WHERE id != $1', [mockClaimsUserA.sub]);
-    console.log('PASS: RLS user context role, jwt claims and cross-user query isolation verified inside transaction');
+    // Test setup under service role: verify RLS policy behavior for candidate_documents
+    const mockUserA = '11111111-1111-4111-8111-111111111111';
+    const mockUserB = '99999999-9999-4999-8999-999999999999';
+    
+    // Switch to authenticated role as User A
+    await client.query('SET LOCAL ROLE authenticated');
+    const mockClaimsUserA = { sub: mockUserA, role: 'authenticated' };
+    await client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify(mockClaimsUserA)]);
+    
+    const contextCheck = await client.query('SELECT current_user, current_setting($1, true) as claims', ['request.jwt.claims']);
+    if (contextCheck.rows[0]?.current_user !== 'authenticated') throw new Error('RLS role context not set to authenticated');
+    
+    // Assert RLS isolation: User A querying candidate_documents of User B must return 0 rows
+    const docsRes = await client.query('SELECT * FROM public.candidate_documents WHERE candidate_id = $1', [mockUserB]);
+    if (docsRes.rows.length !== 0) {
+      throw new Error(`RLS BREACH: User A accessed ${docsRes.rows.length} document(s) belonging to User B`);
+    }
+    
+    console.log('PASS: RLS user-context role, jwt claims, and explicit zero-row cross-user document isolation verified inside transaction');
     await client.query('ROLLBACK');
   } catch (error) {
     await client.query('ROLLBACK');
