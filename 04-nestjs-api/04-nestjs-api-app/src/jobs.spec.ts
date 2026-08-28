@@ -67,6 +67,8 @@ describe('JobService', () => {
     const result = await new JobService(system).publish('user-1', 'company-1', 'job-1');
     expect(result.status).toBe('published');
     expect(client.query.mock.calls[1][0]).toContain('job_approval_required');
+    expect(client.query.mock.calls[1][0]).toContain('COALESCE(cs.job_approval_required, FALSE)');
+    expect(client.query.mock.calls[1][0]).toContain("'pending_approval'::job_status");
   });
 
   it('updates only draft fields and writes an audit record atomically', async () => {

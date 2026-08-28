@@ -84,6 +84,8 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 - [ ] Job create/update, approval, publish, pause, resume, close aur archive ke full transition tests.
 - [x] Approval policy freeze: `company_settings.job_approval_required` ka default `false` (direct publish) rahega; company owner/admin (authorized employer-side actor) ise `true` karke approval required kar sakta hai. Existing submitted jobs ka current workflow change nahi hoga.
+- [ ] Approval-setting mutation API implement/freeze karna: owner/admin ke liye authorized company-scoped settings update path; exact route/DTO abhi API catalog me TBD hai, isliye route invent nahi karna.
+- [ ] Production rollout ke liye forward migration/backfill policy decide karna; baseline default change pre-prod rebuild ke liye hai, existing deployed company rows automatically change nahi hongi.
 - [ ] `daily_job_expiry_sweep` / `expire_due_jobs()` ka schedule, timezone aur notification behavior verify karna.
 - [ ] Expired job candidate search se hide ho, lekin existing applications me safe visibility rahe.
 - [ ] Public job search aur recruiter candidate search ke exact routes/DTOs freeze karna.

@@ -55,6 +55,11 @@ publish; `true` means approval required. The company owner/admin (authorized emp
 change this setting. Already submitted jobs keep their current workflow; the setting applies to future
 publish submissions. Rejected edits require resubmission/approval.
 
+The setting mutation endpoint and DTO remain a separate Company API contract gate; no route is
+invented here until that API catalog entry is approved. For already deployed databases, changing the
+baseline default does not rewrite existing `company_settings` rows; production rollout requires an
+explicit reviewed forward migration/backfill decision.
+
 The archived `auto_approve_jobs` JSON example is documentation only; implementation must use the
 real `company_settings.job_approval_required` column.
 
