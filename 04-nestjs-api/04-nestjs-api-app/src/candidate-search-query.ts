@@ -19,7 +19,7 @@ export function buildRecruiterCandidateSearch(companyId: string, recruiterUserId
     text: `SELECT csp.candidate_id, csp.professional_title, csp.skill_names, csp.locations,
                   csp.total_experience_years, csp.highest_education_level,
                   CASE WHEN csp.projection_revision < cp.profile_revision THEN 'stale' ELSE 'current' END AS projection_freshness,
-                  ts_rank_cd(csp.search_vector, websearch_to_tsquery('english', $2)) AS score
+                  ts_rank_cd(csp.search_vector, websearch_to_tsquery('english', $3)) AS score
            FROM public.company_members cm
            JOIN public.candidate_profiles cp ON TRUE
            JOIN public.candidate_search_profiles csp ON csp.candidate_id = cp.id

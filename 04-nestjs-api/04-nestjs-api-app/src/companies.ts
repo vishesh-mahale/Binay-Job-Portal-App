@@ -33,7 +33,7 @@ export class CompanyService {
     await this.assertEmployer(userId);
     if (!dto.name?.trim() || !dto.slug?.trim() || (!dto.email && !dto.phone)) throw new BadRequestException('VALIDATION_ERROR');
     return this.system.transaction(async (client) => {
-      const c = await client.query(`INSERT INTO public.companies (name,slug,legal_name,description,short_description,industry,company_size,website,linkedin_url,twitter_url,facebook_url,youtube_url,logo_path,cover_image_path,brand_color,email,phone,address_line1,address_line2,city,state,country,postal_code,latitude,longitude,owner_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING *`, [dto.name.trim(),dto.slug.trim().toLowerCase(),dto.legal_name,dto.description,dto.short_description,dto.industry,dto.company_size,dto.website,dto.linkedin_url,dto.twitter_url,dto.facebook_url,dto.youtube_url,dto.logo_path,dto.cover_image_path,dto.brand_color,dto.email,dto.phone,dto.address_line1,dto.address_line2,dto.city,dto.state,dto.country,dto.postal_code,dto.latitude,dto.longitude,userId]);
+      const c = await client.query(`INSERT INTO public.companies (name,slug,legal_name,description,short_description,industry,company_size,website,linkedin_url,twitter_url,facebook_url,youtube_url,logo_path,cover_image_path,brand_color,email,phone,address_line1,address_line2,city,state,country,postal_code,latitude,longitude,owner_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING ${COMPANY_RESPONSE_FIELDS}`, [dto.name.trim(),dto.slug.trim().toLowerCase(),dto.legal_name,dto.description,dto.short_description,dto.industry,dto.company_size,dto.website,dto.linkedin_url,dto.twitter_url,dto.facebook_url,dto.youtube_url,dto.logo_path,dto.cover_image_path,dto.brand_color,dto.email,dto.phone,dto.address_line1,dto.address_line2,dto.city,dto.state,dto.country,dto.postal_code,dto.latitude,dto.longitude,userId]);
       const company = c.rows[0];
       // Owner membership is created for tenant consistency; HR privilege is not inferred.
       await client.query(`INSERT INTO public.company_members (company_id,user_id,is_active,joined_at) VALUES ($1,$2,true,NOW())`, [company.id,userId]);
@@ -48,7 +48,8 @@ export class CompanyService {
   }
   async update(userId: string, companyId: string, dto: UpdateCompanyDto) {
     const current = await this.get(userId, companyId);
-    if (current.owner_id !== userId) throw new ForbiddenException('FORBIDDEN');
+    const ownerCheck = await this.system.query<{ owner_id: string }>('SELECT owner_id FROM public.companies WHERE id = $1 AND deleted_at IS NULL', [companyId]);
+    if (!ownerCheck.rows[0] || ownerCheck.rows[0].owner_id !== userId) throw new ForbiddenException('FORBIDDEN');
     const entries = Object.entries(dto).filter(([k,v]) => (COMPANY_FIELDS as readonly string[]).includes(k) && v !== undefined);
     if (!entries.length) return current;
     const sets = entries.map(([k],i) => `${k}=$${i+1}`).join(', ');
@@ -56,6 +57,7 @@ export class CompanyService {
     const r = await this.system.query(`UPDATE public.companies SET ${sets} WHERE id=$${values.length} AND deleted_at IS NULL RETURNING ${COMPANY_RESPONSE_FIELDS}`, values);
     return r.rows[0];
   }
+
 }
 
 @Controller('api/v1/companies')
