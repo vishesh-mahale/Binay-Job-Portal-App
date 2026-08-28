@@ -51,4 +51,24 @@ describe('CandidateService', () => {
     const service = new CandidateService({} as any, { query: jest.fn().mockResolvedValue({ rows: [{ security_scan_status: 'infected' }] }) } as any);
     await expect(service.getParsedData({ user: { sub: 'user-1' } } as any, '00000000-0000-4000-8000-000000000001')).rejects.toThrow('NOT_FOUND');
   });
+
+  it.each([
+    ['pending', 'uploaded', 'UPLOADED', false],
+    ['scanning', 'uploaded', 'SECURITY_SCANNING', false],
+    ['clean', 'queued', 'PARSING_QUEUED', false],
+    ['clean', 'processing', 'PARSING_IN_PROGRESS', false],
+    ['clean', 'completed', 'REVIEW_READY', false],
+    ['clean', 'partial', 'REVIEW_READY_PARTIAL', false],
+    ['failed', 'failed', 'SECURITY_RETRYABLE_FAILURE', true],
+    ['clean', 'failed', 'PARSING_FAILED', true],
+    ['infected', 'failed', 'SECURITY_REJECTED', false],
+  ])('maps scan/processing state %s/%s to the UI-safe stage', async (scan, processing, stage, retryable) => {
+    const query = jest.fn().mockResolvedValue({ rows: [{
+      document_id: '00000000-0000-4000-8000-000000000001', security_scan_status: scan, processing_status: processing,
+      uploaded_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', parsing_job_id: null,
+      started_at: null, completed_at: null, failed_at: null,
+    }] });
+    const service = new CandidateService({} as any, { query } as any);
+    await expect(service.getResumeStatus({ user: { sub: 'user-1' } } as any, '00000000-0000-4000-8000-000000000001')).resolves.toEqual(expect.objectContaining({ stage, retryable }));
+  });
 });
