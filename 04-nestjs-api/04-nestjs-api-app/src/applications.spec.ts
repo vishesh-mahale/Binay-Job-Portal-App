@@ -34,6 +34,20 @@ describe('ApplicationService', () => {
     expect(result.snapshot_summary.profile_revision).toBe(4);
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('application.submitted'), expect.any(Array));
   });
+
+  it('requires a reason when an application is rejected', async () => {
+    const system = { transaction: jest.fn() } as any;
+    await expect(new ApplicationService(system).changeStatus(UUID, UUID, UUID, { status: 'rejected' })).rejects.toThrow('VALIDATION_ERROR');
+    expect(system.transaction).not.toHaveBeenCalled();
+  });
+
+  it('maps the database transition guard to a stable API error', async () => {
+    const client = { query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID }] })
+      .mockRejectedValueOnce(new Error('invalid application status transition')) };
+    const system = { transaction: jest.fn((fn: any) => fn(client)) } as any;
+    await expect(new ApplicationService(system).changeStatus(UUID, UUID, UUID, { status: 'selected' })).rejects.toThrow('INVALID_STATUS_TRANSITION');
+  });
 });
 
 describe('CompanyApplicationReadController', () => {
@@ -48,4 +62,3 @@ describe('CompanyApplicationReadController', () => {
     expect(system.query).toHaveBeenCalledWith(expect.not.stringContaining('is_guest = FALSE'), expect.any(Array));
   });
 });
-
