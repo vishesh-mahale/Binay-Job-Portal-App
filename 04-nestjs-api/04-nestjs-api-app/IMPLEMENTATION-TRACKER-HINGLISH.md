@@ -50,6 +50,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [ ] Branch, department aur team create/update/deactivate test.
 - [ ] Member invite, accept, leave, rejoin aur deactivate test.
 - [ ] Ownership transfer aur owner/member safety-guard test.
+- [x] Rollback-safe PostgreSQL company/member hierarchy, tenant-FK aur ownership invariant smoke test (`scripts/identity-company-integration-smoke.js`).
 - [ ] Cross-company read/write negative tests; sensitive fields response me leak na hon.
 - [ ] HR permission-key mapping ko approved API catalog ke saath freeze karna.
 - [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
