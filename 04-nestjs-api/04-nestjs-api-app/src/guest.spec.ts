@@ -45,4 +45,41 @@ describe('GuestSessionService security boundaries', () => {
     expect(result).toEqual(expect.objectContaining({ stage: 'SECURITY_SCANNING', retryable: false }));
     expect(query.mock.calls[0][1][1]).not.toBe('guest-token');
   });
+
+  it('removes the uploaded object when the guest upload quota is exceeded', async () => {
+    const query = jest.fn().mockResolvedValueOnce({ rows: [{
+      id: 'session-1', job_id: '00000000-0000-4000-8000-000000000001', status: 'active',
+      expires_at: '2099-08-29T12:00:00Z', uploaded_count: 1, uploaded_bytes: 100,
+    }] });
+    const clientQuery = jest.fn().mockResolvedValueOnce({ rows: [{ max_upload_count: 1, max_total_bytes: 1024, uploaded_count: 1, uploaded_bytes: 100 }] });
+    const storage = { put: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
+    const service = new GuestSessionService({ query, transaction: jest.fn(async (work: any) => work({ query: clientQuery })) } as any, storage as any);
+    const previousLimit = process.env.RESUME_MAX_BYTES;
+    const previousBucket = process.env.RESUME_STORAGE_BUCKET;
+    process.env.RESUME_MAX_BYTES = '1024';
+    process.env.RESUME_STORAGE_BUCKET = 'private-documents';
+    try {
+      await expect(service.uploadResume('session-1', 'guest-token', {
+        originalname: 'resume.pdf', mimetype: 'application/pdf', buffer: Buffer.from('%PDF-1.7'),
+      })).rejects.toThrow('UPLOAD_LIMIT_REACHED');
+      expect(storage.put).toHaveBeenCalledTimes(1);
+      expect(storage.remove).toHaveBeenCalledTimes(1);
+    } finally {
+      process.env.RESUME_MAX_BYTES = previousLimit;
+      process.env.RESUME_STORAGE_BUCKET = previousBucket;
+    }
+  });
+
+  it('blocks guest application submission until the document scan is clean', async () => {
+    const query = jest.fn()
+      .mockResolvedValueOnce({ rows: [{ id: 'session-1', job_id: 'job-1' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'job-1', company_id: 'company-1' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'document-1', security_scan_status: 'pending' }] });
+    const service = new GuestSessionService({ transaction: jest.fn(async (work: any) => work({ query })) } as any, {} as any);
+    await expect(service.apply({
+      job_id: 'job-1', session_id: 'session-1', document_id: 'document-1', token: 'guest-token',
+      name: 'Candidate', email: 'candidate@example.com',
+    })).rejects.toThrow('SCAN_PENDING');
+    expect(query).toHaveBeenCalledTimes(3);
+  });
 });
