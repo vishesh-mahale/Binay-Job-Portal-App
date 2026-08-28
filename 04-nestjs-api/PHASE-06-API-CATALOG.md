@@ -320,6 +320,26 @@ existing row; an owner/admin calls
 `POST /api/v1/companies/:companyId/members/:memberId/approve-rejoin` to reactivate it.
 The request state is provided by the `company_members` columns defined in baseline `04_companies.sql`.
 
+### API-COMPANY-004 — Company job-approval settings
+
+```text
+Requirement IDs: REQ-COMPANY-001, REQ-COMPANY-004, REQ-JOB-001
+Method/path: GET|PATCH /api/v1/companies/:companyId/settings
+Actor: authenticated company member (read); company owner or platform admin (update)
+Permission: active same-company membership for reads; owner/admin governance permission for update
+Request/validation: PATCH accepts required boolean job_approval_required only
+Response: safe company_settings projection; custom_config and timestamps included, no secrets
+Reads: companies, company_members, users, company_settings
+Writes: company_settings and audit_logs atomically for effective changes
+Transaction: row lock + update + audit insert in one transaction
+Outbox/consumer: none
+Idempotency: same-value PATCH is a no-op
+Rate limit: environment-configured company-admin limit
+Audit/security: company.settings_updated; cross-company access fails closed
+Errors: VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, RATE_LIMITED
+Acceptance: default false means direct publish; true means approval workflow; existing jobs unchanged
+```
+
 ## 3C. Candidate profile catalog
 
 ### API-CANDIDATE-001 — Read own canonical profile
