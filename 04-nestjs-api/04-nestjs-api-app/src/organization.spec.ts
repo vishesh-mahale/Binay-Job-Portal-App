@@ -86,3 +86,15 @@ test.each([
   await expect(invoke(new OrganizationService(db))).rejects.toThrow('VALIDATION_ERROR');
   expect(db.query).toHaveBeenCalledTimes(1);
 });
+
+test('branch update remains company-scoped and ignores unknown fields', async () => {
+  const db = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'branch-1', name: 'HQ' }] }) } as any;
+  await expect(new OrganizationService(db).branchUpdate('u', 'company-a', 'branch-1', {
+    name: ' HQ ', unknown_field: 'should-not-persist'
+  } as any)).resolves.toMatchObject({ id: 'branch-1' });
+  expect(db.query.mock.calls[1][0]).toContain('company_id=$3');
+  expect(db.query.mock.calls[1][0]).not.toContain('unknown_field');
+  expect(db.query.mock.calls[1][1]).toEqual(['HQ', 'branch-1', 'company-a']);
+});
