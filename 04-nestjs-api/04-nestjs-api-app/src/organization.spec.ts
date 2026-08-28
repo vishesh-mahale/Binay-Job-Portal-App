@@ -54,3 +54,35 @@ test('team creation rejects missing department or blank name before database loo
     .rejects.toThrow('VALIDATION_ERROR');
   expect(db.query).toHaveBeenCalledTimes(2);
 });
+
+test('branch creation rejects whitespace-only required fields', async () => {
+  for (const dto of [
+    { name: '  ', city: 'Pune', country: 'IN' },
+    { name: 'HQ', city: '  ', country: 'IN' },
+    { name: 'HQ', city: 'Pune', country: '  ' },
+  ]) {
+    const db = { query: jest.fn().mockResolvedValueOnce({ rowCount: 1, rows: [{}] }) } as any;
+    await expect(new OrganizationService(db).branchCreate('u', 'company', dto))
+      .rejects.toThrow('VALIDATION_ERROR');
+    expect(db.query).toHaveBeenCalledTimes(1);
+  }
+});
+
+test('branch update trims identity fields before persistence', async () => {
+  const db = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'branch-1', name: 'HQ', city: 'Pune', country: 'IN' }] }) } as any;
+  await expect(new OrganizationService(db).branchUpdate('u', 'company', 'branch-1', {
+    name: '  HQ  ', city: ' Pune ', country: ' IN '
+  })).resolves.toMatchObject({ name: 'HQ' });
+  expect(db.query.mock.calls[1][1]).toEqual(['HQ', 'Pune', 'IN', 'branch-1', 'company']);
+});
+
+test.each([
+  ['department', (service: OrganizationService) => service.departmentUpdate('u', 'company', 'department-1', { name: '  ' })],
+  ['team', (service: OrganizationService) => service.teamUpdate('u', 'company', 'team-1', { name: '  ' })],
+])('%s update rejects a whitespace-only name', async (_label, invoke) => {
+  const db = { query: jest.fn().mockResolvedValueOnce({ rowCount: 1, rows: [{}] }) } as any;
+  await expect(invoke(new OrganizationService(db))).rejects.toThrow('VALIDATION_ERROR');
+  expect(db.query).toHaveBeenCalledTimes(1);
+});
