@@ -62,4 +62,40 @@ describe('ResumeService confirmation guards', () => {
       process.env.RESUME_STORAGE_BUCKET = previousBucket;
     }
   });
+
+  it.each([
+    ['pending', 'SCAN_PENDING'],
+    ['scanning', 'SCAN_PENDING'],
+    ['infected', 'INFECTED_FILE'],
+    ['quarantined', 'INFECTED_FILE'],
+    ['failed', 'SCAN_FAILED'],
+  ])('blocks confirmation for security state %s', async (security_scan_status, code) => {
+    const query = jest.fn()
+      .mockResolvedValueOnce({ rows: [{
+        id: 'doc', security_scan_status, candidate_id: 'candidate', profile_revision: 1,
+      }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const transaction = jest.fn(async (work: any) => work({ query }));
+    const service = new ResumeService({ transaction } as any, {} as any);
+    await expect(service.confirm(
+      { user: { sub: 'user-1' } } as any,
+      '00000000-0000-4000-8000-000000000001',
+      { expected_profile_revision: 1, profile: { summary: 'safe' } },
+    )).rejects.toThrow(code);
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks confirmation until a completed or partial parse result exists', async () => {
+    const query = jest.fn()
+      .mockResolvedValueOnce({ rows: [{ id: 'doc', security_scan_status: 'clean', candidate_id: 'candidate', profile_revision: 1 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    const transaction = jest.fn(async (work: any) => work({ query }));
+    const service = new ResumeService({ transaction } as any, {} as any);
+    await expect(service.confirm(
+      { user: { sub: 'user-1' } } as any,
+      '00000000-0000-4000-8000-000000000001',
+      { expected_profile_revision: 1, profile: { summary: 'safe' } },
+    )).rejects.toThrow('PARSING_NOT_READY');
+  });
 });
