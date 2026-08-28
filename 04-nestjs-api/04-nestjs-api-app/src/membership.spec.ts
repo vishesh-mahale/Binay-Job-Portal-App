@@ -38,3 +38,32 @@ test('membership add requires active organizational references', async () => {
   expect(client.query.mock.calls[2][0]).toContain('b.is_active=true');
   expect(client.query.mock.calls[2][0]).toContain('m.is_active=true');
 });
+
+test.each([
+  ['department', 'department_ok'],
+  ['team', 'team_ok'],
+  ['manager', 'manager_ok'],
+])('membership add rejects inactive %s references', async (_label, rejectedKey) => {
+  const client = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'target', status: 'active', deleted_at: null }] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ branch_ok: true, department_ok: true, team_ok: true, manager_ok: true, [rejectedKey]: false }] }) };
+  const service = new MembershipService(db(client));
+
+  await expect(service.add('actor', 'company', { user_id: 'target' }))
+    .rejects.toThrow('VALIDATION_ERROR');
+});
+
+test('membership add proceeds when all organizational references are active', async () => {
+  const client = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'target', status: 'active', deleted_at: null }] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ branch_ok: true, department_ok: true, team_ok: true, manager_ok: true }] })
+    .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'member-1', company_id: 'company', user_id: 'target' }] })
+    .mockResolvedValueOnce({ rowCount: 1, rows: [] }) };
+  const service = new MembershipService(db(client));
+
+  await expect(service.add('actor', 'company', { user_id: 'target' }))
+    .resolves.toMatchObject({ id: 'member-1' });
+});
