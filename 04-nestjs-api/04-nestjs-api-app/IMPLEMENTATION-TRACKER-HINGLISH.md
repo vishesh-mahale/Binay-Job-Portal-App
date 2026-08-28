@@ -52,6 +52,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [ ] Ownership transfer aur owner/member safety-guard test.
 - [ ] Cross-company read/write negative tests; sensitive fields response me leak na hon.
 - [ ] HR permission-key mapping ko approved API catalog ke saath freeze karna.
+- [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
 - [ ] Cookie domain, secure/samesite settings aur deployment env values fill karna.
 - [ ] Same-commit review: FreeBuf + OpenCode + Codex; phir Antigravity fixes.
 
