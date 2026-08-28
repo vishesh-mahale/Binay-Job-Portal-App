@@ -7,7 +7,7 @@ describe('recruiter candidate search query', () => {
     expect(q.text).toContain('cm.user_id = $2');
     expect(q.text).toContain('cm.is_active = TRUE');
     expect(q.text).toContain('cp.is_open_to_work = TRUE');
-    expect(q.text).toContain("csp.search_vector @@ websearch_to_tsquery('english', $3)");
+    expect(q.text).toContain("ts_rank_cd(csp.search_vector, websearch_to_tsquery('english', $3)) AS score");
     expect(q.text).not.toContain('resume_parsed_data');
     expect(q.values).toEqual(['company-1', 'user-1', 'java', 2, 20]);
   });
