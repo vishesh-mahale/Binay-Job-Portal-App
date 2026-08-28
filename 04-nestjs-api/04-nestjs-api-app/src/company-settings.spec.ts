@@ -27,3 +27,22 @@ test('same value is idempotent and does not write audit', async () => {
   await new CompanySettingsService(db).update('u1', 'c1', { job_approval_required: false });
   expect(client.query).toHaveBeenCalledTimes(2);
 });
+
+test('platform admin can update a company setting', async () => {
+  const client = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rows: [{ company_id: 'c1', job_approval_required: false }] })
+    .mockResolvedValueOnce({ rows: [{ company_id: 'c1', job_approval_required: true }] })
+    .mockResolvedValueOnce({ rows: [] }) } as any;
+  const db = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+  await expect(new CompanySettingsService(db).update('admin-1', 'c1', { job_approval_required: true }))
+    .resolves.toMatchObject({ job_approval_required: true });
+  expect(client.query.mock.calls[0][0]).toContain("u.role='admin'");
+});
+
+test('active company member can read settings', async () => {
+  const db = { query: jest.fn().mockResolvedValue({ rows: [{ company_id: 'c1', job_approval_required: false }] }) } as any;
+  await expect(new CompanySettingsService(db).get('member-1', 'c1'))
+    .resolves.toMatchObject({ company_id: 'c1', job_approval_required: false });
+  expect(db.query).toHaveBeenCalledWith(expect.stringContaining('company_members'), ['c1', 'member-1']);
+});
