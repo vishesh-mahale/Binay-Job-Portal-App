@@ -38,6 +38,26 @@ describe('JobService', () => {
     expect(client.query.mock.calls[1][1]).toEqual(['job-1', 'company-1', 'published', 'paused', 'user-1']);
   });
 
+  it('uses the paused source state for resume transitions', async () => {
+    const client = { query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'published' }] })
+      .mockResolvedValueOnce({ rows: [] }) } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    await new JobService(system).transition('user-1', 'company-1', 'job-1', 'resume');
+    expect(client.query.mock.calls[1][1]).toEqual(['job-1', 'company-1', 'paused', 'published', 'user-1']);
+  });
+
+  it('restricts archive transitions to closed or expired jobs', async () => {
+    const client = { query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'archived' }] })
+      .mockResolvedValueOnce({ rows: [] }) } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    await new JobService(system).archive('user-1', 'company-1', 'job-1', 'cleanup');
+    expect(client.query.mock.calls[1][0]).toContain("j.status IN ('closed', 'expired')");
+  });
+
   it('publishes directly or moves to approval based on company setting', async () => {
     const client = { query: jest.fn()
       .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
@@ -120,4 +140,3 @@ describe('JobService', () => {
     expect(mockExpireBatch).toHaveBeenCalledTimes(2);
   });
 });
-
