@@ -22,19 +22,19 @@ async function main() {
     const mockUserB = '99999999-9999-4999-8999-999999999999';
 
     await client.query(`
-      INSERT INTO public.users (id, email, password_hash, role, status)
+      INSERT INTO public.users (id, email, first_name, last_name, role, status)
       VALUES 
-        ($1, 'user-a-rls-smoke@example.com', 'hash', 'candidate', 'active'),
-        ($2, 'user-b-rls-smoke@example.com', 'hash', 'candidate', 'active')
+        ($1, 'user-a-rls-smoke@example.com', 'RLS', 'User A', 'candidate', 'active'),
+        ($2, 'user-b-rls-smoke@example.com', 'RLS', 'User B', 'candidate', 'active')
       ON CONFLICT (id) DO NOTHING
     `, [mockUserA, mockUserB]);
 
     await client.query(`
-      INSERT INTO public.candidate_profiles (id, user_id, professional_title)
+      INSERT INTO public.candidate_profiles (user_id, professional_title)
       VALUES
-        ('a1111111-1111-4111-8111-111111111111', $1, 'RLS smoke User A'),
-        ('b2222222-2222-4222-8222-222222222222', $2, 'RLS smoke User B')
-      ON CONFLICT (id) DO NOTHING
+        ($1, 'RLS smoke User A'),
+        ($2, 'RLS smoke User B')
+      ON CONFLICT (user_id) DO UPDATE SET professional_title = EXCLUDED.professional_title
     `, [mockUserA, mockUserB]);
 
     // 2. Switch to authenticated role as User A
