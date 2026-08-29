@@ -61,7 +61,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 RLS user-context smoke (`RUN_RLS_INTEGRATION=true node scripts/rls-integration-smoke.js`) bhi live rollback transaction me pass hua: `authenticated` role + JWT claims ke saath own `candidate_profiles` row 1 aur cross-user row 0.
 
-NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand --forceExit` = **31 suites / 149 tests passed**, `npm.cmd run build` bhi passed. Resume/guest/application/job guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
+NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand --forceExit` = **31 suites / 149 tests passed**, `npm.cmd run build` aur `npm.cmd run lint:types` bhi passed. Resume/guest/application/job guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
 
 Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/integration/test_vertexai_live.py` proxy variables clear karke **2/2 passed**. Ye Vertex provider proof hai; security-scan/ClamAV runtime aur guest end-to-end flow abhi separately pending hain.
 
