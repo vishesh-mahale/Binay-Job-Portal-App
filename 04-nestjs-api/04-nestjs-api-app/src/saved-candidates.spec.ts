@@ -23,4 +23,11 @@ describe('SavedCandidateService', () => {
     const service = new SavedCandidateService({ transaction: (fn: any) => fn(client) } as any);
     await expect(service.list(COMPANY, USER)).resolves.toHaveLength(1);
   });
+
+  it('returns a stable no-op result when removing a candidate that is not saved', async () => {
+    const client = { query: jest.fn().mockResolvedValueOnce({ rows: [{ ok: 1 }] }).mockResolvedValueOnce({ rows: [] }) };
+    const service = new SavedCandidateService({ transaction: (fn: any) => fn(client) } as any);
+    await expect(service.remove(COMPANY, USER, CANDIDATE)).resolves.toEqual({ removed: false });
+    expect(client.query.mock.calls[1][0]).toContain('company_id = $1 AND recruiter_user_id = $2');
+  });
 });

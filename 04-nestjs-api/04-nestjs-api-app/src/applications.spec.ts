@@ -48,6 +48,17 @@ describe('ApplicationService', () => {
     const system = { transaction: jest.fn((fn: any) => fn(client)) } as any;
     await expect(new ApplicationService(system).changeStatus(UUID, UUID, UUID, { status: 'selected' })).rejects.toThrow('INVALID_STATUS_TRANSITION');
   });
+
+  it('returns the database result after a valid application status transition', async () => {
+    const client = { query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: UUID, job_id: JOB, candidate_id: DOC, status: 'under_review' }] }) };
+    const system = { transaction: jest.fn((fn: any) => fn(client)) } as any;
+    await expect(new ApplicationService(system).changeStatus(UUID, UUID, UUID, { status: 'under_review' }))
+      .resolves.toMatchObject({ status: 'under_review' });
+    expect(client.query.mock.calls[1][0]).toContain('change_application_status');
+  });
 });
 
 describe('CompanyApplicationReadController', () => {

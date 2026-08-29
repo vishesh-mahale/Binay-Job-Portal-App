@@ -71,6 +71,24 @@ describe('JobService', () => {
     expect(client.query.mock.calls[1][0]).toContain("'pending_approval'::job_status");
   });
 
+  it('returns pending_approval when company approval is enabled', async () => {
+    const client = { query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'pending_approval' }] })
+      .mockResolvedValueOnce({ rows: [] }) } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    await expect(new JobService(system).publish('user-1', 'company-1', 'job-1')).resolves.toMatchObject({ status: 'pending_approval' });
+    expect(client.query.mock.calls[2][1][1]).toBe('user-1');
+  });
+
+  it('maps an invalid job transition that updates no row to NOT_FOUND', async () => {
+    const client = { query: jest.fn()
+      .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
+      .mockResolvedValueOnce({ rows: [] }) } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    await expect(new JobService(system).transition('user-1', 'company-1', 'job-1', 'pause')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('updates only draft fields and writes an audit record atomically', async () => {
     const client = { query: jest.fn()
       .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
