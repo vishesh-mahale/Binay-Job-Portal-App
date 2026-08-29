@@ -4,6 +4,16 @@
 **Scope:** `04-nestjs-api/04-nestjs-api-app` aur uske required integrations  
 **Last updated:** 29 August 2026
 
+### Progress legend
+
+| Marker | Meaning |
+|---|---|
+| 🟢 **COMPLETE** / `[x]` | Evidence-backed and verified |
+| 🟡 **PENDING** / `[ ]` | Work, decision or verification still required |
+| 🔴 **BLOCKED** | Cannot proceed until an external decision/dependency is resolved |
+
+> हर `[x]` item को **🟢 COMPLETE** और हर `[ ]` item को **🟡 PENDING** समझें। Phase heading में status summary दिया गया है ताकि progress तुरंत दिखाई दे।
+
 ## Is tracker ka purpose
 
 Ye file sirf **baaki implementation, testing aur release-gate work** track karne ke liye hai. Jo kaam README ya approved decision files me complete/verified hai, use dobara pending nahi maana gaya hai.
@@ -28,7 +38,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 ---
 
-## Phase 09-A — Foundation/auth residual verification
+## 🟢 Phase 09-A — Foundation/auth residual verification
 
 **Status:** `VERIFIED & COMPLETE EXCEPT OPEN CSRF-TOKEN GATE`
 
@@ -52,7 +62,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] Generic idempotency promise sirf wahi rakhna jahan durable DB/domain key available ho; unsupported global guarantee document na ho.
 
 
-## Phase 09-B — Identity, company aur authorization completion
+## 🟡 Phase 09-B — Identity, company aur authorization completion
 
 **Owner:** Codex  
 **Status:** `PARTIALLY IMPLEMENTED — integration/freeze work baki`
@@ -96,7 +106,7 @@ NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand --for
 
 Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/integration/test_vertexai_live.py` proxy variables clear karke **2/2 passed**. Ye Vertex provider proof hai; security-scan/ClamAV runtime aur guest end-to-end flow abhi separately pending hain.
 
-## Phase 09-C — Candidate, resume aur AI command completion
+## 🟡 Phase 09-C — Candidate, resume aur AI command completion
 
 **Status:** `CORE PRESENT — end-to-end gates baki`
 
@@ -119,7 +129,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 - [ ] AI command producers ke liye G-1 envelope alignment complete karna; provider/contract missing ho to event invent na karna.
 - [ ] FastAPI worker ke result, `processed_events` idempotency aur stale-revision behavior ka E2E test.
 
-## Phase 09-D — Jobs, search aur applications hardening
+## 🟡 Phase 09-D — Jobs, search aur applications hardening
 
 **Status:** `CORE COMMANDS PRESENT — contract/coverage hardening baki`
 
@@ -153,7 +163,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 - [ ] Application status route aur allowed transition matrix ko current SQL function ke saath implement/test karna; terminal reopen reject ho.
 - [ ] Job expiry documentation, SQL function aur `daily_job_expiry_sweep` schedule ko ek hi approved source me reconcile karna; conflicting drafts ko archive/mark stale karna.
 
-## Phase 09-E — Referrals aur interview completion
+## 🟡 Phase 09-E — Referrals aur interview completion
 
 **Status:** `INTERVIEW CORE PRESENT; REFERRAL/REMAINING LIFECYCLE GATES BAKI`
 
@@ -177,7 +187,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 - [ ] Interview notification/reminder ownership aur `interview.summary.requested` consumer contract ko explicit gate dena.
 - [ ] Remaining interview terminal-path tests (completed, cancelled, no-show, terminal immutability) complete karna.
 
-## Phase 09-F — Notifications, SSE aur messaging
+## 🟡 Phase 09-F — Notifications, SSE aur messaging
 
 **Status:** `PLAN/CONTRACT GATES PENDING`
 
@@ -199,7 +209,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 - [ ] Message send/read idempotency aur attachment scan/ownership rules test.
 - [ ] Email/provider/template work ko versioned contract aur provider decision ke baad hi enable karna.
 
-## Phase 09-G — Analytics, feedback, AI aur remaining product gaps
+## 🟡 Phase 09-G — Analytics, feedback, AI aur remaining product gaps
 
 **Status:** `PARTIALLY IMPLEMENTED / SOME ITEMS BLOCKED BY DECISION`
 
