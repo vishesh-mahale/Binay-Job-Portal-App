@@ -53,7 +53,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] Rollback-safe PostgreSQL company/member hierarchy, tenant-FK aur ownership invariant smoke test (`scripts/identity-company-integration-smoke.js`).
 - [ ] Cross-company read/write negative tests; sensitive fields response me leak na hon.
 - [ ] HR permission-key mapping ko approved API catalog ke saath freeze karna.
-- [ ] HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Class-based identity/company/candidate DTOs typed/whitelist-safe hain; inline/interface/`any` DTOs aur company/organization field typing abhi remaining hain.
+- [ ] HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Class-based identity/company/candidate/organization DTOs typed aur whitelist-safe hain; inline/interface/`any` DTOs ka repo-wide audit aur remaining endpoint coverage abhi pending hai.
 - [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
 - [ ] Cookie domain, secure/samesite settings aur deployment env values fill karna.
 - [ ] Same-commit review: FreeBuf + OpenCode + Codex; phir Antigravity fixes.
@@ -62,7 +62,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 RLS user-context smoke (`RUN_RLS_INTEGRATION=true node scripts/rls-integration-smoke.js`) bhi live rollback transaction me pass hua: `authenticated` role + JWT claims ke saath own `candidate_profiles` row 1 aur cross-user row 0.
 
-NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand --forceExit` = **31 suites / 149 tests passed**, `npm.cmd run build` aur `npm.cmd run lint:types` bhi passed. Resume/guest/application/job guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
+NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand --forceExit` = **32 suites / 167 tests passed**, `npm.cmd run build` aur `npm.cmd run lint:types` bhi passed. Resume/guest/application/job guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
 
 Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/integration/test_vertexai_live.py` proxy variables clear karke **2/2 passed**. Ye Vertex provider proof hai; security-scan/ClamAV runtime aur guest end-to-end flow abhi separately pending hain.
 
