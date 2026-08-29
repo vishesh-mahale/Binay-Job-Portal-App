@@ -82,9 +82,9 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 > Neeche ke 12 items **core milestones** hain. Iske baad diya gaya detailed checklist alag follow-up breakdown hai; uske items upar ke 12-count me include nahi hain.
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B ke remaining/pending integration gates — implementation/contract gap check, tests, then same-commit reviewer gate.</div>
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B ke remaining live integration gates — password auth, company/member/ownership HTTP flows, cross-company checks, then same-commit reviewer gate.</div>
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Auth gap audit — current scope password signup/login/refresh/logout hai; OAuth authorize/callback explicitly future/deferred hai. Evidence: `04-nestjs-api/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md`.</div>
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Live password-auth aur company/authorization HTTP verification. Code-gap audits complete hain; evidence: `04-nestjs-api/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md` aur `04-nestjs-api/PHASE-09-B-COMPANY-CODE-GAP-AUDIT.md`.</div>
 
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
