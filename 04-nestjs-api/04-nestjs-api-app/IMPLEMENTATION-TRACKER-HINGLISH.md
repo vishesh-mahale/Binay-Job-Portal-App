@@ -11,11 +11,11 @@ Ye file sirf **baaki implementation, testing aur release-gate work** track karne
 ## Agent ownership rule
 
 ```text
-Antigravity  → implementation, tests, fixes aur commit
+Codex        → implementation, tests, fixes aur commit
+Antigravity  → same commit ka read-only review
 FreeBuf      → same commit ka read-only review
 OpenCode     → same commit ka read-only review
-Codex        → same commit ka read-only review + final verification
-Antigravity  → teen reviews ko consolidate karke valid fixes apply karega
+Codex        → teen reviews ko independently verify karke valid fixes apply karega
 ```
 
 Reviewers source code, SQL, contracts ya configuration modify nahi karenge. Har review **same commit/hash** par hona chahiye. Kisi suggestion ko requirements, migrations, contracts aur tests se verify kiye bina apply nahi karna hai.
@@ -42,7 +42,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 ## Phase 09-B — Identity, company aur authorization completion
 
-**Owner:** Antigravity  
+**Owner:** Codex  
 **Status:** `PARTIALLY IMPLEMENTED — integration/freeze work baki`
 
 - [ ] Signup, login, refresh, logout aur OAuth callback ka dev/pre-prod integration test.
