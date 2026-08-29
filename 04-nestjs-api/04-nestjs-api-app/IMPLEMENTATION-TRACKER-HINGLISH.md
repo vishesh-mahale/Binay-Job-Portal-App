@@ -82,9 +82,9 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 > Neeche ke 12 items **core milestones** hain. Iske baad diya gaya detailed checklist alag follow-up breakdown hai; uske items upar ke 12-count me include nahi hain.
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B Identity &amp; Company integration tests — implementation/contract gap check, tests, then same-commit reviewer gate.</div>
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B ke remaining/pending integration gates — implementation/contract gap check, tests, then same-commit reviewer gate.</div>
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Implementation plan aur approved contracts ke against 09-B code-gap audit (integration tests se pehle).</div>
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Pending 09-B flows (live auth/company/member/ownership aur cross-company checks) ke code/contracts/tests gaps identify karna. Upar ke 7 checked items is audit ka scope nahi hain.</div>
 
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
