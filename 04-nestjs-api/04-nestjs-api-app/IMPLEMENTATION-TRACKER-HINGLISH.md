@@ -75,9 +75,11 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 **Owner:** Codex  
 **Status:** `PARTIALLY IMPLEMENTED — integration/freeze work baki`
 
-**Sub-step progress:** Total **12** · 🟢 Complete **7** · 🟡 Pending **5**
+**Core milestone progress:** Total **12** · 🟢 Complete **7** · 🟡 Pending **5**
 
 ### 09-B sub-step tracking
+
+> Neeche ke 12 items **core milestones** hain. Iske baad diya gaya detailed checklist alag follow-up breakdown hai; uske items upar ke 12-count me include nahi hain.
 
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
@@ -91,6 +93,10 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [ ] <span style="color:#ca8a04">Cross-company HTTP negative and sensitive-response checks executed.</span>
 - [ ] <span style="color:#ca8a04">Cookie domain and deployed environment values finalized.</span>
 - [ ] <span style="color:#ca8a04">Same-commit three-reviewer gate completed for the current 09-B batch.</span>
+
+### 09-B detailed follow-up checklist (separate count)
+
+**Detailed progress:** Total **16** · 🟢 Complete **3** · 🟡 Pending **13**
 
 - [ ] <span style="color:#ca8a04">Signup, login, refresh, logout aur OAuth callback ka dev/pre-prod integration test.</span>
 - [ ] <span style="color:#ca8a04">Company create/read/update ka live rollback-safe test.</span>
