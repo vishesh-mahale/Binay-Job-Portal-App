@@ -158,12 +158,15 @@ Ye NestJS API ke saath release se pehle parallel infrastructure gates hain:
 
 Company-settings rollback smoke script `scripts/company-settings-integration-smoke.js` add kiya gaya hai;
 ye default `false`, toggle `true`, audit row aur rollback verify karta hai. Explicit Dev/Test database
-credentials ke bina ise run nahi kiya gaya.
+credentials ke saath ise rollback-safe Dev/Test run me execute kiya gaya.
 
-29 Aug live Dev/Test run me smoke ne `default approval setting is not false` report kiya; transaction
-rollback ho gaya. Isse confirm hota hai ki current database me baseline default abhi apply nahi hua
-hai. Database reset/re-migration ya reviewed `ALTER COLUMN ... SET DEFAULT false` forward migration ke
-baad hi is gate ko pass mark karna hai.
+29 Aug live Dev/Test run me pehle default drift detect hua. Reviewed environment-only
+`ALTER COLUMN ... SET DEFAULT false` ke baad script ko actual `CompanyService.create()` lifecycle ke
+saath align kiya gaya (company-settings row explicitly insert hoti hai). Final run:
+`PASS: default false, toggle true and audit invariant verified` aur
+`PASS: transaction rolled back; no smoke rows retained`.
+Production rollout ke liye forward migration/backfill abhi bhi pending hai; existing deployed rows
+automatically change nahi hongi.
 
 Identity/company smoke aur interview smoke dono Dev/Test Supabase connection ke against pass hue.
 Company hierarchy, cross-company FK, ownership transfer, interview booking/participant/confirmation/

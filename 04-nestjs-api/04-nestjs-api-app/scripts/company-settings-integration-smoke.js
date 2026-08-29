@@ -14,6 +14,7 @@ async function main() {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const company = await client.query("INSERT INTO public.companies (name,slug,email,owner_id,verification_status) VALUES ($1,$2,$3,$4,'verified') RETURNING id", [`Settings Smoke ${suffix}`, `settings-smoke-${suffix}`, `settings-${suffix}@example.invalid`, owner.rows[0].id]);
     const companyId = company.rows[0].id;
+    await client.query('INSERT INTO public.company_settings (company_id) VALUES ($1)', [companyId]);
     const initial = await client.query('SELECT company_id, job_approval_required FROM public.company_settings WHERE company_id=$1', [companyId]);
     if (!initial.rows[0] || initial.rows[0].job_approval_required !== false) throw new Error('default approval setting is not false');
     const updated = await client.query('UPDATE public.company_settings SET job_approval_required=true WHERE company_id=$1 RETURNING job_approval_required', [companyId]);
