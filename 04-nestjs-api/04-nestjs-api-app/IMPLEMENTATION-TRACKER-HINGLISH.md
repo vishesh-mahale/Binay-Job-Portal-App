@@ -79,34 +79,34 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 ### 09-B sub-step tracking
 
-- [x] Company/member hierarchy SQL invariants and rollback smoke verified.
-- [x] Active branch/department/team/manager reference validation verified.
-- [x] Company settings default and audit behavior verified.
-- [x] Request DTO typing and strict whitelist validation verified.
-- [x] `/me`, session listing and single-session revoke service boundaries unit-tested.
-- [x] Organization branch/department/team tenant-boundary unit tests added.
-- [x] Opt-in read-only HTTP smoke harness added for `/me`, sessions and company isolation.
-- [ ] Live signup/login/refresh/logout/OAuth integration executed.
-- [ ] Live company/member/ownership HTTP flows executed.
-- [ ] Cross-company HTTP negative and sensitive-response checks executed.
-- [ ] Cookie domain and deployed environment values finalized.
-- [ ] Same-commit three-reviewer gate completed for the current 09-B batch.
+- [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
+- [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
+- [x] <span style="color:#16a34a">Company settings default and audit behavior verified.</span>
+- [x] <span style="color:#16a34a">Request DTO typing and strict whitelist validation verified.</span>
+- [x] <span style="color:#16a34a">`/me`, session listing and single-session revoke service boundaries unit-tested.</span>
+- [x] <span style="color:#16a34a">Organization branch/department/team tenant-boundary unit tests added.</span>
+- [x] <span style="color:#16a34a">Opt-in read-only HTTP smoke harness added for `/me`, sessions and company isolation.</span>
+- [ ] <span style="color:#ca8a04">Live signup/login/refresh/logout/OAuth integration executed.</span>
+- [ ] <span style="color:#ca8a04">Live company/member/ownership HTTP flows executed.</span>
+- [ ] <span style="color:#ca8a04">Cross-company HTTP negative and sensitive-response checks executed.</span>
+- [ ] <span style="color:#ca8a04">Cookie domain and deployed environment values finalized.</span>
+- [ ] <span style="color:#ca8a04">Same-commit three-reviewer gate completed for the current 09-B batch.</span>
 
-- [ ] Signup, login, refresh, logout aur OAuth callback ka dev/pre-prod integration test.
-- [ ] Company create/read/update ka live rollback-safe test.
-- [ ] Branch, department aur team create/update/deactivate test.
-- [ ] Member invite, accept, leave, rejoin aur deactivate test.
-- [ ] Ownership transfer aur owner/member safety-guard test.
-- [x] Rollback-safe PostgreSQL company/member hierarchy, tenant-FK aur ownership invariant smoke test (`scripts/identity-company-integration-smoke.js`).
-- [ ] Cross-company read/write negative tests; sensitive fields response me leak na hon.
-- [ ] Ownership-transfer ke dauran department head/team lead/active manager references ka explicit product/security decision aur test.
-- [ ] UserContextClient ke decoded JWT claims ka trust boundary (AuthGuard signature verification prerequisite) document/test.
-- [ ] RLS smoke coverage ko `candidate_profiles` se other tenant tables tak expand karna ya accepted coverage boundary record karna.
-- [ ] HR permission-key mapping ko approved API catalog ke saath freeze karna.
-- [x] HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Identity/company/candidate/organization/jobs/applications/saved-candidates/feedback/analytics/guest/resume/interview request DTOs typed aur whitelist-safe hain; repo-wide source audit me koi untyped `@Body() any`, interface DTO ya type DTO remaining nahi mila. Full validation coverage aur build verified.
-- [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
-- [ ] Cookie domain, secure/samesite settings aur deployment env values fill karna.
-- [ ] Same-commit review: Antigravity + FreeBuf + OpenCode; Codex independently consolidates evidence aur sirf valid fixes apply karega.
+- [ ] <span style="color:#ca8a04">Signup, login, refresh, logout aur OAuth callback ka dev/pre-prod integration test.</span>
+- [ ] <span style="color:#ca8a04">Company create/read/update ka live rollback-safe test.</span>
+- [ ] <span style="color:#ca8a04">Branch, department aur team create/update/deactivate test.</span>
+- [ ] <span style="color:#ca8a04">Member invite, accept, leave, rejoin aur deactivate test.</span>
+- [ ] <span style="color:#ca8a04">Ownership transfer aur owner/member safety-guard test.</span>
+- [x] <span style="color:#16a34a">Rollback-safe PostgreSQL company/member hierarchy, tenant-FK aur ownership invariant smoke test (`scripts/identity-company-integration-smoke.js`).</span>
+- [ ] <span style="color:#ca8a04">Cross-company read/write negative tests; sensitive fields response me leak na hon.</span>
+- [ ] <span style="color:#ca8a04">Ownership-transfer ke dauran department head/team lead/active manager references ka explicit product/security decision aur test.</span>
+- [ ] <span style="color:#ca8a04">UserContextClient ke decoded JWT claims ka trust boundary (AuthGuard signature verification prerequisite) document/test.</span>
+- [ ] <span style="color:#ca8a04">RLS smoke coverage ko `candidate_profiles` se other tenant tables tak expand karna ya accepted coverage boundary record karna.</span>
+- [ ] <span style="color:#ca8a04">HR permission-key mapping ko approved API catalog ke saath freeze karna.</span>
+- [x] <span style="color:#16a34a">HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Identity/company/candidate/organization/jobs/applications/saved-candidates/feedback/analytics/guest/resume/interview request DTOs typed aur whitelist-safe hain; repo-wide source audit me koi untyped `@Body() any`, interface DTO ya type DTO remaining nahi mila. Full validation coverage aur build verified.</span>
+- [x] <span style="color:#16a34a">Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).</span>
+- [ ] <span style="color:#ca8a04">Cookie domain, secure/samesite settings aur deployment env values fill karna.</span>
+- [ ] <span style="color:#ca8a04">Same-commit review: Antigravity + FreeBuf + OpenCode; Codex independently consolidates evidence aur sirf valid fixes apply karega.</span>
 
 **Latest verification evidence (29 Aug 2026):** `RUN_IDENTITY_COMPANY_INTEGRATION=true node scripts/identity-company-integration-smoke.js` Dev/Test Supabase database ke against pass hua. Cross-company branch assignment `company_members_branch_tenant_fk` se reject hua, hierarchy/ownership invariants verify hue, aur transaction rollback ke baad test rows retain nahi hue. Ye SQL-level evidence hai; HTTP auth/company integration gates abhi pending hain.
 
