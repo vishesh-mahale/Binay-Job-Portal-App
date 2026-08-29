@@ -33,7 +33,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 **Status:** `VERIFIED & COMPLETE`
 
 - [x] `UserContextClient` aur `SystemClient` ka separation current repositories/DI graph me verify karna.
-- [x] JOSE/JWKS verifier, issuer/audience/expiry checks aur fail-closed behavior ka integration test.
+- [x] JOSE verifier: current Supabase ECC signing keys ke liye JWKS (`SUPABASE_JWKS_URL`, ya `SUPABASE_URL` se derived endpoint) primary hai; explicit legacy HS256 fallback sirf local/test ke liye. Issuer/audience/expiry checks aur fail-closed behavior maintained.
 - [x] Access-cookie/refresh-cookie path, CSRF/CORS, proxy/trust settings aur cookie-domain configuration verify karna.
 - [x] Auth email-verification callback aur `pending_verification → active` timing ko approved contract se reconcile karna.
 - [x] Session revoke semantics (single matching session) aur logout/replay tests.
