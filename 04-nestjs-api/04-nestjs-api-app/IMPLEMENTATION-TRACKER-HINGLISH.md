@@ -160,9 +160,10 @@ Company-settings rollback smoke script `scripts/company-settings-integration-smo
 ye default `false`, toggle `true`, audit row aur rollback verify karta hai. Explicit Dev/Test database
 credentials ke saath ise rollback-safe Dev/Test run me execute kiya gaya.
 
-29 Aug live Dev/Test run me pehle default drift detect hua. Reviewed environment-only
-`ALTER COLUMN ... SET DEFAULT false` ke baad script ko actual `CompanyService.create()` lifecycle ke
-saath align kiya gaya (company-settings row explicitly insert hoti hai). Final run:
+29 Aug live Dev/Test run me pehle smoke script ne `company_settings` row create nahi ki thi, isliye
+empty result ko galat tarike se default drift report kiya. Script ko actual `CompanyService.create()`
+lifecycle ke saath align kiya gaya (company-settings row explicitly insert hoti hai); environment
+default bhi `false` verify hua. Final run:
 `PASS: default false, toggle true and audit invariant verified` aur
 `PASS: transaction rolled back; no smoke rows retained`.
 Production rollout ke liye forward migration/backfill abhi bhi pending hai; existing deployed rows
