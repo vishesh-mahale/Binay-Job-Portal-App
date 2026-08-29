@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import { JoseJwtVerifier, type JwtVerifier, type JwtVerificationKey, type VerifiedJwtUser } from './security/jwt-verifier';
 import type { JWTVerifyOptions } from 'jose';
@@ -18,7 +18,12 @@ export async function verifyBearer(request: Request, key: JwtVerificationKey, ve
 }
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly key: JwtVerificationKey, private readonly verifier: JwtVerifier = new JoseJwtVerifier(), private readonly options: Pick<JWTVerifyOptions, 'issuer' | 'audience'> = {}, private readonly system?: SystemClient) {}
+  constructor(
+    @Inject('JWT_VERIFICATION_KEY') private readonly key: JwtVerificationKey,
+    @Inject('JWT_VERIFIER') private readonly verifier: JwtVerifier,
+    @Inject('JWT_OPTIONS') private readonly options: Pick<JWTVerifyOptions, 'issuer' | 'audience'>,
+    @Inject(SystemClient) private readonly system?: SystemClient,
+  ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const cookieToken = req.cookies?.binay_access_token;
