@@ -48,7 +48,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 **Status:** `VERIFIED & COMPLETE EXCEPT OPEN CSRF-TOKEN GATE`
 
-**Sub-step progress:** 🟢 **7 / 8 complete** · 🟡 1 pending
+**Sub-step progress:** Total **8** · 🟢 Complete **7** · 🟡 Pending **1**
 
 ### 09-A sub-step tracking
 
@@ -75,7 +75,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 **Owner:** Codex  
 **Status:** `PARTIALLY IMPLEMENTED — integration/freeze work baki`
 
-**Sub-step progress:** 🟢 **7 / 12 complete** · 🟡 5 pending
+**Sub-step progress:** Total **12** · 🟢 Complete **7** · 🟡 Pending **5**
 
 ### 09-B sub-step tracking
 
@@ -120,7 +120,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `CORE PRESENT — end-to-end gates baki`
 
-**Sub-step progress:** 🟢 **0 / 7 complete** · 🟡 7 pending
+**Sub-step progress:** Total **7** · 🟢 Complete **0** · 🟡 Pending **7**
 
 ### 09-C sub-step tracking
 
@@ -145,7 +145,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `CORE COMMANDS PRESENT — contract/coverage hardening baki`
 
-**Sub-step progress:** 🟢 **2 / 9 complete** · 🟡 7 pending
+**Sub-step progress:** Total **9** · 🟢 Complete **2** · 🟡 Pending **7**
 
 ### 09-D sub-step tracking
 
@@ -181,7 +181,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `INTERVIEW CORE PRESENT; REFERRAL/REMAINING LIFECYCLE GATES BAKI`
 
-**Sub-step progress:** 🟢 **2 / 7 complete** · 🟡 5 pending
+**Sub-step progress:** Total **7** · 🟢 Complete **2** · 🟡 Pending **5**
 
 ### 09-E sub-step tracking
 
@@ -207,7 +207,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `PLAN/CONTRACT GATES PENDING`
 
-**Sub-step progress:** 🟢 **0 / 7 complete** · 🟡 7 pending
+**Sub-step progress:** Total **7** · 🟢 Complete **0** · 🟡 Pending **7**
 
 ### 09-F sub-step tracking
 
@@ -231,7 +231,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `PARTIALLY IMPLEMENTED / SOME ITEMS BLOCKED BY DECISION`
 
-**Sub-step progress:** 🟢 **0 / 6 complete** · 🟡 6 pending
+**Sub-step progress:** Total **6** · 🟢 Complete **0** · 🟡 Pending **6**
 
 ### 09-G sub-step tracking
 
