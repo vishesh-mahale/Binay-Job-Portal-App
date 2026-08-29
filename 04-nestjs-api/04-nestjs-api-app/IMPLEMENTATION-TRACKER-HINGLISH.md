@@ -8,11 +8,17 @@
 
 | Marker | Meaning |
 |---|---|
-| 🟢 **COMPLETE** / `[x]` | Evidence-backed and verified |
+| <span style="color:#16a34a">🟢 **COMPLETE** / `[x]`</span> | Evidence-backed and verified |
 | 🟡 **PENDING** / `[ ]` | Work, decision or verification still required |
 | 🔴 **BLOCKED** | Cannot proceed until an external decision/dependency is resolved |
 
 > हर `[x]` item को **🟢 COMPLETE** और हर `[ ]` item को **🟡 PENDING** समझें। Phase heading में status summary दिया गया है ताकि progress तुरंत दिखाई दे।
+
+### Overall sub-step progress
+
+🟢 **18 / 56 sub-steps complete** · 🟡 **38 / 56 pending**
+
+> यह गणना केवल ऊपर दिए गए phase sub-step checklists की है; पुराने detailed task bullets अलग evidence/reference सूची हैं।
 
 ## Is tracker ka purpose
 
@@ -42,6 +48,8 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 **Status:** `VERIFIED & COMPLETE EXCEPT OPEN CSRF-TOKEN GATE`
 
+**Sub-step progress:** 🟢 **7 / 8 complete** · 🟡 1 pending
+
 ### 09-A sub-step tracking
 
 - [x] UserContextClient/SystemClient boundary verified.
@@ -66,6 +74,8 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 **Owner:** Codex  
 **Status:** `PARTIALLY IMPLEMENTED — integration/freeze work baki`
+
+**Sub-step progress:** 🟢 **7 / 12 complete** · 🟡 5 pending
 
 ### 09-B sub-step tracking
 
@@ -110,6 +120,8 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `CORE PRESENT — end-to-end gates baki`
 
+**Sub-step progress:** 🟢 **0 / 7 complete** · 🟡 7 pending
+
 ### 09-C sub-step tracking
 
 - [ ] First-resume upload → scan → parse → review/edit flow live-tested.
@@ -132,6 +144,8 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 ## 🟡 Phase 09-D — Jobs, search aur applications hardening
 
 **Status:** `CORE COMMANDS PRESENT — contract/coverage hardening baki`
+
+**Sub-step progress:** 🟢 **2 / 9 complete** · 🟡 7 pending
 
 ### 09-D sub-step tracking
 
@@ -167,6 +181,8 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `INTERVIEW CORE PRESENT; REFERRAL/REMAINING LIFECYCLE GATES BAKI`
 
+**Sub-step progress:** 🟢 **2 / 7 complete** · 🟡 5 pending
+
 ### 09-E sub-step tracking
 
 - [ ] Referral API/contracts implemented and invitation/claim/reissue behavior tested.
@@ -191,6 +207,8 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `PLAN/CONTRACT GATES PENDING`
 
+**Sub-step progress:** 🟢 **0 / 7 complete** · 🟡 7 pending
+
 ### 09-F sub-step tracking
 
 - [ ] Notification list/unread/read APIs implemented.
@@ -212,6 +230,8 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 ## 🟡 Phase 09-G — Analytics, feedback, AI aur remaining product gaps
 
 **Status:** `PARTIALLY IMPLEMENTED / SOME ITEMS BLOCKED BY DECISION`
+
+**Sub-step progress:** 🟢 **0 / 6 complete** · 🟡 6 pending
 
 ### 09-G sub-step tracking
 
