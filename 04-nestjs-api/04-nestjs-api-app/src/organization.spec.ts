@@ -98,3 +98,21 @@ test('branch update remains company-scoped and ignores unknown fields', async ()
   expect(db.query.mock.calls[1][0]).not.toContain('unknown_field');
   expect(db.query.mock.calls[1][1]).toEqual(['HQ', 'branch-1', 'company-a']);
 });
+
+test('department creation checks active same-company head membership', async () => {
+  const db = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 0, rows: [] }) } as any;
+  await expect(new OrganizationService(db).departmentCreate('owner', 'c1', { name: 'Engineering', head_member_id: 'm1' }))
+    .rejects.toBeInstanceOf(ForbiddenException);
+  expect(db.query.mock.calls[1][0]).toContain('company_id=$2 AND is_active=true');
+});
+
+test('team creation checks active parent department company scope', async () => {
+  const db = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] })
+    .mockResolvedValueOnce({ rowCount: 0, rows: [] }) } as any;
+  await expect(new OrganizationService(db).teamCreate('owner', 'c1', { department_id: 'd-other', name: 'Platform' }))
+    .rejects.toBeInstanceOf(ForbiddenException);
+  expect(db.query.mock.calls[1][0]).toContain('company_id=$2 AND is_active=true');
+});
