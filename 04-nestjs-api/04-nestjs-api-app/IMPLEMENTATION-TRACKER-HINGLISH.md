@@ -56,7 +56,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Identity/company/candidate/organization/jobs/applications/saved-candidates/feedback/analytics/guest/resume/interview request DTOs typed aur whitelist-safe hain; repo-wide source audit me koi untyped `@Body() any`, interface DTO ya type DTO remaining nahi mila. Full validation coverage aur build verified.
 - [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
 - [ ] Cookie domain, secure/samesite settings aur deployment env values fill karna.
-- [ ] Same-commit review: FreeBuf + OpenCode + Codex; phir Antigravity fixes.
+- [ ] Same-commit review: Antigravity + FreeBuf + OpenCode; Codex independently consolidates evidence aur sirf valid fixes apply karega.
 
 **Latest verification evidence (29 Aug 2026):** `RUN_IDENTITY_COMPANY_INTEGRATION=true node scripts/identity-company-integration-smoke.js` Dev/Test Supabase database ke against pass hua. Cross-company branch assignment `company_members_branch_tenant_fk` se reject hua, hierarchy/ownership invariants verify hue, aur transaction rollback ke baad test rows retain nahi hue. Ye SQL-level evidence hai; HTTP auth/company integration gates abhi pending hain.
 
@@ -213,6 +213,6 @@ Production readiness approval
 
 ## Abhi ka next actionable step
 
-Antigravity ko **Phase 09-B Identity & Company integration tests** se start karna hai. Pehle implementation plan/contract ke against code gap list banaye, phir code + tests kare. Uske baad same commit FreeBuf, OpenCode aur Codex ko read-only review ke liye diya jaye.
+Codex ko **Phase 09-B Identity & Company integration tests** continue karne hain. Pehle implementation plan/contract ke against code gap list banaye, phir related code + tests kare. Uske baad same commit Antigravity, FreeBuf aur OpenCode ko read-only review ke liye diya jaye; Codex valid findings consolidate kare.
 
 **Overall status:** `NESTJS API IN PROGRESS — PRODUCTION RELEASE GATES OPEN`
