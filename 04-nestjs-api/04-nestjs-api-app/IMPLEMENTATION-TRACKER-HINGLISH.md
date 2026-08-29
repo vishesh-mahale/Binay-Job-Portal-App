@@ -175,6 +175,11 @@ Company hierarchy, cross-company FK, ownership transfer, interview booking/parti
 reschedule lineage verify hue aur dono transactions rollback ho gaye. Ye HTTP auth integration ya
 production deployment proof nahi hai.
 
+Latest rollback-safe Dev/Test reruns: `identity-company-integration-smoke.js`,
+`interview-integration-smoke.js`, aur `company-settings-integration-smoke.js` sab pass hue;
+har run ke baad transaction rollback hua aur test rows retain nahi hue. Ye SQL/integration evidence
+hai, HTTP auth integration aur production deployment proof nahi.
+
 1. Approved requirements, SQL baseline, contracts aur existing service behavior cross-check.
 2. Implementation + unit tests + relevant integration/E2E tests complete.
 3. No invented table, column, event, route, permission ya provider behavior.
