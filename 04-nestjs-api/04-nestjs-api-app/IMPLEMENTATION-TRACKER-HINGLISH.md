@@ -84,6 +84,8 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 <div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B Identity &amp; Company integration tests — implementation/contract gap check, tests, then same-commit reviewer gate.</div>
 
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Implementation plan aur approved contracts ke against 09-B code-gap audit (integration tests se pehle).</div>
+
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
 - [x] <span style="color:#16a34a">Company settings default and audit behavior verified.</span>
