@@ -34,7 +34,8 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 - [x] `UserContextClient` aur `SystemClient` ka separation current repositories/DI graph me verify karna.
 - [x] JOSE verifier: current Supabase ECC signing keys ke liye JWKS (`SUPABASE_JWKS_URL`, ya `SUPABASE_URL` se derived endpoint) primary hai; explicit legacy HS256 fallback sirf local/test ke liye. Issuer/audience/expiry checks aur fail-closed behavior maintained.
-- [x] Access-cookie/refresh-cookie path, CSRF/CORS, proxy/trust settings aur cookie-domain configuration verify karna.
+- [x] Access-cookie/refresh-cookie path, CORS, proxy/trust settings verify karna; `SameSite=Lax` current CSRF mitigation hai.
+- [ ] Explicit CSRF-token strategy ko production security gate ke roop me decide/verify karna; ise abhi complete claim nahi maana jayega.
 - [x] Auth email-verification callback aur `pending_verification → active` timing ko approved contract se reconcile karna.
 - [x] Session revoke semantics (single matching session) aur logout/replay tests.
 - [x] Generic idempotency promise sirf wahi rakhna jahan durable DB/domain key available ho; unsupported global guarantee document na ho.
@@ -62,7 +63,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 RLS user-context smoke (`RUN_RLS_INTEGRATION=true node scripts/rls-integration-smoke.js`) bhi live rollback transaction me pass hua: `authenticated` role + JWT claims ke saath own `candidate_profiles` row 1 aur cross-user row 0.
 
-NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand --forceExit` = **33 suites / 193 tests passed**, `npm.cmd run build` aur `npm.cmd run lint:types` bhi passed. `npm.cmd run test:jwt` bhi real ES256/JWKS, HS256 boundary aur missing-sub checks ke saath passed. Resume/guest/application/job guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
+NestJS regression verification (29 Aug 2026): `npm.cmd test -- --runInBand --forceExit` = **33 suites / 195 tests passed**, `npm.cmd run build` aur `npm.cmd run lint:types` bhi passed. `npm.cmd run test:jwt` real ES256/JWKS, HS256 boundary aur missing-sub checks ke saath passed. `npm.cmd run smoke:identity-http` opt-in read-only harness hai; credentials ke bina default skip hota hai, isliye ise live auth proof nahi maana gaya hai. Resume/guest/application/job guard coverage unit-level hai; ise live ClamAV/guest E2E ka substitute nahi maana gaya hai.
 
 Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/integration/test_vertexai_live.py` proxy variables clear karke **2/2 passed**. Ye Vertex provider proof hai; security-scan/ClamAV runtime aur guest end-to-end flow abhi separately pending hain.
 
@@ -105,7 +106,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 **Status:** `INTERVIEW CORE PRESENT; REFERRAL/REMAINING LIFECYCLE GATES BAKI`
 
-- [ ] Referral invitation, accept/claim, attribution, reissue aur duplicate behavior finalize/test.
+- [ ] **MISSING:** Referral API aur shared event/task contracts abhi implemented nahi hain; invitation, accept/claim, attribution, reissue aur duplicate behavior finalize/test karna hai.
 - [ ] Referral company/application boundary aur reward terminal-state rules test.
 - [ ] Interview scheduled → confirmed → completed/cancelled/no-show transitions test.
 - [ ] Reschedule/cancel history, slot release, overlap aur concurrent booking test.
@@ -132,7 +133,8 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 **Status:** `PARTIALLY IMPLEMENTED / SOME ITEMS BLOCKED BY DECISION`
 
 - [ ] Analytics metric ownership, permission aur idempotency rules freeze karna.
-- [ ] Feedback registered/guest flow ka validation, rate limit, PII aur audit test.
+- [ ] Feedback registered flow ka validation, rate limit, PII aur audit test.
+- [ ] **MISSING:** Guest/anonymous feedback API aur uska authorization/rate-limit contract define aur implement karna hai.
 - [ ] AI provider/model/cost decision aur approved producer contracts close karna.
 - [ ] Configurable referral rewards, subscriptions aur external search engine ko decision ke bina implement na karna.
 - [ ] Accessibility target Next.js release gate me record karna.
