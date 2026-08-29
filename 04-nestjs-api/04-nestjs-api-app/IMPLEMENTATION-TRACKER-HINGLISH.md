@@ -30,7 +30,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 ## Phase 09-A — Foundation/auth residual verification
 
-**Status:** `VERIFIED & COMPLETE`
+**Status:** `VERIFIED & COMPLETE EXCEPT OPEN CSRF-TOKEN GATE`
 
 - [x] `UserContextClient` aur `SystemClient` ka separation current repositories/DI graph me verify karna.
 - [x] JOSE verifier: current Supabase ECC signing keys ke liye JWKS (`SUPABASE_JWKS_URL`, ya `SUPABASE_URL` se derived endpoint) primary hai; explicit legacy HS256 fallback sirf local/test ke liye. Issuer/audience/expiry checks aur fail-closed behavior maintained.
@@ -53,6 +53,9 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [ ] Ownership transfer aur owner/member safety-guard test.
 - [x] Rollback-safe PostgreSQL company/member hierarchy, tenant-FK aur ownership invariant smoke test (`scripts/identity-company-integration-smoke.js`).
 - [ ] Cross-company read/write negative tests; sensitive fields response me leak na hon.
+- [ ] Ownership-transfer ke dauran department head/team lead/active manager references ka explicit product/security decision aur test.
+- [ ] UserContextClient ke decoded JWT claims ka trust boundary (AuthGuard signature verification prerequisite) document/test.
+- [ ] RLS smoke coverage ko `candidate_profiles` se other tenant tables tak expand karna ya accepted coverage boundary record karna.
 - [ ] HR permission-key mapping ko approved API catalog ke saath freeze karna.
 - [x] HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Identity/company/candidate/organization/jobs/applications/saved-candidates/feedback/analytics/guest/resume/interview request DTOs typed aur whitelist-safe hain; repo-wide source audit me koi untyped `@Body() any`, interface DTO ya type DTO remaining nahi mila. Full validation coverage aur build verified.
 - [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
