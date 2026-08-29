@@ -33,6 +33,9 @@ export const envSchema = z.object({
   if ((data.NODE_ENV === 'preprod' || data.NODE_ENV === 'production') && !data.SUPABASE_JWT_AUDIENCE) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'SUPABASE_JWT_AUDIENCE is required in preprod and production', path: ['SUPABASE_JWT_AUDIENCE'] });
   }
+  if ((data.NODE_ENV === 'preprod' || data.NODE_ENV === 'production') && !data.SUPABASE_JWKS_URL && !data.SUPABASE_URL) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'SUPABASE_JWKS_URL or SUPABASE_URL is required in preprod and production for asymmetric verification', path: ['SUPABASE_JWKS_URL'] });
+  }
 });
 export type AppConfig = z.infer<typeof envSchema>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig { return envSchema.parse(env); }

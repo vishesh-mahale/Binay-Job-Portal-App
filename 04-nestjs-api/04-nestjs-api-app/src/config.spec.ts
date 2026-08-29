@@ -19,7 +19,8 @@ test('accepts validated OAuth URLs and TTL', () => {
 test('enforces mandatory issuer and audience in preprod and production environments', () => {
   expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production' })).toThrow();
   expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'preprod' })).toThrow();
-  expect(loadConfig({ ...baseEnv, NODE_ENV: 'production', SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated' })).toMatchObject({ SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated' });
+  expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production', SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated' })).toThrow(/SUPABASE_JWKS_URL or SUPABASE_URL/);
+  expect(loadConfig({ ...baseEnv, NODE_ENV: 'production', SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated', SUPABASE_URL: 'https://project.supabase.co' })).toMatchObject({ SUPABASE_URL: 'https://project.supabase.co' });
 });
 test('accepts JWKS-only configuration and rejects missing verification material', () => {
   const jwksEnv = { DATABASE_URL: baseEnv.DATABASE_URL, SUPABASE_JWKS_URL: 'https://project.supabase.co/auth/v1/.well-known/jwks.json' };
