@@ -1,6 +1,6 @@
 # Phase 09-B OAuth Decisions Required
 
-OAuth authorize/callback implementation शुरू करने से पहले नीचे के decisions freeze करना आवश्यक है। Current code और approved OAuth plan इन values को invent नहीं करते।
+OAuth authorize/callback implementation अभी current release में नहीं होगा। इसे future scope के रूप में defer किया गया है; नीचे के decisions तभी भरें जब OAuth को फिर से activate किया जाए।
 
 | ID | Decision | Required answer |
 |---|---|---|

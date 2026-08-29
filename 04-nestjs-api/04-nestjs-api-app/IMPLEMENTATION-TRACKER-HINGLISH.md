@@ -84,7 +84,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 <div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B ke remaining/pending integration gates — implementation/contract gap check, tests, then same-commit reviewer gate.</div>
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Auth gap audit — password auth implemented hai; OAuth authorize/callback ka concrete code aur required environment/account-linking decisions pending hain. Evidence: `04-nestjs-api/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md`.</div>
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Auth gap audit — current scope password signup/login/refresh/logout hai; OAuth authorize/callback explicitly future/deferred hai. Evidence: `04-nestjs-api/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md`.</div>
 
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
@@ -93,7 +93,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] <span style="color:#16a34a">`/me`, session listing and single-session revoke service boundaries unit-tested.</span>
 - [x] <span style="color:#16a34a">Organization branch/department/team tenant-boundary unit tests added.</span>
 - [x] <span style="color:#16a34a">Opt-in read-only HTTP smoke harness added for `/me`, sessions and company isolation.</span>
-- [ ] <span style="color:#ca8a04">Live signup/login/refresh/logout/OAuth integration executed.</span>
+- [ ] <span style="color:#ca8a04">Live password signup/login/refresh/logout integration executed; OAuth is deferred.</span>
 - [ ] <span style="color:#ca8a04">Live company/member/ownership HTTP flows executed.</span>
 - [ ] <span style="color:#ca8a04">Cross-company HTTP negative and sensitive-response checks executed.</span>
 - [ ] <span style="color:#ca8a04">Cookie domain and deployed environment values finalized.</span>
@@ -103,7 +103,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 **Detailed progress:** Total **16** · 🟢 Complete **3** · 🟡 Pending **13**
 
-- [ ] <span style="color:#ca8a04">Signup, login, refresh, logout aur OAuth callback ka dev/pre-prod integration test.</span>
+- [ ] <span style="color:#ca8a04">Password signup, login, refresh aur logout ka dev/pre-prod integration test; OAuth deferred.</span>
 - [ ] <span style="color:#ca8a04">Company create/read/update ka live rollback-safe test.</span>
 - [ ] <span style="color:#ca8a04">Branch, department aur team create/update/deactivate test.</span>
 - [ ] <span style="color:#ca8a04">Member invite, accept, leave, rejoin aur deactivate test.</span>
