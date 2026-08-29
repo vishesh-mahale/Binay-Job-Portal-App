@@ -53,7 +53,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] Rollback-safe PostgreSQL company/member hierarchy, tenant-FK aur ownership invariant smoke test (`scripts/identity-company-integration-smoke.js`).
 - [ ] Cross-company read/write negative tests; sensitive fields response me leak na hon.
 - [ ] HR permission-key mapping ko approved API catalog ke saath freeze karna.
-- [ ] HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Class-based identity/company/candidate/organization DTOs typed aur whitelist-safe hain; inline/interface/`any` DTOs ka repo-wide audit aur remaining endpoint coverage abhi pending hai.
+- [x] HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Identity/company/candidate/organization/jobs/applications/saved-candidates/feedback/analytics/guest/resume/interview request DTOs typed aur whitelist-safe hain; repo-wide source audit me koi untyped `@Body() any`, interface DTO ya type DTO remaining nahi mila. Full validation coverage aur build verified.
 - [x] Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).
 - [ ] Cookie domain, secure/samesite settings aur deployment env values fill karna.
 - [ ] Same-commit review: FreeBuf + OpenCode + Codex; phir Antigravity fixes.
