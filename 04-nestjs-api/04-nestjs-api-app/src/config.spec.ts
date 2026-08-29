@@ -21,4 +21,8 @@ test('enforces mandatory issuer and audience in preprod and production environme
   expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'preprod' })).toThrow();
   expect(loadConfig({ ...baseEnv, NODE_ENV: 'production', SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated' })).toMatchObject({ SUPABASE_JWT_ISSUER: 'https://auth.example.com', SUPABASE_JWT_AUDIENCE: 'authenticated' });
 });
-
+test('accepts JWKS-only configuration and rejects missing verification material', () => {
+  const jwksEnv = { DATABASE_URL: baseEnv.DATABASE_URL, SUPABASE_JWKS_URL: 'https://project.supabase.co/auth/v1/.well-known/jwks.json' };
+  expect(loadConfig(jwksEnv)).toMatchObject({ SUPABASE_JWKS_URL: jwksEnv.SUPABASE_JWKS_URL });
+  expect(() => loadConfig({ DATABASE_URL: baseEnv.DATABASE_URL })).toThrow(/Configure SUPABASE/);
+});

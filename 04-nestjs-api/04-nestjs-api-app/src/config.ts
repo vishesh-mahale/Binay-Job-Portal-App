@@ -4,10 +4,11 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development','test','preprod','production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.string().url().or(z.string().startsWith('postgres')),
-  SUPABASE_JWT_SECRET: z.string().min(16),
+  SUPABASE_JWT_SECRET: z.string().min(16).optional(),
   SUPABASE_JWT_ISSUER: z.string().url().optional(),
   SUPABASE_JWT_AUDIENCE: z.string().min(1).optional(),
   SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_JWKS_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
   RESUME_STORAGE_BUCKET: z.string().min(1).max(100).optional(),
   RESUME_MAX_BYTES: z.coerce.number().int().positive().optional(),
@@ -23,6 +24,9 @@ export const envSchema = z.object({
   OAUTH_STATE_SECRET: z.string().min(32).optional(),
   OAUTH_STATE_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
 }).superRefine((data, ctx) => {
+  if (!data.SUPABASE_JWT_SECRET && !data.SUPABASE_JWKS_URL && !data.SUPABASE_URL) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Configure SUPABASE_JWKS_URL (preferred), SUPABASE_URL, or legacy SUPABASE_JWT_SECRET', path: ['SUPABASE_JWKS_URL'] });
+  }
   if ((data.NODE_ENV === 'preprod' || data.NODE_ENV === 'production') && !data.SUPABASE_JWT_ISSUER) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'SUPABASE_JWT_ISSUER is required in preprod and production', path: ['SUPABASE_JWT_ISSUER'] });
   }
@@ -32,4 +36,3 @@ export const envSchema = z.object({
 });
 export type AppConfig = z.infer<typeof envSchema>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig { return envSchema.parse(env); }
-
