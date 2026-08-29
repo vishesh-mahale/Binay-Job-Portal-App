@@ -41,5 +41,7 @@ describe('global ValidationPipe DTO whitelist contract', () => {
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
     await expect(pipe.transform({ expected_profile_revision: 'bad' }, { type: 'body', metatype: UpdateCandidateProfileDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ user_id: '00000000-0000-4000-8000-000000000001', title: 42 }, { type: 'body', metatype: AddCompanyMemberDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
   });
 });
