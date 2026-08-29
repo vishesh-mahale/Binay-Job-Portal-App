@@ -6,6 +6,7 @@ import { AddCompanyMemberDto } from './membership';
 import { TransferOwnershipDto } from './ownership';
 import { RevokePresenceSessionDto } from './identity-company';
 import { UpdateCandidateProfileDto, ArchiveCandidateFactDto } from './candidate';
+import { CreateJobDto, UpdateJobDto, JobReasonDto } from './jobs';
 
 const pipe = new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true });
 
@@ -27,6 +28,9 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     [RevokePresenceSessionDto, { session_id: '00000000-0000-4000-8000-000000000003' }],
     [UpdateCandidateProfileDto, { expected_profile_revision: 1 }],
     [ArchiveCandidateFactDto, { expected_profile_revision: 1 }],
+    [CreateJobDto, { title: 'Java Engineer', slug: 'java-engineer', description: 'Build APIs' }],
+    [UpdateJobDto, { title: 'Senior Java Engineer' }],
+    [JobReasonDto, { reason: 'Role no longer needed' }],
   ])('accepts valid body for %p', async (metatype, body) => {
     await expect(pipe.transform(body, { type: 'body', metatype, data: '' })).resolves.toBeDefined();
   });
@@ -46,6 +50,10 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     await expect(pipe.transform({ user_id: '00000000-0000-4000-8000-000000000001', title: 42 }, { type: 'body', metatype: AddCompanyMemberDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
     await expect(pipe.transform({ latitude: 'bad' }, { type: 'body', metatype: UpdateBranchDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ title: 42, slug: 'java-engineer', description: 'Build APIs' }, { type: 'body', metatype: CreateJobDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ reason: 42 }, { type: 'body', metatype: JobReasonDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
   });
 });

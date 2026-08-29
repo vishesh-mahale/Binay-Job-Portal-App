@@ -1,9 +1,29 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Injectable, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Allow, IsOptional, IsString } from 'class-validator';
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
 
 type AuthRequest = Request & { user?: RequestUser };
+
+export class CreateJobDto {
+  @Allow() @IsString() title!: string;
+  @Allow() @IsString() slug!: string;
+  @Allow() @IsString() description!: string;
+  [key: string]: unknown;
+}
+
+export class UpdateJobDto {
+  @Allow() @IsOptional() @IsString() title?: string;
+  @Allow() @IsOptional() @IsString() slug?: string;
+  @Allow() @IsOptional() @IsString() description?: string;
+  [key: string]: unknown;
+}
+
+export class JobReasonDto {
+  @Allow() @IsOptional() @IsString() reason?: string;
+  [key: string]: unknown;
+}
 
 const JOB_FIELDS = `j.id, j.company_id, j.title, j.slug, j.reference_code, j.employment_type,
   j.work_mode, j.experience_level, j.category, j.location_city, j.location_state,
@@ -17,7 +37,7 @@ const JOB_FIELDS = `j.id, j.company_id, j.title, j.slug, j.reference_code, j.emp
 export class JobService {
   constructor(private readonly system: SystemClient) {}
 
-  async createDraft(userId: string, companyId: string, dto: { title?: string; slug?: string; description?: string }) {
+  async createDraft(userId: string, companyId: string, dto: CreateJobDto) {
     const title = dto.title?.trim();
     const slug = dto.slug?.trim().toLowerCase();
     const description = dto.description?.trim();
@@ -77,7 +97,7 @@ export class JobService {
     return result.rows[0];
   }
 
-  async updateDraft(userId: string, companyId: string, jobId: string, dto: { title?: string; slug?: string; description?: string }) {
+  async updateDraft(userId: string, companyId: string, jobId: string, dto: UpdateJobDto) {
     const allowed: Record<string, string> = {};
     if (dto.title !== undefined) { if (!dto.title.trim()) throw new BadRequestException('VALIDATION_ERROR'); allowed.title = dto.title.trim(); }
     if (dto.description !== undefined) { if (!dto.description.trim()) throw new BadRequestException('VALIDATION_ERROR'); allowed.description = dto.description.trim(); }
@@ -210,13 +230,13 @@ export class JobController {
   constructor(private readonly jobs: JobService) {}
 
   @Post()
-  create(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Body() dto: { title?: string; slug?: string; description?: string }) {
+  create(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Body() dto: CreateJobDto) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     return this.jobs.createDraft(req.user.sub, companyId, dto);
   }
 
   @Patch(':jobId')
-  update(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('jobId') jobId: string, @Body() dto: { title?: string; slug?: string; description?: string }) {
+  update(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('jobId') jobId: string, @Body() dto: UpdateJobDto) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     return this.jobs.updateDraft(req.user.sub, companyId, jobId, dto);
   }
@@ -258,13 +278,13 @@ export class JobController {
   }
 
   @Post(':jobId/reject')
-  reject(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('jobId') jobId: string, @Body() body: { reason?: string }) {
+  reject(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('jobId') jobId: string, @Body() body: JobReasonDto) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     return this.jobs.reject(req.user.sub, companyId, jobId, body?.reason);
   }
 
   @Post(':jobId/archive')
-  archive(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('jobId') jobId: string, @Body() body: { reason?: string }) {
+  archive(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('jobId') jobId: string, @Body() body: JobReasonDto) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     return this.jobs.archive(req.user.sub, companyId, jobId, body?.reason);
   }
