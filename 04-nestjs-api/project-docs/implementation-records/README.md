@@ -27,4 +27,4 @@ Files in this folder are intentionally kept outside the source tree so the app f
 - [OAuth configuration decision](PHASE-09-OAUTH-CONFIG-DECISION-REQUIRED.md)
 - [OAuth implementation plan](PHASE-09-OAUTH-IMPLEMENTATION-PLAN.md)
 
-`build.log`, `test.log` and `test2.log` are historical local run logs only; they are not requirements or implementation authority.
+Temporary auth-cookie notes and local run logs are retained under `../../Agent_review/archive-app-docs/superseded-temporary/`; they are not active requirements or implementation authority.

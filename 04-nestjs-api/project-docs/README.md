@@ -30,7 +30,6 @@ Start with this index, then read only the phase and decision documents relevant 
 - [Decision 05 — First resume active default](DECISION-05-FIRST-RESUME-ACTIVE-DEFAULT-HINGLISH.md)
 - [Decision 06 — API error vocabulary](DECISION-06-API-ERROR-VOCABULARY-HINGLISH.md)
 - [Jobs/search decision questions](JOBS-SEARCH-DECISION-QUESTIONS.md)
-- [Temporary auth cookie contract](AUTH-COOKIE-CONTRACT-TEMPORARY.md)
 
 ## Phase 09 implementation records
 
