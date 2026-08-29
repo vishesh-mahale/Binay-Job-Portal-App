@@ -4,7 +4,7 @@ describe('ResumeService confirmation guards', () => {
   it('rejects malformed confirmation input before opening a transaction', async () => {
     const transaction = jest.fn();
     const service = new ResumeService({ transaction } as any, {} as any);
-    await expect(service.confirm({ user: { sub: 'u' } } as any, 'bad-id', {})).rejects.toThrow('VALIDATION_ERROR');
+    await expect(service.confirm({ user: { sub: 'u' } } as any, 'bad-id', {} as any)).rejects.toThrow('VALIDATION_ERROR');
     expect(transaction).not.toHaveBeenCalled();
   });
 
