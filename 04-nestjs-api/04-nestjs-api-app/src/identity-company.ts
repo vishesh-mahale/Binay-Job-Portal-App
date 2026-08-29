@@ -1,9 +1,10 @@
 import { BadRequestException, Body, Controller, Get, Injectable, NotFoundException, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard, AuthenticatedRequest } from './auth';
 import { UserContextClient, SystemClient } from './clients';
+import { Allow } from 'class-validator';
 
 export class RevokePresenceSessionDto {
-  session_id!: string;
+  @Allow() session_id!: string;
 }
 
 

@@ -2,13 +2,14 @@ import { BadRequestException, Body, Controller, ForbiddenException, Injectable, 
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
+import { Allow } from 'class-validator';
 
-export class CreateBranchDto { name!: string; city!: string; country!: string; is_headquarters?: boolean; address_line1?: string; address_line2?: string; state?: string; postal_code?: string; latitude?: number; longitude?: number; phone?: string; email?: string; timezone?: string; }
-export class UpdateBranchDto extends CreateBranchDto { is_active?: boolean; [key: string]: unknown; }
-export class CreateDepartmentDto { name!: string; head_member_id?: string; description?: string; }
-export class UpdateDepartmentDto extends CreateDepartmentDto { is_active?: boolean; [key: string]: unknown; }
-export class CreateTeamDto { department_id!: string; name!: string; lead_member_id?: string; description?: string; }
-export class UpdateTeamDto { name?: string; lead_member_id?: string; description?: string; is_active?: boolean; [key: string]: unknown; }
+export class CreateBranchDto { @Allow() name!: string; @Allow() city!: string; @Allow() country!: string; @Allow() is_headquarters?: boolean; @Allow() address_line1?: string; @Allow() address_line2?: string; @Allow() state?: string; @Allow() postal_code?: string; @Allow() latitude?: number; @Allow() longitude?: number; @Allow() phone?: string; @Allow() email?: string; @Allow() timezone?: string; }
+export class UpdateBranchDto extends CreateBranchDto { @Allow() is_active?: boolean; [key: string]: unknown; }
+export class CreateDepartmentDto { @Allow() name!: string; @Allow() head_member_id?: string; @Allow() description?: string; }
+export class UpdateDepartmentDto extends CreateDepartmentDto { @Allow() is_active?: boolean; [key: string]: unknown; }
+export class CreateTeamDto { @Allow() department_id!: string; @Allow() name!: string; @Allow() lead_member_id?: string; @Allow() description?: string; }
+export class UpdateTeamDto { @Allow() name?: string; @Allow() lead_member_id?: string; @Allow() description?: string; @Allow() is_active?: boolean; [key: string]: unknown; }
 type AuthReq = Request & { user?: RequestUser };
 
 @Injectable()

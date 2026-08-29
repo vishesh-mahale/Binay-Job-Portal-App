@@ -2,20 +2,21 @@ import { BadRequestException, Body, Controller, ForbiddenException, Get, Injecta
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
+import { Allow } from 'class-validator';
 
 export class CreateCompanyDto {
-  name!: string; slug!: string; email?: string; phone?: string; legal_name?: string;
-  description?: string; short_description?: string; industry?: string; company_size?: string;
-  website?: string; linkedin_url?: string; twitter_url?: string; facebook_url?: string; youtube_url?: string;
-  logo_path?: string; cover_image_path?: string; brand_color?: string; address_line1?: string; address_line2?: string;
-  city?: string; state?: string; country?: string; postal_code?: string; latitude?: number; longitude?: number;
+  @Allow() name!: string; @Allow() slug!: string; @Allow() email?: string; @Allow() phone?: string; @Allow() legal_name?: string;
+  @Allow() description?: string; @Allow() short_description?: string; @Allow() industry?: string; @Allow() company_size?: string;
+  @Allow() website?: string; @Allow() linkedin_url?: string; @Allow() twitter_url?: string; @Allow() facebook_url?: string; @Allow() youtube_url?: string;
+  @Allow() logo_path?: string; @Allow() cover_image_path?: string; @Allow() brand_color?: string; @Allow() address_line1?: string; @Allow() address_line2?: string;
+  @Allow() city?: string; @Allow() state?: string; @Allow() country?: string; @Allow() postal_code?: string; @Allow() latitude?: number; @Allow() longitude?: number;
 }
 export class UpdateCompanyDto {
-  name?: string; legal_name?: string; description?: string; short_description?: string; industry?: string;
-  company_size?: string; website?: string; linkedin_url?: string; twitter_url?: string; facebook_url?: string;
-  youtube_url?: string; logo_path?: string; cover_image_path?: string; brand_color?: string; email?: string;
-  phone?: string; address_line1?: string; address_line2?: string; city?: string; state?: string; country?: string;
-  postal_code?: string; latitude?: number; longitude?: number;
+  @Allow() name?: string; @Allow() legal_name?: string; @Allow() description?: string; @Allow() short_description?: string; @Allow() industry?: string;
+  @Allow() company_size?: string; @Allow() website?: string; @Allow() linkedin_url?: string; @Allow() twitter_url?: string; @Allow() facebook_url?: string;
+  @Allow() youtube_url?: string; @Allow() logo_path?: string; @Allow() cover_image_path?: string; @Allow() brand_color?: string; @Allow() email?: string;
+  @Allow() phone?: string; @Allow() address_line1?: string; @Allow() address_line2?: string; @Allow() city?: string; @Allow() state?: string; @Allow() country?: string;
+  @Allow() postal_code?: string; @Allow() latitude?: number; @Allow() longitude?: number;
 }
 type AuthReq = Request & { user?: RequestUser };
 const COMPANY_FIELDS = ['name','legal_name','description','short_description','industry','company_size','website','linkedin_url','twitter_url','facebook_url','youtube_url','logo_path','cover_image_path','brand_color','email','phone','address_line1','address_line2','city','state','country','postal_code','latitude','longitude'] as const;

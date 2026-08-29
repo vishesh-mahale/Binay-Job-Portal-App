@@ -2,31 +2,32 @@ import { BadRequestException, ConflictException, Controller, Delete, Get, Inject
 import { randomUUID } from 'crypto';
 import { AuthGuard, AuthenticatedRequest } from './auth';
 import { UserContextClient, SystemClient } from './clients';
+import { Allow } from 'class-validator';
 
 export class UpdateCandidateProfileDto {
-  expected_profile_revision!: number;
-  professional_title?: string | null;
-  summary?: string | null;
-  current_location?: string | null;
-  city?: string | null;
-  state?: string | null;
-  country?: string | null;
-  postal_code?: string | null;
-  preferred_work_mode?: string | null;
-  willing_to_relocate?: boolean;
-  willing_to_travel?: boolean;
-  remote_experience?: boolean;
-  notice_period_days?: number | null;
-  expected_salary_min?: number | null;
-  expected_salary_max?: number | null;
-  work_authorization?: string | null;
-  visa_sponsorship_needed?: boolean;
-  is_open_to_work?: boolean;
-  available_from?: string | null;
+  @Allow() expected_profile_revision!: number;
+  @Allow() professional_title?: string | null;
+  @Allow() summary?: string | null;
+  @Allow() current_location?: string | null;
+  @Allow() city?: string | null;
+  @Allow() state?: string | null;
+  @Allow() country?: string | null;
+  @Allow() postal_code?: string | null;
+  @Allow() preferred_work_mode?: string | null;
+  @Allow() willing_to_relocate?: boolean;
+  @Allow() willing_to_travel?: boolean;
+  @Allow() remote_experience?: boolean;
+  @Allow() notice_period_days?: number | null;
+  @Allow() expected_salary_min?: number | null;
+  @Allow() expected_salary_max?: number | null;
+  @Allow() work_authorization?: string | null;
+  @Allow() visa_sponsorship_needed?: boolean;
+  @Allow() is_open_to_work?: boolean;
+  @Allow() available_from?: string | null;
 }
 
 export class ArchiveCandidateFactDto {
-  expected_profile_revision!: number;
+  @Allow() expected_profile_revision!: number;
 }
 
 @Injectable()
