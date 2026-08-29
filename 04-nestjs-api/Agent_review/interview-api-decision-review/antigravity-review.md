@@ -1,6 +1,6 @@
 # Interview API Decisions Architectural Review Report
 
-**Target Scope:** `04-nestjs-api/04-nestjs-api-app/INTERVIEW-API-DECISION-QUESTIONS.md`  
+**Target Scope:** `04-nestjs-api/project-docs/implementation-records/INTERVIEW-API-DECISION-QUESTIONS.md`  
 **Auditor:** Antigravity (Senior Interview API Architect)  
 **Date:** 2026-08-28  
 **Report Location:** `04-nestjs-api/Agent_review/interview-api-decision-review/antigravity-review.md`  

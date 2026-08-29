@@ -8,9 +8,10 @@ use cases के through चलेंगे।
 
 ## Start here
 
-- [NestJS implementation guide](NESTJS-IMPLEMENTATION-GUIDE.md)
-- [Phase 09 coding start gate](PHASE-09-CODING-START-GATE.md)
-- [Phase 09 foundation slice scope](PHASE-09-FOUNDATION-SLICE-SCOPE.md)
+- All architecture, requirements, decisions and phase documents are indexed in [project-docs](project-docs/README.md).
+- [NestJS implementation guide](project-docs/NESTJS-IMPLEMENTATION-GUIDE.md)
+- [Phase 09 coding start gate](project-docs/PHASE-09-CODING-START-GATE.md)
+- [Phase 09 foundation slice scope](project-docs/PHASE-09-FOUNDATION-SLICE-SCOPE.md)
 
 ## Service boundary
 

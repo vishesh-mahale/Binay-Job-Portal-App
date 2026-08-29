@@ -106,7 +106,7 @@ Repository scan karke har relevant source ko list karo. Har file ko authority/cl
 - `contracts/`;
 - `docs/adr/` and `docs/architecture/` (approved decisions and architecture evidence);
 - `04-nestjs-api/` existing docs/readme (agar present);
-- `04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md` (current architecture aur transaction-rule input; iski section-by-section coverage audit mandatory hai);
+- `04-nestjs-api/project-docs/NESTJS-IMPLEMENTATION-GUIDE.md` (current architecture aur transaction-rule input; iski section-by-section coverage audit mandatory hai);
 - `05-outbox-dispatcher-nestjs/`;
 - `07-fastapi-ai-worker/`;
 - root `README.md`, `PROJECT-CONTEXT-MAP.md`, `MIGRATION-PLAN-HINGLISH.md`;
@@ -119,7 +119,7 @@ Repository scan karke har relevant source ko list karo. Har file ko authority/cl
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-00-REQUIREMENTS-SOURCES.md`
+`04-nestjs-api/project-docs/PHASE-00-REQUIREMENTS-SOURCES.md`
 
 Isme path, purpose, authority, last-known status aur related domain mention hoga. Koi source silently ignore nahi hoga.
 
@@ -197,7 +197,7 @@ Phase 2 matrix mein canonical status ke saath optional detail label retain kiya 
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-01-REQUIREMENTS-CONSOLIDATION.md`
+`04-nestjs-api/project-docs/PHASE-01-REQUIREMENTS-CONSOLIDATION.md`
 
 Approved source ka full meaning preserve rahega. Summary banate waqt original rules, examples aur acceptance criteria delete nahi honge.
 
@@ -222,7 +222,7 @@ Dispatcher routing phased hai. Current dispatcher Phase-1 implementation mein si
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-02-REQUIREMENTS-TRACEABILITY-MATRIX.md`
+`04-nestjs-api/project-docs/PHASE-02-REQUIREMENTS-TRACEABILITY-MATRIX.md`
 
 ## 7. Phase 3 — Gap aur conflict analysis
 
@@ -244,7 +244,7 @@ Agent ko “probably”, “assume”, ya silent workaround use nahi karna hai. 
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-03-GAP-CONFLICT-ANALYSIS.md`
+`04-nestjs-api/project-docs/PHASE-03-GAP-CONFLICT-ANALYSIS.md`
 
 ## 8. Phase 4 — State machines aur transaction rules
 
@@ -289,13 +289,13 @@ Cloud Tasks, FastAPI, email ya external API ko open DB transaction ke andar call
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-04-STATE-MACHINES-AND-TRANSACTIONS.md`
+`04-nestjs-api/project-docs/PHASE-04-STATE-MACHINES-AND-TRANSACTIONS.md`
 
 ## 9. Phase 5 — Final requirements freeze
 
 Gap/conflict decisions ke baad final document banega:
 
-`04-nestjs-api/PHASE-05-FINAL-REQUIREMENTS.md`
+`04-nestjs-api/project-docs/PHASE-05-FINAL-REQUIREMENTS.md`
 
 Is document mein sirf approved current production scope hoga. Future aur unresolved items clearly separate honge. Kisi old document ko silently delete nahi karna; uska classification aur replacement reference maintain karna hai.
 
@@ -314,7 +314,7 @@ Freeze se pehle checklist:
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-06-API-CATALOG.md`
+`04-nestjs-api/project-docs/PHASE-06-API-CATALOG.md`
 
 Final requirements freeze ke baad hi API catalog banao. Har endpoint/use case ke liye:
 
@@ -365,7 +365,7 @@ Existing contract ko silently mutate karke old consumers break nahi kiye jayenge
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-07-ARCHITECTURE.md`
+`04-nestjs-api/project-docs/PHASE-07-ARCHITECTURE.md`
 
 Architecture requirements se derive hogi, pehle impose nahi ki jayegi. Design document mein final bounded contexts, module ownership aur dependency direction define karo.
 
@@ -431,7 +431,7 @@ Rules:
 
 ### Deliverable
 
-`04-nestjs-api/PHASE-08-IMPLEMENTATION-PLAN.md`
+`04-nestjs-api/project-docs/PHASE-08-IMPLEMENTATION-PLAN.md`
 
 Implementation plan dependency order mein ho. Har phase ke liye:
 

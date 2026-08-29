@@ -20,8 +20,8 @@ POST /api/v1/jobs/:jobId/apply
 3. `02-database/migrations/baseline/06_documents.sql`
 4. `02-database/migrations/baseline/08_candidates.sql`
 5. `contracts/events/application-submitted.v1.json`
-6. `04-nestjs-api/PHASE-06-API-CATALOG.md`
-7. `04-nestjs-api/04-nestjs-api-app/CODEX-CONSOLIDATED-APPLICATION-API-DECISION.md`
+6. `04-nestjs-api/project-docs/PHASE-06-API-CATALOG.md`
+7. `04-nestjs-api/project-docs/implementation-records/CODEX-CONSOLIDATED-APPLICATION-API-DECISION.md`
 
 ## 3. Coding gates (must be frozen first)
 

@@ -117,8 +117,8 @@ Existing versions must not be silently mutated when a breaking change requires a
 
 | Source | Classification | NestJS API use |
 |---|---|---|
-| `04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md` | `CURRENT architecture/service input` | Responsibilities, transaction boundaries, auth, DB access and service expectations; mandatory section coverage audit |
-| `04-nestjs-api/PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md` | `AUTHORITY planning process` | Phase gates, deliverables and coding start gate |
+| `04-nestjs-api/project-docs/NESTJS-IMPLEMENTATION-GUIDE.md` | `CURRENT architecture/service input` | Responsibilities, transaction boundaries, auth, DB access and service expectations; mandatory section coverage audit |
+| `04-nestjs-api/project-docs/PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md` | `AUTHORITY planning process` | Phase gates, deliverables and coding start gate |
 | `04-nestjs-api/README.md` | `SUPPORTING` | Component navigation and ownership |
 | `04-nestjs-api/04-nestjs-api-app/` | `NOT IMPLEMENTED` | Reserved NestJS application code directory; currently empty |
 

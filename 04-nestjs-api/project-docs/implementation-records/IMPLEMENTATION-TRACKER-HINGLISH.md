@@ -84,7 +84,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 <div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B ke remaining live integration gates — password auth, company/member/ownership HTTP flows, cross-company checks, then same-commit reviewer gate.</div>
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Live password-auth aur company/authorization HTTP verification. Code-gap audits complete hain; evidence: `04-nestjs-api/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md` aur `04-nestjs-api/PHASE-09-B-COMPANY-CODE-GAP-AUDIT.md`.</div>
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Live password-auth aur company/authorization HTTP verification. Code-gap audits complete hain; evidence: `04-nestjs-api/project-docs/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md` aur `04-nestjs-api/project-docs/PHASE-09-B-COMPANY-CODE-GAP-AUDIT.md`.</div>
 
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>

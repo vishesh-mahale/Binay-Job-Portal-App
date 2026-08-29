@@ -9,7 +9,7 @@ This document freezes the lifecycle states, legal transition boundaries and data
 Authority order:
 
 1. `AGENTS.md`
-2. `04-nestjs-api/PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md`
+2. `04-nestjs-api/project-docs/PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md`
 3. executable baseline SQL `01-18`
 4. `contracts/`
 5. current requirements and approved product decisions
