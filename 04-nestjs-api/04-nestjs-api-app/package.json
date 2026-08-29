@@ -7,6 +7,7 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "test": "node ./node_modules/jest/bin/jest.js",
+    "test:jwt": "npm.cmd run build && node scripts/jwt-verifier-integration.cjs",
     "lint:types": "tsc --noEmit"
   },
   "dependencies": {
