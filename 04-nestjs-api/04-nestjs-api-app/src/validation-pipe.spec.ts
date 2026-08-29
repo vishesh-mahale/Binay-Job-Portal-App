@@ -16,8 +16,10 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     [CreateCompanyDto, { name: 'Acme', slug: 'acme', email: 'owner@example.com' }],
     [CreateBranchDto, { name: 'HQ', city: 'Pune', country: 'IN' }],
     [UpdateBranchDto, { name: 'HQ', city: 'Pune', country: 'IN', is_active: true }],
+    [UpdateBranchDto, { is_active: false }],
     [CreateDepartmentDto, { name: 'Engineering' }],
     [UpdateDepartmentDto, { name: 'Engineering', is_active: true }],
+    [UpdateDepartmentDto, { is_active: false }],
     [CreateTeamDto, { department_id: '00000000-0000-4000-8000-000000000001', name: 'Platform' }],
     [UpdateTeamDto, { name: 'Platform', is_active: true }],
     [AddCompanyMemberDto, { user_id: '00000000-0000-4000-8000-000000000001' }],
@@ -42,6 +44,8 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     await expect(pipe.transform({ expected_profile_revision: 'bad' }, { type: 'body', metatype: UpdateCandidateProfileDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
     await expect(pipe.transform({ user_id: '00000000-0000-4000-8000-000000000001', title: 42 }, { type: 'body', metatype: AddCompanyMemberDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ latitude: 'bad' }, { type: 'body', metatype: UpdateBranchDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
   });
 });
