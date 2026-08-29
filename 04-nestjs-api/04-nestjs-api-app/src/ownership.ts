@@ -2,9 +2,9 @@ import { BadRequestException, Body, Controller, ForbiddenException, Injectable, 
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
-import { Allow } from 'class-validator';
+import { Allow, IsUUID } from 'class-validator';
 
-export class TransferOwnershipDto { @Allow() new_owner_user_id!: string; }
+export class TransferOwnershipDto { @Allow() @IsUUID() new_owner_user_id!: string; }
 type AuthReq = Request & { user?: RequestUser };
 
 @Injectable()

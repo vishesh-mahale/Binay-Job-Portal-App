@@ -7,7 +7,7 @@ import { SystemClient } from './clients';
 import { AuthGuard } from './auth';
 import { AuthAuditService } from './auth-audit';
 import { randomUUID } from 'node:crypto';
-import { Allow } from 'class-validator';
+import { Allow, IsEmail, IsString, MinLength } from 'class-validator';
 
 export interface AuthSession { accessToken: string | null; refreshToken: string | null; userId: string | null; requiresVerification: boolean; }
 export interface AuthProvider { signup(input: { email: string; password: string }): Promise<AuthSession>; login(input: { email: string; password: string }): Promise<AuthSession>; refresh(refreshToken: string): Promise<AuthSession>; }
@@ -44,8 +44,8 @@ export class SupabaseAuthProvider implements AuthProvider {
   refresh(refreshToken: string) { return this.call('/token?grant_type=refresh_token', { refresh_token: refreshToken }); }
 }
 
-export class SignupDto { @Allow() email!: string; @Allow() password!: string; }
-export class LoginDto { @Allow() email!: string; @Allow() password!: string; }
+export class SignupDto { @Allow() @IsEmail() email!: string; @Allow() @IsString() @MinLength(8) password!: string; }
+export class LoginDto { @Allow() @IsEmail() email!: string; @Allow() @IsString() password!: string; }
 
 function setSessionCookies(response: Response, session: AuthSession, secure: boolean) {
   if (session.accessToken) response.cookie('binay_access_token', session.accessToken, { httpOnly: true, secure, sameSite: 'lax', path: '/' });

@@ -2,32 +2,32 @@ import { BadRequestException, ConflictException, Controller, Delete, Get, Inject
 import { randomUUID } from 'crypto';
 import { AuthGuard, AuthenticatedRequest } from './auth';
 import { UserContextClient, SystemClient } from './clients';
-import { Allow } from 'class-validator';
+import { Allow, IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateCandidateProfileDto {
-  @Allow() expected_profile_revision!: number;
-  @Allow() professional_title?: string | null;
-  @Allow() summary?: string | null;
-  @Allow() current_location?: string | null;
-  @Allow() city?: string | null;
-  @Allow() state?: string | null;
-  @Allow() country?: string | null;
-  @Allow() postal_code?: string | null;
-  @Allow() preferred_work_mode?: string | null;
-  @Allow() willing_to_relocate?: boolean;
-  @Allow() willing_to_travel?: boolean;
-  @Allow() remote_experience?: boolean;
-  @Allow() notice_period_days?: number | null;
-  @Allow() expected_salary_min?: number | null;
-  @Allow() expected_salary_max?: number | null;
-  @Allow() work_authorization?: string | null;
-  @Allow() visa_sponsorship_needed?: boolean;
-  @Allow() is_open_to_work?: boolean;
-  @Allow() available_from?: string | null;
+  @Allow() @IsInt() @Min(1) expected_profile_revision!: number;
+  @Allow() @IsOptional() @IsString() professional_title?: string | null;
+  @Allow() @IsOptional() @IsString() summary?: string | null;
+  @Allow() @IsOptional() @IsString() current_location?: string | null;
+  @Allow() @IsOptional() @IsString() city?: string | null;
+  @Allow() @IsOptional() @IsString() state?: string | null;
+  @Allow() @IsOptional() @IsString() country?: string | null;
+  @Allow() @IsOptional() @IsString() postal_code?: string | null;
+  @Allow() @IsOptional() @IsString() preferred_work_mode?: string | null;
+  @Allow() @IsOptional() @IsBoolean() willing_to_relocate?: boolean;
+  @Allow() @IsOptional() @IsBoolean() willing_to_travel?: boolean;
+  @Allow() @IsOptional() @IsBoolean() remote_experience?: boolean;
+  @Allow() @IsOptional() @IsNumber() notice_period_days?: number | null;
+  @Allow() @IsOptional() @IsNumber() expected_salary_min?: number | null;
+  @Allow() @IsOptional() @IsNumber() expected_salary_max?: number | null;
+  @Allow() @IsOptional() @IsString() work_authorization?: string | null;
+  @Allow() @IsOptional() @IsBoolean() visa_sponsorship_needed?: boolean;
+  @Allow() @IsOptional() @IsBoolean() is_open_to_work?: boolean;
+  @Allow() @IsOptional() @IsString() available_from?: string | null;
 }
 
 export class ArchiveCandidateFactDto {
-  @Allow() expected_profile_revision!: number;
+  @Allow() @IsInt() @Min(1) expected_profile_revision!: number;
 }
 
 @Injectable()

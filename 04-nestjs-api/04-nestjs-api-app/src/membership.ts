@@ -2,9 +2,9 @@ import { BadRequestException, Body, Controller, ForbiddenException, Injectable, 
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
-import { Allow } from 'class-validator';
+import { Allow, IsBoolean, IsObject, IsOptional, IsUUID } from 'class-validator';
 
-export class AddCompanyMemberDto { @Allow() user_id!: string; @Allow() branch_id?: string; @Allow() department_id?: string; @Allow() team_id?: string; @Allow() manager_member_id?: string; @Allow() title?: string; @Allow() employee_code?: string; @Allow() is_primary_hr?: boolean; @Allow() permissions?: Record<string, unknown>; @Allow() employment_type?: string; @Allow() work_email?: string; @Allow() work_phone?: string; }
+export class AddCompanyMemberDto { @Allow() @IsUUID() user_id!: string; @Allow() @IsOptional() @IsUUID() branch_id?: string; @Allow() @IsOptional() @IsUUID() department_id?: string; @Allow() @IsOptional() @IsUUID() team_id?: string; @Allow() @IsOptional() @IsUUID() manager_member_id?: string; @Allow() title?: string; @Allow() employee_code?: string; @Allow() @IsOptional() @IsBoolean() is_primary_hr?: boolean; @Allow() @IsOptional() @IsObject() permissions?: Record<string, unknown>; @Allow() employment_type?: string; @Allow() work_email?: string; @Allow() work_phone?: string; }
 type AuthReq = Request & { user?: RequestUser };
 const MEMBER_RESPONSE_FIELDS = 'id,company_id,user_id,branch_id,department_id,team_id,manager_member_id,title,is_primary_hr,is_active,invited_at,invited_by,joined_at,left_at,employment_status,created_at,updated_at';
 
