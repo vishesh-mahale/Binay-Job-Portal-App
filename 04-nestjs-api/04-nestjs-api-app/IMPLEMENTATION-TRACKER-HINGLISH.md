@@ -10,6 +10,7 @@
 |---|---|
 | <span style="color:#16a34a">🟢 **COMPLETE** / `[x]`</span> | Evidence-backed and verified |
 | 🟡 **PENDING** / `[ ]` | Work, decision or verification still required |
+| <span style="color:#2563eb">🔵 **CURRENT**</span> | Currently active sub-step |
 | 🔴 **BLOCKED** | Cannot proceed until an external decision/dependency is resolved |
 
 > हर `[x]` item को **🟢 COMPLETE** और हर `[ ]` item को **🟡 PENDING** समझें। Phase heading में status summary दिया गया है ताकि progress तुरंत दिखाई दे।
@@ -80,6 +81,8 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 ### 09-B sub-step tracking
 
 > Neeche ke 12 items **core milestones** hain. Iske baad diya gaya detailed checklist alag follow-up breakdown hai; uske items upar ke 12-count me include nahi hain.
+
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B Identity &amp; Company integration tests — implementation/contract gap check, tests, then same-commit reviewer gate.</div>
 
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
