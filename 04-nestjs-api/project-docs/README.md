@@ -2,6 +2,10 @@
 
 This folder contains the active requirements, decisions, architecture and implementation-plan documents for the NestJS API. Reviewer evidence is kept separately under `../Agent_review/`.
 
+## Agent reading rule
+
+Start with this index, then read only the phase and decision documents relevant to the assigned task. Always inspect the current source/tests under `../04-nestjs-api-app/`. Archived reviewer material is evidence only and never overrides current requirements or decisions.
+
 ## Authority and planning
 
 - [Implementation process plan](PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md)
