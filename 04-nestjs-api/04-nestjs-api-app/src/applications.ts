@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
+import { Allow, IsArray, IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
 
 type AuthRequest = Request & { user?: RequestUser };
 
@@ -10,11 +11,18 @@ function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-export interface SubmitApplicationDto {
-  document_id?: string;
-  cover_letter?: string;
-  answers_to_screening_questions?: unknown;
-  consent?: boolean;
+export class SubmitApplicationDto {
+  @Allow() @IsUUID() document_id!: string;
+  @Allow() @IsOptional() @IsString() cover_letter?: string;
+  @Allow() @IsOptional() @IsArray() answers_to_screening_questions?: unknown[];
+  @Allow() @IsBoolean() consent!: boolean;
+  [key: string]: unknown;
+}
+
+export class ChangeApplicationStatusDto {
+  @Allow() @IsString() status!: string;
+  @Allow() @IsOptional() @IsString() reason?: string;
+  [key: string]: unknown;
 }
 
 @Injectable()
@@ -112,7 +120,7 @@ export class ApplicationService {
     });
   }
 
-  async changeStatus(companyId: string, applicationId: string, userId: string, dto: { status?: string; reason?: string }) {
+  async changeStatus(companyId: string, applicationId: string, userId: string, dto: ChangeApplicationStatusDto) {
     if (!isUuid(companyId) || !isUuid(applicationId) || !dto?.status) throw new BadRequestException('VALIDATION_ERROR');
     const allowed = new Set(['under_review','screening','shortlisted','rejected','withdrawn','on_hold','interview_scheduled','interview_completed','selected','offer_extended','offer_accepted','offer_declined']);
     if (!allowed.has(dto.status)) throw new BadRequestException('VALIDATION_ERROR');
@@ -252,7 +260,7 @@ export class CompanyApplicationReadController {
 export class ApplicationStatusController {
   constructor(private readonly applications: ApplicationService) {}
   @Patch(':applicationId/status')
-  changeStatus(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('applicationId') applicationId: string, @Body() dto: { status?: string; reason?: string }) {
+  changeStatus(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('applicationId') applicationId: string, @Body() dto: ChangeApplicationStatusDto) {
     if (!req.user?.sub) throw new ForbiddenException('FORBIDDEN');
     return this.applications.changeStatus(companyId, applicationId, req.user.sub, dto);
   }

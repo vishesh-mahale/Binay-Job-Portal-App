@@ -2,9 +2,15 @@ import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get,
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
+import { Allow, IsOptional, IsString } from 'class-validator';
 
 type AuthRequest = Request & { user?: RequestUser };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export class SaveCandidateDto {
+  @Allow() @IsOptional() @IsString() private_note?: string;
+  [key: string]: unknown;
+}
 
 @Injectable()
 export class SavedCandidateService {
@@ -67,7 +73,7 @@ export class SavedCandidateService {
 export class SavedCandidateController {
   constructor(private readonly saved: SavedCandidateService) {}
   @Post(':candidateId')
-  save(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('candidateId') candidateId: string, @Body() body: { private_note?: string }) {
+  save(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('candidateId') candidateId: string, @Body() body: SaveCandidateDto) {
     if (!req.user?.sub) throw new BadRequestException('FORBIDDEN');
     return this.saved.save(companyId, req.user.sub, candidateId, body?.private_note);
   }

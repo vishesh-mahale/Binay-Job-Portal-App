@@ -2,16 +2,33 @@ import { BadRequestException, Body, Controller, Injectable, Post, Req, UseGuards
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
+import { Allow, IsObject, IsOptional, IsString } from 'class-validator';
 
 type AuthRequest = Request & { user?: RequestUser };
 const CATEGORIES = new Set(['engagement','conversion','recruitment','user','search','feature','system']);
 const SOURCES = new Set(['web','mobile','api','cron','nestjs','fastapi','dispatcher']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export class IngestAnalyticsEventDto {
+  @Allow() @IsString() idempotency_key!: string;
+  @Allow() @IsString() event_name!: string;
+  @Allow() @IsString() event_category!: string;
+  @Allow() @IsOptional() @IsString() source?: string;
+  @Allow() @IsObject() event_data!: Record<string, unknown>;
+  @Allow() @IsOptional() @IsString() entity_type?: string;
+  @Allow() @IsOptional() @IsString() entity_id?: string;
+  @Allow() @IsOptional() @IsString() session_id?: string;
+  @Allow() @IsOptional() @IsString() request_id?: string;
+  @Allow() @IsOptional() @IsString() trace_id?: string;
+  @Allow() @IsOptional() @IsString() page_url?: string;
+  @Allow() @IsOptional() @IsString() referrer_url?: string;
+  [key: string]: unknown;
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly system: SystemClient) {}
-  async ingest(userId: string, dto: { idempotency_key?: string; event_name?: string; event_category?: string; source?: string; event_data?: unknown; entity_type?: string; entity_id?: string; session_id?: string; request_id?: string; trace_id?: string; page_url?: string; referrer_url?: string }) {
+  async ingest(userId: string, dto: IngestAnalyticsEventDto) {
     const key = dto?.idempotency_key?.trim(); const name = dto?.event_name?.trim().toLowerCase();
     const entityType = dto.entity_type?.trim() || null; const entityId = dto.entity_id || null;
     if (!key || !name || !/^[a-z0-9]+([._-][a-z0-9]+)*$/.test(name) || !dto.event_category || !CATEGORIES.has(dto.event_category) || !SOURCES.has(dto.source ?? 'web') || !dto.event_data || typeof dto.event_data !== 'object' || Array.isArray(dto.event_data) || Boolean(entityType) !== Boolean(entityId) || (entityId !== null && !UUID.test(entityId))) throw new BadRequestException('VALIDATION_ERROR');
@@ -32,7 +49,7 @@ export class AnalyticsService {
 export class AnalyticsController {
   constructor(private readonly analytics: AnalyticsService) {}
   @Post()
-  ingest(@Req() req: AuthRequest, @Body() dto: Parameters<AnalyticsService['ingest']>[1]) {
+  ingest(@Req() req: AuthRequest, @Body() dto: IngestAnalyticsEventDto) {
     if (!req.user?.sub) throw new BadRequestException('FORBIDDEN');
     return this.analytics.ingest(req.user.sub, dto);
   }

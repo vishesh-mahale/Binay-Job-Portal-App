@@ -7,6 +7,10 @@ import { TransferOwnershipDto } from './ownership';
 import { RevokePresenceSessionDto } from './identity-company';
 import { UpdateCandidateProfileDto, ArchiveCandidateFactDto } from './candidate';
 import { CreateJobDto, UpdateJobDto, JobReasonDto } from './jobs';
+import { SubmitApplicationDto, ChangeApplicationStatusDto } from './applications';
+import { SaveCandidateDto } from './saved-candidates';
+import { SubmitFeedbackDto } from './feedback';
+import { IngestAnalyticsEventDto } from './analytics';
 
 const pipe = new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true });
 
@@ -31,6 +35,11 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     [CreateJobDto, { title: 'Java Engineer', slug: 'java-engineer', description: 'Build APIs' }],
     [UpdateJobDto, { title: 'Senior Java Engineer' }],
     [JobReasonDto, { reason: 'Role no longer needed' }],
+    [SubmitApplicationDto, { document_id: '00000000-0000-4000-8000-000000000001', consent: true, answers_to_screening_questions: [] }],
+    [ChangeApplicationStatusDto, { status: 'under_review' }],
+    [SaveCandidateDto, { private_note: 'Priority candidate' }],
+    [SubmitFeedbackDto, { message: 'Helpful product', rating: 5 }],
+    [IngestAnalyticsEventDto, { idempotency_key: 'evt-1', event_name: 'job.viewed', event_category: 'engagement', event_data: { job_id: 'j1' } }],
   ])('accepts valid body for %p', async (metatype, body) => {
     await expect(pipe.transform(body, { type: 'body', metatype, data: '' })).resolves.toBeDefined();
   });
@@ -54,6 +63,12 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     await expect(pipe.transform({ title: 42, slug: 'java-engineer', description: 'Build APIs' }, { type: 'body', metatype: CreateJobDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
     await expect(pipe.transform({ reason: 42 }, { type: 'body', metatype: JobReasonDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ document_id: 'bad', consent: true }, { type: 'body', metatype: SubmitApplicationDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ message: 'bad', rating: 6 }, { type: 'body', metatype: SubmitFeedbackDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ idempotency_key: 'evt-1', event_name: 'job.viewed', event_category: 'engagement', event_data: [] }, { type: 'body', metatype: IngestAnalyticsEventDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
   });
 });
