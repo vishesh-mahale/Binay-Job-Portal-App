@@ -2,21 +2,21 @@ import { BadRequestException, Body, Controller, ForbiddenException, Get, Injecta
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
-import { Allow } from 'class-validator';
+import { Allow, IsEmail, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateCompanyDto {
-  @Allow() name!: string; @Allow() slug!: string; @Allow() email?: string; @Allow() phone?: string; @Allow() legal_name?: string;
-  @Allow() description?: string; @Allow() short_description?: string; @Allow() industry?: string; @Allow() company_size?: string;
-  @Allow() website?: string; @Allow() linkedin_url?: string; @Allow() twitter_url?: string; @Allow() facebook_url?: string; @Allow() youtube_url?: string;
-  @Allow() logo_path?: string; @Allow() cover_image_path?: string; @Allow() brand_color?: string; @Allow() address_line1?: string; @Allow() address_line2?: string;
-  @Allow() city?: string; @Allow() state?: string; @Allow() country?: string; @Allow() postal_code?: string; @Allow() latitude?: number; @Allow() longitude?: number;
+  @Allow() @IsString() name!: string; @Allow() @IsString() slug!: string; @Allow() @IsOptional() @IsEmail() email?: string; @Allow() @IsOptional() @IsString() phone?: string; @Allow() @IsOptional() @IsString() legal_name?: string;
+  @Allow() @IsOptional() @IsString() description?: string; @Allow() @IsOptional() @IsString() short_description?: string; @Allow() @IsOptional() @IsString() industry?: string; @Allow() @IsOptional() @IsString() company_size?: string;
+  @Allow() @IsOptional() @IsString() website?: string; @Allow() @IsOptional() @IsString() linkedin_url?: string; @Allow() @IsOptional() @IsString() twitter_url?: string; @Allow() @IsOptional() @IsString() facebook_url?: string; @Allow() @IsOptional() @IsString() youtube_url?: string;
+  @Allow() @IsOptional() @IsString() logo_path?: string; @Allow() @IsOptional() @IsString() cover_image_path?: string; @Allow() @IsOptional() @IsString() brand_color?: string; @Allow() @IsOptional() @IsString() address_line1?: string; @Allow() @IsOptional() @IsString() address_line2?: string;
+  @Allow() @IsOptional() @IsString() city?: string; @Allow() @IsOptional() @IsString() state?: string; @Allow() @IsOptional() @IsString() country?: string; @Allow() @IsOptional() @IsString() postal_code?: string; @Allow() @IsOptional() @IsNumber() latitude?: number; @Allow() @IsOptional() @IsNumber() longitude?: number;
 }
 export class UpdateCompanyDto {
-  @Allow() name?: string; @Allow() legal_name?: string; @Allow() description?: string; @Allow() short_description?: string; @Allow() industry?: string;
-  @Allow() company_size?: string; @Allow() website?: string; @Allow() linkedin_url?: string; @Allow() twitter_url?: string; @Allow() facebook_url?: string;
-  @Allow() youtube_url?: string; @Allow() logo_path?: string; @Allow() cover_image_path?: string; @Allow() brand_color?: string; @Allow() email?: string;
-  @Allow() phone?: string; @Allow() address_line1?: string; @Allow() address_line2?: string; @Allow() city?: string; @Allow() state?: string; @Allow() country?: string;
-  @Allow() postal_code?: string; @Allow() latitude?: number; @Allow() longitude?: number;
+  @Allow() @IsOptional() @IsString() name?: string; @Allow() @IsOptional() @IsString() legal_name?: string; @Allow() @IsOptional() @IsString() description?: string; @Allow() @IsOptional() @IsString() short_description?: string; @Allow() @IsOptional() @IsString() industry?: string;
+  @Allow() @IsOptional() @IsString() company_size?: string; @Allow() @IsOptional() @IsString() website?: string; @Allow() @IsOptional() @IsString() linkedin_url?: string; @Allow() @IsOptional() @IsString() twitter_url?: string; @Allow() @IsOptional() @IsString() facebook_url?: string;
+  @Allow() @IsOptional() @IsString() youtube_url?: string; @Allow() @IsOptional() @IsString() logo_path?: string; @Allow() @IsOptional() @IsString() cover_image_path?: string; @Allow() @IsOptional() @IsString() brand_color?: string; @Allow() @IsOptional() @IsEmail() email?: string;
+  @Allow() @IsOptional() @IsString() phone?: string; @Allow() @IsOptional() @IsString() address_line1?: string; @Allow() @IsOptional() @IsString() address_line2?: string; @Allow() @IsOptional() @IsString() city?: string; @Allow() @IsOptional() @IsString() state?: string; @Allow() @IsOptional() @IsString() country?: string;
+  @Allow() @IsOptional() @IsString() postal_code?: string; @Allow() @IsOptional() @IsNumber() latitude?: number; @Allow() @IsOptional() @IsNumber() longitude?: number;
 }
 type AuthReq = Request & { user?: RequestUser };
 const COMPANY_FIELDS = ['name','legal_name','description','short_description','industry','company_size','website','linkedin_url','twitter_url','facebook_url','youtube_url','logo_path','cover_image_path','brand_color','email','phone','address_line1','address_line2','city','state','country','postal_code','latitude','longitude'] as const;

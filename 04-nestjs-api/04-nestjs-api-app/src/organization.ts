@@ -2,14 +2,14 @@ import { BadRequestException, Body, Controller, ForbiddenException, Injectable, 
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
-import { Allow } from 'class-validator';
+import { Allow, IsBoolean, IsEmail, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
-export class CreateBranchDto { @Allow() name!: string; @Allow() city!: string; @Allow() country!: string; @Allow() is_headquarters?: boolean; @Allow() address_line1?: string; @Allow() address_line2?: string; @Allow() state?: string; @Allow() postal_code?: string; @Allow() latitude?: number; @Allow() longitude?: number; @Allow() phone?: string; @Allow() email?: string; @Allow() timezone?: string; }
-export class UpdateBranchDto extends CreateBranchDto { @Allow() is_active?: boolean; [key: string]: unknown; }
-export class CreateDepartmentDto { @Allow() name!: string; @Allow() head_member_id?: string; @Allow() description?: string; }
-export class UpdateDepartmentDto extends CreateDepartmentDto { @Allow() is_active?: boolean; [key: string]: unknown; }
-export class CreateTeamDto { @Allow() department_id!: string; @Allow() name!: string; @Allow() lead_member_id?: string; @Allow() description?: string; }
-export class UpdateTeamDto { @Allow() name?: string; @Allow() lead_member_id?: string; @Allow() description?: string; @Allow() is_active?: boolean; [key: string]: unknown; }
+export class CreateBranchDto { @Allow() @IsString() name!: string; @Allow() @IsString() city!: string; @Allow() @IsString() country!: string; @Allow() @IsOptional() @IsBoolean() is_headquarters?: boolean; @Allow() @IsOptional() @IsString() address_line1?: string; @Allow() @IsOptional() @IsString() address_line2?: string; @Allow() @IsOptional() @IsString() state?: string; @Allow() @IsOptional() @IsString() postal_code?: string; @Allow() @IsOptional() @IsNumber() latitude?: number; @Allow() @IsOptional() @IsNumber() longitude?: number; @Allow() @IsOptional() @IsString() phone?: string; @Allow() @IsOptional() @IsEmail() email?: string; @Allow() @IsOptional() @IsString() timezone?: string; }
+export class UpdateBranchDto extends CreateBranchDto { @Allow() @IsOptional() @IsBoolean() is_active?: boolean; [key: string]: unknown; }
+export class CreateDepartmentDto { @Allow() @IsString() name!: string; @Allow() @IsOptional() @IsUUID() head_member_id?: string; @Allow() @IsOptional() @IsString() description?: string; }
+export class UpdateDepartmentDto extends CreateDepartmentDto { @Allow() @IsOptional() @IsBoolean() is_active?: boolean; [key: string]: unknown; }
+export class CreateTeamDto { @Allow() @IsUUID() department_id!: string; @Allow() @IsString() name!: string; @Allow() @IsOptional() @IsUUID() lead_member_id?: string; @Allow() @IsOptional() @IsString() description?: string; }
+export class UpdateTeamDto { @Allow() @IsOptional() @IsString() name?: string; @Allow() @IsOptional() @IsUUID() lead_member_id?: string; @Allow() @IsOptional() @IsString() description?: string; @Allow() @IsOptional() @IsBoolean() is_active?: boolean; [key: string]: unknown; }
 type AuthReq = Request & { user?: RequestUser };
 
 @Injectable()
