@@ -11,6 +11,9 @@ import { SubmitApplicationDto, ChangeApplicationStatusDto } from './applications
 import { SaveCandidateDto } from './saved-candidates';
 import { SubmitFeedbackDto } from './feedback';
 import { IngestAnalyticsEventDto } from './analytics';
+import { GuestSessionCreateDto, GuestApplicationDto, GuestClaimDto } from './guest';
+import { ConfirmResumeDto } from './resume';
+import { ScheduleInterviewDto, InterviewStatusDto, RescheduleInterviewDto, InterviewUpdateDto } from './interviews';
 
 const pipe = new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true });
 
@@ -40,6 +43,14 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     [SaveCandidateDto, { private_note: 'Priority candidate' }],
     [SubmitFeedbackDto, { message: 'Helpful product', rating: 5 }],
     [IngestAnalyticsEventDto, { idempotency_key: 'evt-1', event_name: 'job.viewed', event_category: 'engagement', event_data: { job_id: 'j1' } }],
+    [GuestSessionCreateDto, { job_id: '00000000-0000-4000-8000-000000000001', email: 'guest@example.com' }],
+    [GuestApplicationDto, { job_id: '00000000-0000-4000-8000-000000000001', session_id: '00000000-0000-4000-8000-000000000002', document_id: '00000000-0000-4000-8000-000000000003', name: 'Guest User', email: 'guest@example.com', token: 'opaque-token' }],
+    [GuestClaimDto, { claim_token: 'opaque-token' }],
+    [ConfirmResumeDto, { expected_profile_revision: 1, profile: { summary: 'Updated' }, facts: { skills: [] } }],
+    [ScheduleInterviewDto, { schedule_block_id: '00000000-0000-4000-8000-000000000001', interviewer_id: '00000000-0000-4000-8000-000000000002', title: 'Technical round', type: 'video', scheduled_at: '2030-01-01T10:00:00Z', duration_minutes: 60, timezone: 'Asia/Kolkata' }],
+    [InterviewStatusDto, { status: 'cancelled', reason: 'Candidate unavailable' }],
+    [RescheduleInterviewDto, { schedule_block_id: '00000000-0000-4000-8000-000000000001', interviewer_id: '00000000-0000-4000-8000-000000000002', scheduled_at: '2030-01-01T10:00:00Z', duration_minutes: 60, timezone: 'Asia/Kolkata', status: 'rescheduled' }],
+    [InterviewUpdateDto, { status: 'cancelled', reason: 'Cancelled by HR' }],
   ])('accepts valid body for %p', async (metatype, body) => {
     await expect(pipe.transform(body, { type: 'body', metatype, data: '' })).resolves.toBeDefined();
   });
@@ -69,6 +80,12 @@ describe('global ValidationPipe DTO whitelist contract', () => {
     await expect(pipe.transform({ message: 'bad', rating: 6 }, { type: 'body', metatype: SubmitFeedbackDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
     await expect(pipe.transform({ idempotency_key: 'evt-1', event_name: 'job.viewed', event_category: 'engagement', event_data: [] }, { type: 'body', metatype: IngestAnalyticsEventDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ job_id: 'bad', email: 'guest@example.com' }, { type: 'body', metatype: GuestSessionCreateDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ expected_profile_revision: 'bad' }, { type: 'body', metatype: ConfirmResumeDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ schedule_block_id: 'bad', interviewer_id: '00000000-0000-4000-8000-000000000002', title: 'Round', type: 'video', scheduled_at: '2030-01-01T10:00:00Z', duration_minutes: 60, timezone: 'Asia/Kolkata' }, { type: 'body', metatype: ScheduleInterviewDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
   });
 });

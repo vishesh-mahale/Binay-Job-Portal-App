@@ -5,8 +5,16 @@ import { AuthGuard } from './auth';
 import { SystemClient } from './clients';
 import { StorageAdapter } from './storage';
 import { validateResumeFile } from './resume-upload-validation';
+import { Allow, IsInt, IsObject, IsOptional, IsUUID } from 'class-validator';
 
 type AuthenticatedRequest = Request & { user?: { sub?: string } };
+
+export class ConfirmResumeDto {
+  @Allow() @IsInt() expected_profile_revision!: number;
+  @Allow() @IsOptional() @IsObject() profile?: Record<string, unknown>;
+  @Allow() @IsOptional() @IsObject() facts?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 @Injectable()
 export class ResumeService {
@@ -77,7 +85,7 @@ export class ResumeService {
     }
   }
 
-  async confirm(request: AuthenticatedRequest, documentId: string, body: any) {
+  async confirm(request: AuthenticatedRequest, documentId: string, body: ConfirmResumeDto) {
     if (!/^[0-9a-f-]{36}$/i.test(documentId) || !Number.isInteger(body?.expected_profile_revision)) throw new BadRequestException('VALIDATION_ERROR');
     const ALLOWED_PROFILE_FIELDS = new Set(['professional_title','summary','current_location','city','state','country','postal_code','preferred_work_mode','willing_to_relocate','willing_to_travel','remote_experience','notice_period_days','expected_salary_min','expected_salary_max','work_authorization','visa_sponsorship_needed','is_open_to_work','available_from']);
     const profileInput = body.profile && typeof body.profile === 'object' ? body.profile : body;
@@ -132,7 +140,7 @@ export class ResumeController {
   }
 
   @Post(':id/confirm')
-  async confirm(@Req() request: AuthenticatedRequest, @Body() body: any, @Param('id') documentId: string) {
+  async confirm(@Req() request: AuthenticatedRequest, @Body() body: ConfirmResumeDto, @Param('id') documentId: string) {
     return this.resume.confirm(request, documentId, body);
   }
 }

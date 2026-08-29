@@ -5,12 +5,36 @@ import { SystemClient } from './clients';
 import { StorageAdapter } from './storage';
 import { validateResumeFile } from './resume-upload-validation';
 import { AuthGuard } from './auth';
+import { Allow, IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
+
+export class GuestSessionCreateDto {
+  @Allow() @IsUUID() job_id!: string;
+  @Allow() @IsOptional() @IsEmail() email?: string;
+  [key: string]: unknown;
+}
+
+export class GuestApplicationDto {
+  @Allow() @IsUUID() job_id!: string;
+  @Allow() @IsUUID() session_id!: string;
+  @Allow() @IsUUID() document_id!: string;
+  @Allow() @IsString() name!: string;
+  @Allow() @IsEmail() email!: string;
+  @Allow() @IsOptional() @IsString() phone?: string;
+  @Allow() @IsOptional() @IsString() cover_letter?: string;
+  @Allow() @IsString() token!: string;
+  [key: string]: unknown;
+}
+
+export class GuestClaimDto {
+  @Allow() @IsString() claim_token!: string;
+  [key: string]: unknown;
+}
 
 @Injectable()
 export class GuestSessionService {
   constructor(private readonly system: SystemClient, private readonly storage: StorageAdapter) {}
 
-  async create(body: any) {
+  async create(body: GuestSessionCreateDto) {
     if (!/^[0-9a-f-]{36}$/i.test(String(body?.job_id))) throw new BadRequestException('VALIDATION_ERROR');
     const ttl = Number(process.env.GUEST_UPLOAD_SESSION_TTL_SECONDS);
     if (!Number.isInteger(ttl) || ttl <= 0) throw new ServiceUnavailableException('GUEST_SESSION_NOT_CONFIGURED');
@@ -79,7 +103,7 @@ export class GuestSessionService {
     return { document_id: row.document_id, parsing_job_id: row.parsing_job_id, schema_version: row.schema_version, overall_confidence: row.overall_confidence, confidence_details: row.confidence_details, validation_result: row.validation_result, normalized_output, partial: String(row.processing_status) === 'partial', created_at: row.created_at };
   }
 
-  async apply(body: any) {
+  async apply(body: GuestApplicationDto) {
     if (!body?.job_id || !body?.session_id || !body?.document_id || !body?.name || !body?.email) throw new BadRequestException('VALIDATION_ERROR');
     const hash = createHash('sha256').update(body.token || '').digest('hex');
     return this.system.transaction(async (client) => {
@@ -130,7 +154,7 @@ export class GuestSessionService {
 export class GuestSessionController {
   constructor(private readonly sessions: GuestSessionService) {}
   @Post()
-  async create(@Body() body: any) { return this.sessions.create(body); }
+  async create(@Body() body: GuestSessionCreateDto) { return this.sessions.create(body); }
 
   @Post(':sessionId/resumes')
   @UseInterceptors(FileInterceptor('file'))
@@ -145,9 +169,9 @@ export class GuestSessionController {
   async parsed(@Param('documentId') documentId: string, @Headers('x-guest-upload-token') token: string) { return this.sessions.parsedData(documentId, token); }
 
   @Post('/apply')
-  async apply(@Body() body: any) { return this.sessions.apply(body); }
+  async apply(@Body() body: GuestApplicationDto) { return this.sessions.apply(body); }
 
   @Post('/claims')
   @UseGuards(AuthGuard)
-  async claim(@Body() body: any, @Req() request: any) { return this.sessions.claim(request.user?.sub, body?.claim_token); }
+  async claim(@Body() body: GuestClaimDto, @Req() request: any) { return this.sessions.claim(request.user?.sub, body?.claim_token); }
 }

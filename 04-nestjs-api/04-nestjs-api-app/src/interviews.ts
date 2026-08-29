@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, ForbiddenException, Get, Injecta
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from './auth';
 import { SystemClient } from './clients';
+import { Allow, IsBoolean, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 type AuthRequest = Request & { user?: RequestUser };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -13,20 +14,48 @@ const TRANSITIONS: Record<string, Set<string>> = {
 };
 const INTERVIEW_TYPES = new Set(['phone', 'video', 'in_person', 'technical_assessment', 'group', 'panel']);
 
-export interface ScheduleInterviewDto {
-  schedule_block_id: string;
-  interviewer_id: string;
-  title: string;
-  type: string;
-  round?: number;
-  scheduled_at: string;
-  duration_minutes: number;
-  timezone: string;
-  meeting_link?: string;
+export class ScheduleInterviewDto {
+  @Allow() @IsUUID() schedule_block_id!: string;
+  @Allow() @IsUUID() interviewer_id!: string;
+  @Allow() @IsString() title!: string;
+  @Allow() @IsString() type!: string;
+  @Allow() @IsOptional() @IsInt() @Min(1) round?: number;
+  @Allow() @IsString() scheduled_at!: string;
+  @Allow() @IsInt() @Min(1) @Max(480) duration_minutes!: number;
+  @Allow() @IsString() timezone!: string;
+  @Allow() @IsOptional() @IsString() meeting_link?: string;
+  [key: string]: unknown;
 }
 
-export interface InterviewStatusDto { status: string; reason?: string; }
-export interface RescheduleInterviewDto extends InterviewStatusDto { schedule_block_id: string; interviewer_id: string; scheduled_at: string; duration_minutes: number; timezone: string; meeting_link?: string; }
+export class InterviewStatusDto {
+  @Allow() @IsOptional() @IsString() status?: string;
+  @Allow() @IsOptional() @IsString() reason?: string;
+  [key: string]: unknown;
+}
+
+export class RescheduleInterviewDto {
+  @Allow() @IsUUID() schedule_block_id!: string;
+  @Allow() @IsUUID() interviewer_id!: string;
+  @Allow() @IsString() scheduled_at!: string;
+  @Allow() @IsInt() @Min(1) @Max(480) duration_minutes!: number;
+  @Allow() @IsString() timezone!: string;
+  @Allow() @IsOptional() @IsString() meeting_link?: string;
+  @Allow() @IsOptional() @IsString() status?: string;
+  @Allow() @IsOptional() @IsString() reason?: string;
+  [key: string]: unknown;
+}
+
+export class InterviewUpdateDto {
+  @Allow() @IsOptional() @IsUUID() schedule_block_id?: string;
+  @Allow() @IsOptional() @IsUUID() interviewer_id?: string;
+  @Allow() @IsOptional() @IsString() scheduled_at?: string;
+  @Allow() @IsOptional() @IsInt() @Min(1) @Max(480) duration_minutes?: number;
+  @Allow() @IsOptional() @IsString() timezone?: string;
+  @Allow() @IsOptional() @IsString() meeting_link?: string;
+  @Allow() @IsOptional() @IsString() status?: string;
+  @Allow() @IsOptional() @IsString() reason?: string;
+  [key: string]: unknown;
+}
 
 function validUuid(value: unknown): value is string { return typeof value === 'string' && UUID.test(value); }
 function validTime(value: string): boolean { const t = Date.parse(value); return Number.isFinite(t) && t > Date.now() + 60 * 60 * 1000; }
@@ -125,5 +154,5 @@ export class InterviewController {
   @Get('me/interviews/:interviewId') getMine(@Req() req: AuthRequest, @Param('interviewId') id: string) { return this.service.getMine(req.user!.sub, id); }
   @Post('me/interviews/:interviewId/confirm') confirm(@Req() req: AuthRequest, @Param('interviewId') id: string) { return this.service.changeStatus(req.user!.sub, id, 'confirmed', undefined, undefined, true); }
   @Post('me/interviews/:interviewId/decline') decline(@Req() req: AuthRequest, @Param('interviewId') id: string, @Body() dto: InterviewStatusDto) { return this.service.changeStatus(req.user!.sub, id, 'cancelled', dto?.reason, undefined, true); }
-  @Patch('companies/:companyId/interviews/:interviewId') update(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('interviewId') id: string, @Body() dto: RescheduleInterviewDto) { return dto?.status === 'rescheduled' ? this.service.reschedule(req.user!.sub, companyId, id, dto) : this.service.changeStatus(req.user!.sub, id, dto?.status, dto?.reason, companyId); }
+  @Patch('companies/:companyId/interviews/:interviewId') update(@Req() req: AuthRequest, @Param('companyId') companyId: string, @Param('interviewId') id: string, @Body() dto: InterviewUpdateDto) { return dto?.status === 'rescheduled' ? this.service.reschedule(req.user!.sub, companyId, id, dto as RescheduleInterviewDto) : this.service.changeStatus(req.user!.sub, id, dto?.status ?? '', dto?.reason, companyId); }
 }
