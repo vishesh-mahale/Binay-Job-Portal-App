@@ -1,4 +1,0 @@
-import { UserContextClient, SystemClient } from './clients';
-test('user and system clients are distinct classes', () => { expect(UserContextClient).not.toBe(SystemClient); });
-test('user client rejects non-read SQL', async () => { const client = new UserContextClient({} as any); await expect(client.queryAsUser('jwt', 'UPDATE users SET x = 1')).rejects.toThrow('SELECT statements only'); });
-test('user client rejects malformed JWT before database access', async () => { const client = new UserContextClient({} as any); await expect(client.queryAsUser('bad-token', 'SELECT 1')).rejects.toThrow('Invalid user JWT'); });

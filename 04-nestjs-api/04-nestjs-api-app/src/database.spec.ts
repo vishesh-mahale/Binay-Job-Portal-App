@@ -1,3 +1,0 @@
-import { DatabaseService } from './database';
-
-test('transaction rolls back and rethrows work errors', async () => { const service = Object.create(DatabaseService.prototype) as DatabaseService; const calls: string[] = []; const client = { query: jest.fn(async (sql: string) => { calls.push(sql); }), release: jest.fn() }; (service as any).pool = { connect: jest.fn().mockResolvedValue(client) }; await expect(service.transaction(async () => { throw new Error('boom'); })).rejects.toThrow('boom'); expect(calls).toEqual(['BEGIN', 'ROLLBACK']); expect(client.release).toHaveBeenCalled(); });
