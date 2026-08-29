@@ -84,7 +84,7 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 <div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B ke remaining/pending integration gates — implementation/contract gap check, tests, then same-commit reviewer gate.</div>
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Pending 09-B flows (live auth/company/member/ownership aur cross-company checks) ke code/contracts/tests gaps identify karna. Upar ke 7 checked items is audit ka scope nahi hain.</div>
+<div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Auth gap audit — password auth implemented hai; OAuth authorize/callback ka concrete code aur required environment/account-linking decisions pending hain. Evidence: `04-nestjs-api/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md`.</div>
 
 - [x] <span style="color:#16a34a">Company/member hierarchy SQL invariants and rollback smoke verified.</span>
 - [x] <span style="color:#16a34a">Active branch/department/team/manager reference validation verified.</span>
