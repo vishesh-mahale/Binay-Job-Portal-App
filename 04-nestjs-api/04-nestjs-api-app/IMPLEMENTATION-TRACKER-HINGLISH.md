@@ -53,22 +53,22 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 ### 09-A sub-step tracking
 
-- [x] UserContextClient/SystemClient boundary verified.
-- [x] Supabase ECC/JWKS verification, issuer, audience, expiry and fail-closed checks verified.
-- [x] Legacy HS256 path isolated to explicit local/test fallback.
-- [x] Access/refresh/presence cookie paths and security flags verified.
-- [x] Email verification status transition verified.
-- [x] Single-session revoke and logout behavior unit-tested.
-- [x] Domain-specific idempotency boundaries documented.
-- [ ] Explicit CSRF-token strategy decided and production-tested.
+- [x] <span style="color:#16a34a">UserContextClient/SystemClient boundary verified.</span>
+- [x] <span style="color:#16a34a">Supabase ECC/JWKS verification, issuer, audience, expiry and fail-closed checks verified.</span>
+- [x] <span style="color:#16a34a">Legacy HS256 path isolated to explicit local/test fallback.</span>
+- [x] <span style="color:#16a34a">Access/refresh/presence cookie paths and security flags verified.</span>
+- [x] <span style="color:#16a34a">Email verification status transition verified.</span>
+- [x] <span style="color:#16a34a">Single-session revoke and logout behavior unit-tested.</span>
+- [x] <span style="color:#16a34a">Domain-specific idempotency boundaries documented.</span>
+- [ ] <span style="color:#ca8a04">Explicit CSRF-token strategy decided and production-tested.</span>
 
-- [x] `UserContextClient` aur `SystemClient` ka separation current repositories/DI graph me verify karna.
-- [x] JOSE verifier: current Supabase ECC signing keys ke liye JWKS (`SUPABASE_JWKS_URL`, ya `SUPABASE_URL` se derived endpoint) primary hai; explicit legacy HS256 fallback sirf local/test ke liye. Issuer/audience/expiry checks aur fail-closed behavior maintained.
-- [x] Access-cookie/refresh-cookie path, CORS, proxy/trust settings verify karna; `SameSite=Lax` current CSRF mitigation hai.
-- [ ] Explicit CSRF-token strategy ko production security gate ke roop me decide/verify karna; ise abhi complete claim nahi maana jayega.
-- [x] Auth email-verification callback aur `pending_verification → active` timing ko approved contract se reconcile karna.
-- [x] Session revoke semantics (single matching session) aur logout/replay tests.
-- [x] Generic idempotency promise sirf wahi rakhna jahan durable DB/domain key available ho; unsupported global guarantee document na ho.
+- [x] <span style="color:#16a34a">`UserContextClient` aur `SystemClient` ka separation current repositories/DI graph me verify karna.</span>
+- [x] <span style="color:#16a34a">JOSE verifier: current Supabase ECC signing keys ke liye JWKS (`SUPABASE_JWKS_URL`, ya `SUPABASE_URL` se derived endpoint) primary hai; explicit legacy HS256 fallback sirf local/test ke liye. Issuer/audience/expiry checks aur fail-closed behavior maintained.</span>
+- [x] <span style="color:#16a34a">Access-cookie/refresh-cookie path, CORS, proxy/trust settings verify karna; `SameSite=Lax` current CSRF mitigation hai.</span>
+- [ ] <span style="color:#ca8a04">Explicit CSRF-token strategy ko production security gate ke roop me decide/verify karna; ise abhi complete claim nahi maana jayega.</span>
+- [x] <span style="color:#16a34a">Auth email-verification callback aur `pending_verification → active` timing ko approved contract se reconcile karna.</span>
+- [x] <span style="color:#16a34a">Session revoke semantics (single matching session) aur logout/replay tests.</span>
+- [x] <span style="color:#16a34a">Generic idempotency promise sirf wahi rakhna jahan durable DB/domain key available ho; unsupported global guarantee document na ho.</span>
 
 
 ## 🟡 Phase 09-B — Identity, company aur authorization completion
@@ -135,13 +135,13 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 ### 09-C sub-step tracking
 
-- [ ] First-resume upload → scan → parse → review/edit flow live-tested.
-- [ ] ClamAV runtime available and verified in the target environment.
-- [ ] Clean/infected/quarantined/failed/timeout/retry status mapping verified.
-- [ ] Resume confirmation canonical update, revision, audit and outbox atomicity verified.
-- [ ] Guest upload/apply/claim ownership and replay flow live-tested.
-- [ ] Producer payloads validated against approved contracts.
-- [ ] FastAPI processed-events idempotency and stale-revision behavior E2E-tested.
+- [ ] <span style="color:#ca8a04">First-resume upload → scan → parse → review/edit flow live-tested.</span>
+- [ ] <span style="color:#ca8a04">ClamAV runtime available and verified in the target environment.</span>
+- [ ] <span style="color:#ca8a04">Clean/infected/quarantined/failed/timeout/retry status mapping verified.</span>
+- [ ] <span style="color:#ca8a04">Resume confirmation canonical update, revision, audit and outbox atomicity verified.</span>
+- [ ] <span style="color:#ca8a04">Guest upload/apply/claim ownership and replay flow live-tested.</span>
+- [ ] <span style="color:#ca8a04">Producer payloads validated against approved contracts.</span>
+- [ ] <span style="color:#ca8a04">FastAPI processed-events idempotency and stale-revision behavior E2E-tested.</span>
 
 - [ ] First-resume security scan → parse → review/edit data flow ka live test.
 - [ ] ClamAV runtime (local/dev Cloud Run) verify karna; sirf adapter configuration ko success na maana jaye.
@@ -160,15 +160,15 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 ### 09-D sub-step tracking
 
-- [ ] Job draft → approval → publish/pause/resume/close/archive transitions fully tested.
-- [x] Job approval default `false` and owner/admin override decision frozen.
-- [x] Company job-approval settings GET/PATCH API and audit behavior implemented/tested.
-- [ ] Search routes, DTOs and permissions frozen and wired.
-- [ ] FTS/semantic ranking, filters, cursor and visibility tests completed.
-- [ ] Registered application idempotency and immutable snapshot E2E-tested.
-- [ ] Application status transition matrix, terminal-state and concurrency tests completed.
-- [ ] Saved-candidate privacy, uniqueness and delete behavior fully tested.
-- [ ] Job expiry schedule, notification behavior and candidate visibility verified.
+- [ ] <span style="color:#ca8a04">Job draft → approval → publish/pause/resume/close/archive transitions fully tested.</span>
+- [x] <span style="color:#16a34a">Job approval default `false` and owner/admin override decision frozen.</span>
+- [x] <span style="color:#16a34a">Company job-approval settings GET/PATCH API and audit behavior implemented/tested.</span>
+- [ ] <span style="color:#ca8a04">Search routes, DTOs and permissions frozen and wired.</span>
+- [ ] <span style="color:#ca8a04">FTS/semantic ranking, filters, cursor and visibility tests completed.</span>
+- [ ] <span style="color:#ca8a04">Registered application idempotency and immutable snapshot E2E-tested.</span>
+- [ ] <span style="color:#ca8a04">Application status transition matrix, terminal-state and concurrency tests completed.</span>
+- [ ] <span style="color:#ca8a04">Saved-candidate privacy, uniqueness and delete behavior fully tested.</span>
+- [ ] <span style="color:#ca8a04">Job expiry schedule, notification behavior and candidate visibility verified.</span>
 
 - [ ] Job create/update, approval, publish, pause, resume, close aur archive ke full transition tests.
 - [x] Approval policy freeze: `company_settings.job_approval_required` ka default `false` (direct publish) rahega; company owner/admin (authorized employer-side actor) ise `true` karke approval required kar sakta hai. Existing submitted jobs ka current workflow change nahi hoga.
@@ -196,13 +196,13 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 ### 09-E sub-step tracking
 
-- [ ] Referral API/contracts implemented and invitation/claim/reissue behavior tested.
-- [x] Interview scheduling and core booking transaction smoke verified.
-- [x] Interview confirmation/reschedule lineage smoke verified.
-- [ ] Completed/cancelled/no-show terminal paths tested.
-- [ ] Participant authorization and safe projections tested.
-- [ ] Lead-time and timezone rules freeze/re-test completed.
-- [ ] Notification/reminder ownership and summary contract decided.
+- [ ] <span style="color:#ca8a04">Referral API/contracts implemented and invitation/claim/reissue behavior tested.</span>
+- [x] <span style="color:#16a34a">Interview scheduling and core booking transaction smoke verified.</span>
+- [x] <span style="color:#16a34a">Interview confirmation/reschedule lineage smoke verified.</span>
+- [ ] <span style="color:#ca8a04">Completed/cancelled/no-show terminal paths tested.</span>
+- [ ] <span style="color:#ca8a04">Participant authorization and safe projections tested.</span>
+- [ ] <span style="color:#ca8a04">Lead-time and timezone rules freeze/re-test completed.</span>
+- [ ] <span style="color:#ca8a04">Notification/reminder ownership and summary contract decided.</span>
 
 - [ ] **MISSING:** Referral API aur shared event/task contracts abhi implemented nahi hain; invitation, accept/claim, attribution, reissue aur duplicate behavior finalize/test karna hai.
 - [ ] Referral company/application boundary aur reward terminal-state rules test.
@@ -222,13 +222,13 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 ### 09-F sub-step tracking
 
-- [ ] Notification list/unread/read APIs implemented.
-- [ ] Event → notification row → SSE → Next.js header flow tested.
-- [ ] Offline recovery and reconnect cursor behavior tested.
-- [ ] SSE JWT/ticket, heartbeat and per-user isolation tested.
-- [ ] WebSocket participant authorization and missed-message recovery tested.
-- [ ] Message/attachment idempotency and security rules tested.
-- [ ] Email provider and template contract decided before enablement.
+- [ ] <span style="color:#ca8a04">Notification list/unread/read APIs implemented.</span>
+- [ ] <span style="color:#ca8a04">Event → notification row → SSE → Next.js header flow tested.</span>
+- [ ] <span style="color:#ca8a04">Offline recovery and reconnect cursor behavior tested.</span>
+- [ ] <span style="color:#ca8a04">SSE JWT/ticket, heartbeat and per-user isolation tested.</span>
+- [ ] <span style="color:#ca8a04">WebSocket participant authorization and missed-message recovery tested.</span>
+- [ ] <span style="color:#ca8a04">Message/attachment idempotency and security rules tested.</span>
+- [ ] <span style="color:#ca8a04">Email provider and template contract decided before enablement.</span>
 
 - [ ] `notifications` table ko source of truth rakhte hue list, unread-count, acknowledge/read APIs freeze/implement karna.
 - [ ] Event → notification row → SSE nudge → Next.js header flow implement/test.
@@ -246,12 +246,12 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 ### 09-G sub-step tracking
 
-- [ ] Analytics ownership, permissions and idempotency frozen.
-- [ ] Registered feedback validation, rate limit, PII and audit tested.
-- [ ] Guest feedback API/contract implemented or explicitly deferred.
-- [ ] AI provider/model/cost and producer contracts finalized.
-- [ ] Referral rewards/subscription/external search decisions recorded.
-- [ ] Accessibility target added to the Next.js release gate.
+- [ ] <span style="color:#ca8a04">Analytics ownership, permissions and idempotency frozen.</span>
+- [ ] <span style="color:#ca8a04">Registered feedback validation, rate limit, PII and audit tested.</span>
+- [ ] <span style="color:#ca8a04">Guest feedback API/contract implemented or explicitly deferred.</span>
+- [ ] <span style="color:#ca8a04">AI provider/model/cost and producer contracts finalized.</span>
+- [ ] <span style="color:#ca8a04">Referral rewards/subscription/external search decisions recorded.</span>
+- [ ] <span style="color:#ca8a04">Accessibility target added to the Next.js release gate.</span>
 
 - [ ] Analytics metric ownership, permission aur idempotency rules freeze karna.
 - [ ] Feedback registered flow ka validation, rate limit, PII aur audit test.
