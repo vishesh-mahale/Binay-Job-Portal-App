@@ -29,6 +29,7 @@
 - [📌 01-requirements/](01-requirements/README.md) — All requirements & decisions
 - [🗄️ 02-database/](02-database/README.md) — Database schema & migrations
 - [🏗️ 04-nestjs-api/](04-nestjs-api/README.md) — NestJS implementation guide
+- [NestJS implementation process plan](04-nestjs-api/PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md)
 - [⚡ 05-outbox-dispatcher-nestjs/](05-outbox-dispatcher-nestjs/README.md) — Outbox Dispatcher service
 - [📦 06-google-cloud-tasks-queue/](06-google-cloud-tasks-queue/README.md) — GCP Cloud Tasks Queue & IaC configs
 - [🤖 07-fastapi-ai-worker/](07-fastapi-ai-worker/README.md) — AI Worker service
@@ -278,9 +279,9 @@ Binay-Job-Portal-App/
 
 🏗️ **NESTJS API**
 - [API README](04-nestjs-api/README.md)
-- [Implementation Guide](04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md)
-- [Phase 09 coding start gate](04-nestjs-api/PHASE-09-CODING-START-GATE.md)
-- [Phase 09 foundation slice scope](04-nestjs-api/PHASE-09-FOUNDATION-SLICE-SCOPE.md)
+- [Implementation Guide](04-nestjs-api/project-docs/NESTJS-IMPLEMENTATION-GUIDE.md)
+- [Phase 09 coding start gate](04-nestjs-api/project-docs/PHASE-09-CODING-START-GATE.md)
+- [Phase 09 foundation slice scope](04-nestjs-api/project-docs/PHASE-09-FOUNDATION-SLICE-SCOPE.md)
 
 ⚡ **OUTBOX DISPATCHER (05-outbox-dispatcher-nestjs)**
 - [Dispatcher README](05-outbox-dispatcher-nestjs/README.md)
