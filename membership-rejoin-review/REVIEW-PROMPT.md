@@ -2,10 +2,10 @@
 
 Review `04-nestjs-api/membership-rejoin-review/REJOIN-APPROVAL-CONTRACT-QUESTION.md` against:
 
-- `04-nestjs-api/PHASE-09-B-API-CONTRACT-DECISIONS-HINGLISH.md`
-- `04-nestjs-api/PHASE-09-B-API-CONTRACT-FINAL-FREEZE-CANDIDATE.md`
-- `04-nestjs-api/PHASE-09-B-DTO-FIELD-MAPPING-WORKSHEET.md`
-- `04-nestjs-api/PHASE-06-API-CATALOG.md`
+- `04-nestjs-api/project-docs/PHASE-09-B-API-CONTRACT-DECISIONS-HINGLISH.md`
+- `04-nestjs-api/project-docs/PHASE-09-B-API-CONTRACT-FINAL-FREEZE-CANDIDATE.md`
+- `04-nestjs-api/project-docs/PHASE-09-B-DTO-FIELD-MAPPING-WORKSHEET.md`
+- `04-nestjs-api/project-docs/PHASE-06-API-CATALOG.md`
 - `02-database/migrations/baseline/04_companies.sql`
 - `02-database/migrations/baseline/17_rls.sql`
 - `AGENTS.md`

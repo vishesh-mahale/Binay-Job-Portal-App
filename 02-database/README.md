@@ -57,7 +57,7 @@ Core principles:
 - [One-shot registered/guest platform feedback](migrations/baseline/18_feedback_Explanation.md)
 - [Candidate profile to authorized HR search test flow](flows/CANDIDATE-TO-HR-VISIBILITY-TEST-HINGLISH.md)
 - [Active-resume recruiter-search decision](../01-requirements/product-decisions/PD-002-ACTIVE-RESUME-SEARCH.md)
-- [NestJS implementation guide](../04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md)
+- [NestJS implementation guide](../04-nestjs-api/project-docs/NESTJS-IMPLEMENTATION-GUIDE.md)
 - [Background-worker architecture](../docs/architecture/background-processing/BACKGROUND-WORKER-ARCHITECTURE-OPTIONS-HINGLISH.md)
 - [Background-worker implementation plan](../docs/architecture/background-processing/BACKGROUND-WORKER-IMPLEMENTATION-PLAN-HINGLISH.md)
 

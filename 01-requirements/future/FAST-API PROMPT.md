@@ -74,7 +74,7 @@ When designing and writing code, you must strictly respect the following precede
 | **2** | `02-database/schema-docs/PRODUCTION-SCHEMA-BLUEPRINT.md` & `SEARCH-STRATEGY.md` | **Database Contract Authority** |
 | **3** | Approved Architecture Docs (`docs/architecture/background-processing/`) | **System Architecture Truth** |
 | **4** | Shared Contracts in `contracts/events/` and `contracts/tasks/` | **Payload & Schema Contracts** |
-| **5** | `04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md` | **Service Boundaries** |
+| **5** | `04-nestjs-api/project-docs/NESTJS-IMPLEMENTATION-GUIDE.md` | **Service Boundaries** |
 | **6** | `01-requirements/current/` and `01-requirements/product-decisions/` | **Product Requirements & Decisions** |
 | **7** | `docs/research/ai/` | **Research Input Only** (Non-authoritative) |
 | **8** | Old sibling `Binay-App` code | **Legacy Reference Only** — NEVER copy blindly! |

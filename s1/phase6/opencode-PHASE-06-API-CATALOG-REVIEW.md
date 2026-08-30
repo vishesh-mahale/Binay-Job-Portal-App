@@ -3,7 +3,7 @@
 Status: `REVIEW COMPLETE — CONDITIONAL PASS WITH 3 BLOCKERs`
 
 Reviewer: opencode
-Reviewed file: `04-nestjs-api/PHASE-06-API-CATALOG.md` (188 lines)
+Reviewed file: `04-nestjs-api/project-docs/PHASE-06-API-CATALOG.md` (188 lines)
 Date: 2026-08-26
 
 ---

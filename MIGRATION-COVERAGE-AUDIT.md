@@ -22,7 +22,7 @@ remove नहीं हुई।
 | `old_3_AI model vs parser library.md` | `docs/research/ai/AI-MODEL-VS-PARSER-LIBRARY-RESEARCH.md` | FULL PRESERVED | Full 303-line source contained; non-authoritative research warning added |
 | `old_AI-PIPELINE.md` | `docs/research/ai/AI-PIPELINE-ARCHITECTURE-INPUT.md` | FULL PRESERVED | Full 270-line source contained; stale-example warning added |
 | `08_ACTIVE-RESUME-CANDIDATE-SEARCH-POLICY.md` | `PD-002-ACTIVE-RESUME-SEARCH.md` | REFINED + COVERAGE | Initial condensation defect fixed; example, table, flow, service responsibilities and memory rule restored |
-| `old_NESTJS-GUIDE.md` | `04-nestjs-api/NESTJS-IMPLEMENTATION-GUIDE.md` | REFINED + COVERAGE | Useful sections mapped in Section 22; obsolete mechanisms have explicit replacements |
+| `old_NESTJS-GUIDE.md` | `04-nestjs-api/project-docs/NESTJS-IMPLEMENTATION-GUIDE.md` | REFINED + COVERAGE | Useful sections mapped in Section 22; obsolete mechanisms have explicit replacements |
 | `old_PRODUCTION-SCHEMA-BLUEPRINT.md` | `02-database/schema-docs/PRODUCTION-SCHEMA-BLUEPRINT.md` | REFINED + COVERAGE | Every original heading preserved/expanded; source coverage appendix added |
 | `oldSearch-Strategy.md` | `02-database/schema-docs/SEARCH-STRATEGY.md` | REFINED + COVERAGE | Missing overview table restored; Section 17 maps every original area |
 | `supabase-query-index-use-approach.md` | `02-database/schema-docs/supabase-query-index-use-approach.md` | REFINED + COVERAGE | Original filename retained; stale examples corrected and all original sections mapped in Section 15 |
