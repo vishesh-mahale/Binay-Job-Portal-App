@@ -4,7 +4,7 @@ Active source-of-truth documents are kept here. Historical phases, drafts, audit
 
 ## Read first
 
-- [Implementation process plan](../PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md)
+- [Implementation process plan](PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md)
 - [NestJS implementation guide](NESTJS-IMPLEMENTATION-GUIDE.md)
 - [Final requirements](PHASE-05-FINAL-REQUIREMENTS.md)
 - [API catalog](PHASE-06-API-CATALOG.md)

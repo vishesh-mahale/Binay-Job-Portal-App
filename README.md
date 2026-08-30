@@ -29,7 +29,7 @@
 - [📌 01-requirements/](01-requirements/README.md) — All requirements & decisions
 - [🗄️ 02-database/](02-database/README.md) — Database schema & migrations
 - [🏗️ 04-nestjs-api/](04-nestjs-api/README.md) — NestJS implementation guide
-- [NestJS implementation process plan](04-nestjs-api/PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md)
+- [NestJS implementation process plan](04-nestjs-api/project-docs/PLAN-REQUIREMENTS-TO-IMPLEMENTATION-HINGLISH.md)
 - [⚡ 05-outbox-dispatcher-nestjs/](05-outbox-dispatcher-nestjs/README.md) — Outbox Dispatcher service
 - [📦 06-google-cloud-tasks-queue/](06-google-cloud-tasks-queue/README.md) — GCP Cloud Tasks Queue & IaC configs
 - [🤖 07-fastapi-ai-worker/](07-fastapi-ai-worker/README.md) — AI Worker service
