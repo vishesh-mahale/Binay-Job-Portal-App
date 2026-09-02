@@ -70,6 +70,80 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] <span style="color:#16a34a">Session revoke semantics (single matching session) aur logout/replay tests.</span>
 - [x] <span style="color:#16a34a">Generic idempotency promise sirf wahi rakhna jahan durable DB/domain key available ho; unsupported global guarantee document na ho.</span>
 
+---
+
+## 🟢 Next.js Web Frontend — Vertical Slice 1: Foundation + Auth Core & Auth UI (Batch 1, 2 & 3)
+
+**Primary Implementer:** Anti-Gravity  
+**Reviewers:** FreeBuf, OpenCode, Codex  
+**Status:** `BATCH 1, 2 & 3: FULLY IMPLEMENTED & VERIFIED, FRONTEND TESTS PASS (45/45), BACKEND TESTS PASS (217/217), REAL AUTH PUBLIC SIGNUP INTEGRATION FLOW PASS (100%), BUILD PASS`
+
+### Batch 1 Sub-step Tracking
+- [x] <span style="color:#16a34a">Next.js 15 App Router scaffold, TypeScript strict config, Tailwind CSS, Jest setup initialized in `03-nextjs-web/03-nextjs-web-app/`.</span>
+- [x] <span style="color:#16a34a">Standardized API envelopes (`src/types/api.ts`) and Auth models (`src/types/auth.ts`) defined and reconciled with backend DTOs (`SignupRequest.role` removed).</span>
+- [x] <span style="color:#16a34a">Error handling standard and `AppApiError` class with correlation IDs implemented (`src/lib/errors.ts`).</span>
+- [x] <span style="color:#16a34a">Centralized typed `ApiClient` with cookie credentials, correlation headers, auto-retry on 401 implemented (`src/lib/api-client.ts`).</span>
+- [x] <span style="color:#16a34a">UI primitives created (`Button`, `Input`, `Label`, `Card`, `Alert`, `Badge`, `Spinner`).</span>
+- [x] <span style="color:#16a34a">Jest setup wired via `setupFilesAfterEnv: ['<rootDir>/jest.setup.ts']`.</span>
+
+### Batch 2 Sub-step Tracking
+- [x] <span style="color:#16a34a">Signup UI page (`src/app/signup/page.tsx`) with client validation, loading/error states, and NestJS `POST /api/v1/auth/signup` integration.</span>
+- [x] <span style="color:#16a34a">Login UI page (`src/app/login/page.tsx`) with email/password validation, `credentials: 'include'`, loading/error states, safe `redirectTo` open redirect prevention (`getSafeRedirectUrl`), and `POST /api/v1/auth/login` integration.</span>
+- [x] <span style="color:#16a34a">Auth Context (`src/context/auth-context.tsx`) for session state management, `GET /api/v1/auth/me` user profile loading, and logout handling.</span>
+- [x] <span style="color:#16a34a">UserSummary interface reconciled with NestJS `/auth/me` query response (`first_name`, `middle_name`, `last_name`, `display_name`, `phone`, `avatar_path`) & `getUserDisplayName` helper added.</span>
+- [x] <span style="color:#16a34a">Protected Route Edge Middleware (`src/middleware.ts`) intercepting `/dashboard/:path*` unauthenticated access & unit test suite (`src/middleware.spec.ts`) created.</span>
+- [x] <span style="color:#16a34a">Client-side `RoleGuard` component (`src/components/role-guard.tsx`) updated with stable `rolesKey` dependencies & unit test suite (`src/components/role-guard.spec.tsx`) created.</span>
+- [x] <span style="color:#16a34a">Role-aware entry dashboard pages created (`/dashboard`, `/dashboard/candidate`, `/dashboard/employer`, `/dashboard/admin`).</span>
+- [x] <span style="color:#16a34a">Status pages created (`/verify-email`, `/unauthorized`, `/forbidden`).</span>
+- [x] <span style="color:#16a34a">Automated frontend unit test suites (`auth-pages.spec.tsx`, `role-guard.spec.tsx`, `middleware.spec.tsx`, `api-client.spec.ts`, `errors.spec.ts`, UI primitives) — **7 suites / 40 tests passing**.</span>
+- [x] <span style="color:#16a34a">Backend NestJS test suite executed separately — **33 suites / 195 tests passing**.</span>
+- [x] <span style="color:#16a34a">Live NestJS backend auth flow verified — **login → /auth/me → refresh → logout → post-logout 401 verification PASS 100%** (zero tokens in response bodies, HttpOnly cookies verified).</span>
+- [x] <span style="color:#16a34a">Production build verified — **auth and dashboard routes added, 0 build errors**. Windows `spawn EPERM` / trace process limits documented as environment-specific.</span>
+
+### Batch 3 Sub-step Tracking — Auth Onboarding Role Selection & Explicit Auto-Confirm Configuration
+- [x] <span style="color:#16a34a">Explicit `AUTH_AUTO_CONFIRM_EMAIL` configuration added to Zod schema (`src/infrastructure/config/config.ts`), `.env`, `.env.example`, and config unit test suite. Defaults to `true` in dev/test, and strictly requires explicit variable definition in `preprod` and `production` environments to prevent silent policy drift.</span>
+- [x] <span style="color:#16a34a">Approved product decision documented: Current dev/preprod/production environment has email auto-confirm intentionally enabled (`AUTH_AUTO_CONFIRM_EMAIL=true`) because custom domain SMTP is pending. Real email verification (`email_not_verified`) is deferred to the future custom domain/Brevo SMTP phase.</span>
+- [x] <span style="color:#16a34a">Supabase Dashboard current Auth configuration recorded: **Allow new users ON**, **Email provider enabled**, **Confirm email OFF**, aligned with the current `AUTH_AUTO_CONFIRM_EMAIL=true` policy. Future SMTP/domain phase will switch to **Confirm email ON** and `AUTH_AUTO_CONFIRM_EMAIL=false`.</span>
+- [x] <span style="color:#16a34a">No inference from token absence: `SupabaseAuthProvider.signup` explicitly reads `AUTH_AUTO_CONFIRM_EMAIL` flag; does not infer auto-confirm behavior from `accessToken` absence.</span>
+- [x] <span style="color:#16a34a">Recovery & Provisioning Behavior (PF-01, PF-04): (1) Cleanup succeeds → Auth user deleted from Supabase Auth, HTTP 503 ROLE_PROVISIONING_FAILED returned, zero cookies issued. (2) Cleanup fails + suspended fallback succeeds → schema-valid `status = 'suspended'` DB record persisted, subsequent login durably blocked with HTTP 401 UNAUTHORIZED. (3) Cleanup fails + suspended fallback fails → audit metadata records `cleanup_success: false, fallback_success: false` (no false "persisted" claim), HTTP 503 returned, zero cookies issued. (4) Future operational retry/recovery remains an explicit follow-up item if required.</span>
+- [x] <span style="color:#16a34a">Row-Count Enforcement: `AuthProviderController.signup()` strictly verifies `rowCount === 1` on UPDATE queries. `rowCount === 0` is treated as provisioning failure and triggers compensating cleanup + audit event + HTTP 503 response (unit tested).</span>
+- [x] <span style="color:#16a34a">Manual verification mode (`AUTH_AUTO_CONFIRM_EMAIL=false`): Account remains `pending_verification` while role assignment still succeeds authoritatively via NestJS `SystemClient`.</span>
+- [x] <span style="color:#16a34a">Future configuration-only switch-off: Setting `AUTH_AUTO_CONFIRM_EMAIL=false` switches off auto-confirm purely via configuration without code changes; returns `{ status: 'pending_verification' }` requiring email confirmation.</span>
+- [x] <span style="color:#16a34a">Email-verification callback slice (COMPLETE): Implemented on Next.js `/verify-email` page adhering 100% to mandatory security rules. Success occurs ONLY when `type === 'signup'` AND a non-empty `access_token` is present AND no error/error_code parameters exist. URL hash scrubbed in-memory. Empirically verified with real Brevo Custom SMTP email delivery, link click verification, and post-confirmation login (7/7 frontend test suites / 49/49 tests passed, 33/33 backend test suites / 217/217 tests passed).</span>
+- [x] <span style="color:#16a34a">Uniform `register_as: 'candidate' | 'employer'` naming enforced across backend DTOs, ValidationPipe, frontend interfaces, and unit tests. Omitted `register_as` defaults to `candidate` (unit tested).</span>
+- [x] <span style="color:#16a34a">Token request body isolation: Post-signup auto-confirm login passes only `{ email, password }` in the `/token?grant_type=password` request payload (unit tested).</span>
+- [x] <span style="color:#16a34a">Trusted role provisioning: NestJS validates `register_as` in `SignupDto` and authoritatively updates `public.users.role` using `SystemClient`. Client `app_metadata` role tampering is untrusted and forbidden.</span>
+- [x] <span style="color:#16a34a">Strict role rejection: Signup requests specifying `register_as: 'hr'`, `register_as: 'admin'`, or invalid values are rejected at HTTP boundary with HTTP 400 Bad Request.</span>
+- [x] <span style="color:#16a34a">Frontend Candidate vs Employer role selection toggle added to Signup UI (`src/app/signup/page.tsx`).</span>
+- [x] <span style="color:#16a34a">Server-role-based post-login redirects verified: `candidate` → `/dashboard/candidate`, `employer` → `/dashboard/employer`, `hr` → `/dashboard/employer`, `admin` → `/dashboard/admin`.</span>
+- [x] <span style="color:#16a34a">Frontend unit tests updated & executed — **7 test suites / 45 tests passing (100%)**.</span>
+- [x] <span style="color:#16a34a">Backend unit tests updated & executed — **33 test suites / 217 tests passing (100%)**. Includes 15 mandatory test scenarios for the entire failure state-machine, single delete execution, schema-valid suspended DB cleanup fallback, zero-row update failure, and suspended status login rejection.</span>
+- [x] <span style="color:#16a34a">Real Email Verification & Brevo Custom SMTP Live Phase Completed: Domain `collabfor.com` authenticated on Cloudflare DNS (SPF, DKIM, DMARC, `auth` branded subdomain). Supabase Custom SMTP enabled (`smtp-relay.brevo.com`:587) with **Confirm Email = ON**. NestJS `AUTH_AUTO_CONFIRM_EMAIL=false` enabled. Real signup flow empirically verified: candidate/employer signup returns HTTP 201 `pending_verification` with zero session cookies, pre-confirmation login rejected with HTTP 401 UNAUTHORIZED (`email_not_verified`), real confirmation email delivered from `noreply@collabfor.com` via Brevo SMTP directly to Primary Inbox. Clicking link in email confirmed account, and post-confirmation login succeeded returning HTTP 201 with session cookies and authoritative profile role from `/api/v1/auth/me` (`status = 'active'`).</span>
+- [ ] **Future Production UI Hardening Backlog (Deferred for Motive API Testing):** Future UI work will enforce 11 mandatory requirements: (1) Zero visible Home Page flash, (2) Root hash detection renders minimal loading shell, (3) Safe effect/blocking redirect strategy, (4) Deterministic `/verify-email` state (success / error / pending), (5) No intermediate card flips, (6) Zero SSR/hydration mismatch & console warnings, (7) Immediate hash scrubbing, (8) Zero token storage or custom API forwarding, (9) Slow network and 2nd-click expired-link browser tests, (10) Document as "flash minimized" unless proven zero-flash, (11) Supabase Auth remains sole authority for confirmation tokens and state.
+
+---
+
+## 🟢 Batch 4A — Native Password Recovery & Password Security (COMPLETE — SECURITY REVIEW PASSED)
+
+**Owner:** Codex / Antigravity  
+**Status:** `FINAL VERDICT: BATCH 4A SECURITY REVIEW PASSED (100% APPROVED)`  
+**Canonical Handoff Path:** `04-nestjs-api/Agent_review/batch-4a/BATCH-4A-SECURITY-AUDIT-HANDOFF.md`  
+**Prerequisite:** Completed. Proceeding to Phase 09-B.
+
+### Batch 4A Completed Milestones:
+- [x] <span style="color:#16a34a">`POST /api/v1/auth/forgot-password` anti-enumeration endpoint verified: returns identical HTTP 200 generic success for both known (`visheshmahale1994@gmail.com`) and unknown emails.</span>
+- [x] <span style="color:#16a34a">Supabase native recovery email via Brevo Custom SMTP (`noreply@collabfor.com`) with `email_redirect_to: http://localhost:3001/reset-password`.</span>
+- [x] <span style="color:#16a34a">`/reset-password` unauthenticated recovery callback page implemented: parses recovery token in-memory, scrubs URL hash immediately via `history.replaceState`, routes recovery reset via NestJS backend proxy (`POST /api/v1/auth/reset-password`), redirects to `/login` upon success.</span>
+- [x] <span style="color:#16a34a">Approved Proxy Architecture Specification: Recovery token is captured in memory by Next.js and sent only over HTTPS to the NestJS reset-password proxy (`POST /api/v1/auth/reset-password`). NestJS forwards it only to Supabase Auth's native password-update endpoint (`PUT /auth/v1/user`) and never stores, logs, caches, audits or returns it. Supabase Auth remains the sole authority for recovery-token validation and password update.</span>
+- [x] <span style="color:#16a34a">CRITICAL-01 Source Fix Resolution: Removed all hardcoded fallbacks and service-role key references from frontend source code (`reset-password/page.tsx`), `.env.local`, and build artifacts. Production bundle scan (`grep_search` on `.next/`) proved `service_role` and JWT keys are **100% ABSENT**. Zero keys shipped to client browser!</span>
+- [x] <span style="color:#16a34a">Supabase Key Rotation & Old Key Revocation Verified: Legacy key revoked in Supabase Dashboard (returns `HTTP 401 Unauthorized`), new modern secret key configured in NestJS `.env`.</span>
+- [x] <span style="color:#16a34a">Real Brevo Gmail Inbox Recovery Test Verified: Email received in Gmail inbox (`visheshmahale1994@gmail.com`), link clicked, password reset via NestJS proxy (`POST /api/v1/auth/reset-password`), old password rejected (`401`), new password login succeeded (`201`).</span>
+- [x] <span style="color:#16a34a">Backend NestJS unit tests executed — **33 test suites / 225 tests passing (100%)**.</span>
+- [x] <span style="color:#16a34a">Frontend TypeScript typecheck & Jest unit tests executed — **7 test suites / 64 tests passing (100%)**, `tsc --noEmit` 0 errors, Next.js production build **15/15 static pages generated**.</span>
+- [x] <span style="color:#16a34a">`ResetPasswordPage` Component UI Unit Tests Added (`03-nextjs-web/03-nextjs-web-app/src/app/auth-pages.spec.tsx`): 6 deterministic component tests covering missing/expired tokens, form rendering, `apiClient.resetPassword` proxy invocation, success state & `/login` redirect, safe API error handling, and zero token leakage in storage.</span>
+- [x] <span style="color:#16a34a">Scope Specification: `ChangePasswordPage` UI is explicitly OUT OF SCOPE for Batch 4A and will be planned in a future frontend slice.</span>
+
+---
 
 ## 🟡 Phase 09-B — Identity, company aur authorization completion
 

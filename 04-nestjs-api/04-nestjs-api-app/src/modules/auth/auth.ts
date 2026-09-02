@@ -32,13 +32,20 @@ export class AuthGuard implements CanActivate {
     req.rawAccessToken = cookieToken || headerToken;
     req.user = await verifyBearer(req, this.key, this.verifier, this.options);
     if (this.system && req.user?.sub) {
-      const dbCheck = await this.system.query<{ status: string; deleted_at: string | null; locked_until: string | null }>(
-        'SELECT status, deleted_at, locked_until FROM public.users WHERE id = $1',
+      const dbCheck = await this.system.query<{ status: string; deleted_at: string | null; locked_until: string | null; last_password_changed_at: string | null }>(
+        'SELECT status, deleted_at, locked_until, last_password_changed_at FROM public.users WHERE id = $1',
         [req.user.sub]
       );
       const user = dbCheck.rows[0];
       if (!user || user.deleted_at || user.status !== 'active' || (user.locked_until && new Date(user.locked_until).getTime() > Date.now())) {
         throw new UnauthorizedException('UNAUTHORIZED');
+      }
+      if (user.last_password_changed_at) {
+        const cutoffSeconds = Math.ceil(new Date(user.last_password_changed_at).getTime() / 1000);
+        const tokenIat = typeof req.user.iat === 'number' ? req.user.iat : undefined;
+        if (typeof tokenIat === 'number' && tokenIat < cutoffSeconds) {
+          throw new UnauthorizedException('UNAUTHORIZED');
+        }
       }
     }
     return true;

@@ -30,6 +30,6 @@ const jwtKey = config.SUPABASE_JWKS_URL
     SystemClient,
     AuthAuditService,
   ],
-  exports: [DatabaseService, UserContextClient, SystemClient, StorageAdapter, AuthGuard, SupabaseAuthProvider, AuthAuditService],
+  exports: ['APP_CONFIG', DatabaseService, UserContextClient, SystemClient, StorageAdapter, AuthGuard, SupabaseAuthProvider, AuthAuditService, 'JWT_VERIFICATION_KEY', 'JWT_VERIFIER', 'JWT_OPTIONS'],
 })
 export class CoreModule {}

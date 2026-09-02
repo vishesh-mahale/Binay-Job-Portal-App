@@ -20,6 +20,8 @@ const pipe = new ValidationPipe({ whitelist: true, transform: true, forbidNonWhi
 describe('global ValidationPipe DTO whitelist contract', () => {
   test.each([
     [SignupDto, { email: 'user@example.com', password: 'secret123' }],
+    [SignupDto, { email: 'user@example.com', password: 'secret123', register_as: 'candidate' }],
+    [SignupDto, { email: 'user@example.com', password: 'secret123', register_as: 'employer' }],
     [LoginDto, { email: 'user@example.com', password: 'secret123' }],
     [CreateCompanyDto, { name: 'Acme', slug: 'acme', email: 'owner@example.com' }],
     [CreateBranchDto, { name: 'HQ', city: 'Pune', country: 'IN' }],
@@ -62,6 +64,12 @@ describe('global ValidationPipe DTO whitelist contract', () => {
 
   test('rejects malformed typed fields at the HTTP boundary', async () => {
     await expect(pipe.transform({ email: 'not-an-email', password: 'secret123' }, { type: 'body', metatype: SignupDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ email: 'user@example.com', password: 'secret123', register_as: 'hr' }, { type: 'body', metatype: SignupDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ email: 'user@example.com', password: 'secret123', register_as: 'admin' }, { type: 'body', metatype: SignupDto, data: '' }))
+      .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    await expect(pipe.transform({ email: 'user@example.com', password: 'secret123', register_as: 'invalid' }, { type: 'body', metatype: SignupDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
     await expect(pipe.transform({ new_owner_user_id: 'not-a-uuid' }, { type: 'body', metatype: TransferOwnershipDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
