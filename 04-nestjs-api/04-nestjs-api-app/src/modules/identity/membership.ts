@@ -12,7 +12,9 @@ const MEMBER_RESPONSE_FIELDS = 'id,company_id,user_id,branch_id,department_id,te
 export class MembershipService {
   constructor(private readonly db: SystemClient) {}
   private async audit(client: any, companyId: string, actorId: string, targetId: string, action: string, entityId: string, oldValues: unknown, newValues: unknown) {
-    await client.query(`INSERT INTO public.audit_logs (company_id,user_id,target_user_id,action,entity_type,entity_id,old_values,new_values,changes) VALUES ($1,$2,$3,$4,'company_member',$5,$6,$7,jsonb_build_object('membership',jsonb_build_object('old',$6,'new',$7)))`, [companyId, actorId, targetId, action, entityId, JSON.stringify(oldValues), JSON.stringify(newValues)]);
+    const oldJson = oldValues !== undefined && oldValues !== null ? JSON.stringify(oldValues) : '{}';
+    const newJson = newValues !== undefined && newValues !== null ? JSON.stringify(newValues) : '{}';
+    await client.query(`INSERT INTO public.audit_logs (company_id,user_id,target_user_id,action,entity_type,entity_id,old_values,new_values,changes) VALUES ($1,$2,$3,$4,'company_member',$5,$6::jsonb,$7::jsonb,jsonb_build_object('membership',jsonb_build_object('old',$6::jsonb,'new',$7::jsonb)))`, [companyId, actorId, targetId, action, entityId, oldJson, newJson]);
   }
   private async assertAdmin(client: any, uid: string, cid: string) {
     const r = await client.query(`SELECT 1 FROM public.companies c WHERE c.id=$1 AND c.deleted_at IS NULL AND (c.owner_id=$2 OR EXISTS (SELECT 1 FROM public.company_members m WHERE m.company_id=c.id AND m.user_id=$2 AND m.is_active=true AND (m.is_primary_hr=true OR COALESCE((m.permissions->>'manage_company')::boolean,false)=true)))`, [cid, uid]);
@@ -33,11 +35,11 @@ export class MembershipService {
       const existing = await client.query('SELECT * FROM public.company_members WHERE company_id=$1 AND user_id=$2 FOR UPDATE', [cid,dto.user_id]);
       if (existing.rowCount && existing.rows[0].is_active) throw new BadRequestException('IDEMPOTENCY_CONFLICT');
       if (existing.rowCount) {
-        const r = await client.query(`UPDATE public.company_members SET branch_id=$1,department_id=$2,team_id=$3,manager_member_id=$4,title=$5,employee_code=$6,is_primary_hr=COALESCE($7,is_primary_hr),permissions=$8,employment_type=$9,work_email=$10,work_phone=$11,invited_at=NOW(),invited_by=$12,left_at=NULL WHERE id=$13 RETURNING ${MEMBER_RESPONSE_FIELDS}`, [dto.branch_id,dto.department_id,dto.team_id,dto.manager_member_id,dto.title,dto.employee_code,dto.is_primary_hr,dto.permissions,dto.employment_type,dto.work_email,dto.work_phone,uid,existing.rows[0].id]);
+        const r = await client.query(`UPDATE public.company_members SET branch_id=$1,department_id=$2,team_id=$3,manager_member_id=$4,title=$5,employee_code=$6,is_primary_hr=COALESCE($7,is_primary_hr),permissions=$8,employment_type=$9,work_email=$10,work_phone=$11,invited_at=NOW(),invited_by=$12,left_at=NULL WHERE id=$13 RETURNING ${MEMBER_RESPONSE_FIELDS}`, [dto.branch_id ?? null,dto.department_id ?? null,dto.team_id ?? null,dto.manager_member_id ?? null,dto.title ?? null,dto.employee_code ?? null,dto.is_primary_hr ?? null,dto.permissions ? JSON.stringify(dto.permissions) : null,dto.employment_type ?? null,dto.work_email ?? null,dto.work_phone ?? null,uid,existing.rows[0].id]);
         await this.audit(client,cid,uid,dto.user_id,'membership.invited',existing.rows[0].id,{is_active:existing.rows[0].is_active},{is_active:false});
         return r.rows[0];
       }
-      const r = await client.query(`INSERT INTO public.company_members (company_id,user_id,branch_id,department_id,team_id,manager_member_id,title,employee_code,is_primary_hr,permissions,employment_type,work_email,work_phone,invited_at,invited_by,is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,false),$10,$11,$12,$13,NOW(),$14,false) RETURNING ${MEMBER_RESPONSE_FIELDS}`, [cid,dto.user_id,dto.branch_id,dto.department_id,dto.team_id,dto.manager_member_id,dto.title,dto.employee_code,dto.is_primary_hr,dto.permissions,dto.employment_type,dto.work_email,dto.work_phone,uid]);
+      const r = await client.query(`INSERT INTO public.company_members (company_id,user_id,branch_id,department_id,team_id,manager_member_id,title,employee_code,is_primary_hr,permissions,employment_type,work_email,work_phone,invited_at,invited_by,is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,false),$10,$11,$12,$13,NOW(),$14,false) RETURNING ${MEMBER_RESPONSE_FIELDS}`, [cid,dto.user_id,dto.branch_id ?? null,dto.department_id ?? null,dto.team_id ?? null,dto.manager_member_id ?? null,dto.title ?? null,dto.employee_code ?? null,dto.is_primary_hr ?? null,dto.permissions ? JSON.stringify(dto.permissions) : null,dto.employment_type ?? null,dto.work_email ?? null,dto.work_phone ?? null,uid]);
       await this.audit(client,cid,uid,dto.user_id,'membership.invited',r.rows[0].id,null,{is_active:false});
       return r.rows[0];
     });

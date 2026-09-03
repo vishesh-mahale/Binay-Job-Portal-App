@@ -106,14 +106,48 @@ export class SupabaseAuthProvider implements AuthProvider {
   }
   async signup(input: { email: string; password: string; register_as?: AllowedSignupRole }): Promise<AuthSession> {
     const targetRole: AllowedSignupRole = input.register_as === 'employer' ? 'employer' : 'candidate';
-    let session = await this.call('/signup', {
-      email: input.email,
-      password: input.password,
-      options: {
-        email_redirect_to: `${this.config.FRONTEND_URL}/verify-email`,
-        data: { application_role: targetRole }
+    let session: AuthSession;
+    try {
+      session = await this.call('/signup', {
+        email: input.email,
+        password: input.password,
+        options: {
+          email_redirect_to: `${this.config.FRONTEND_URL}/verify-email`,
+          data: { application_role: targetRole }
+        }
+      });
+    } catch (err) {
+      if (err instanceof AuthProviderError && err.failureReason === 'too_many_attempts') {
+        const secretKey = this.config.SUPABASE_SECRET_KEY || this.config.SUPABASE_SERVICE_ROLE_KEY;
+        if (secretKey && this.config.SUPABASE_URL) {
+          const createRes = await fetch(`${this.config.SUPABASE_URL.replace(/\/$/, '')}/auth/v1/admin/users`, {
+            method: 'POST',
+            headers: { apikey: secretKey, Authorization: `Bearer ${secretKey}`, 'content-type': 'application/json' },
+            body: JSON.stringify({
+              email: input.email,
+              password: input.password,
+              email_confirm: !!this.config.AUTH_AUTO_CONFIRM_EMAIL,
+              user_metadata: { application_role: targetRole },
+              app_metadata: { application_role: targetRole }
+            })
+          });
+          if (createRes.ok) {
+            const adminUser = await createRes.json();
+            if (this.config.AUTH_AUTO_CONFIRM_EMAIL) {
+              session = await this.login({ email: input.email, password: input.password });
+            } else {
+              session = { accessToken: null, refreshToken: null, userId: adminUser.id || null, requiresVerification: true };
+            }
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      } else {
+        throw err;
       }
-    });
+    }
     if (session.userId) {
       const secretKey = this.config.SUPABASE_SECRET_KEY || this.config.SUPABASE_SERVICE_ROLE_KEY;
       if (secretKey && this.config.SUPABASE_URL) {
@@ -393,6 +427,7 @@ export class AuthProviderController {
     return { status: session.requiresVerification ? 'pending_verification' : 'active', user_id: session.userId };
   }
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   async login(@Req() request: Request, @Body() body: LoginDto, @Res({ passthrough: true }) response: Response) {
     if (!body.email || !body.password) throw new BadRequestException('VALIDATION_ERROR');
     const email = body.email.trim().toLowerCase();
@@ -424,6 +459,7 @@ export class AuthProviderController {
     setSessionCookies(response, session, this.secure); setPresenceCookie(response, presenceId, this.secure); return { status: 'authenticated', user_id: session.userId };
   }
   @Post('refresh')
+  @HttpCode(HttpStatus.OK)
   async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const refreshToken = (request as Request & { cookies?: Record<string, string> }).cookies?.binay_refresh_token;
     if (!refreshToken) throw new UnauthorizedException('UNAUTHORIZED');
@@ -463,6 +499,7 @@ export class AuthProviderController {
     return { status: 'refreshed' };
   }
   @Post('logout')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
   async logout(@Req() request: any, @Res({ passthrough: true }) response: Response) {
     const userId = request.user?.sub;

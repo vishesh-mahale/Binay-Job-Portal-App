@@ -20,7 +20,7 @@ export class OwnershipService {
       if (!target.rowCount) throw new BadRequestException('NOT_FOUND');
       const updated = await client.query('UPDATE public.companies SET owner_id=$1 WHERE id=$2 AND owner_id=$3 AND deleted_at IS NULL RETURNING *', [dto.new_owner_user_id,companyId,actorId]);
       if (!updated.rowCount) throw new ForbiddenException('FORBIDDEN');
-      await client.query(`INSERT INTO public.audit_logs (company_id,user_id,target_user_id,action,entity_type,entity_id,old_values,new_values,changes) VALUES ($1,$2,$3,'company.ownership_transferred','company',$1,jsonb_build_object('owner_id',$2),jsonb_build_object('owner_id',$3),jsonb_build_object('owner_id',jsonb_build_object('old',$2,'new',$3)))`, [companyId, actorId, dto.new_owner_user_id]);
+      await client.query(`INSERT INTO public.audit_logs (company_id,user_id,target_user_id,action,entity_type,entity_id,old_values,new_values,changes) VALUES ($1::uuid,$2::uuid,$3::uuid,'company.ownership_transferred','company',$1::uuid,jsonb_build_object('owner_id',$2::text),jsonb_build_object('owner_id',$3::text),jsonb_build_object('owner_id',jsonb_build_object('old',$2::text,'new',$3::text)))`, [companyId, actorId, dto.new_owner_user_id]);
       return updated.rows[0];
     });
   }

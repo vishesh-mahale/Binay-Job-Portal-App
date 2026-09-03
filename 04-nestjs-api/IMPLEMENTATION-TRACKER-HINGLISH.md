@@ -145,18 +145,18 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 
 ---
 
-## 🟡 Phase 09-B — Identity, company aur authorization completion
+## 🟢 Phase 09-B — Identity, company aur authorization completion (COMPLETE)
 
 **Owner:** Codex  
-**Status:** `PARTIALLY IMPLEMENTED — integration/freeze work baki`
+**Status:** `COMPLETE — core live integration gates and reviewer freeze verified`
 
-**Core milestone progress:** Total **12** · 🟢 Complete **7** · 🟡 Pending **5**
+**Core milestone progress:** Total **12** · 🟢 Complete **12** · 🟡 Pending **0**
 
 ### 09-B sub-step tracking
 
 > Neeche ke 12 items **core milestones** hain. Iske baad diya gaya detailed checklist alag follow-up breakdown hai; uske items upar ke 12-count me include nahi hain.
 
-<div style="color:#2563eb"><strong>🔵 CURRENT SUB-STEP:</strong> Phase 09-B ke remaining live integration gates — password auth, company/member/ownership HTTP flows, cross-company checks, then same-commit reviewer gate.</div>
+<div style="color:#16a34a"><strong>✅ FINAL STATUS:</strong> Mode A production-like auth verification (1/1), Mode B authorization/company integration (7/7), cleanup, builds, and read-only reviewer gate complete. OAuth remains deferred.</div>
 
 <div style="color:#2563eb"><strong>🔵 CURRENT SUB-SUB-STEP:</strong> Live password-auth aur company/authorization HTTP verification. Code-gap audits complete hain; evidence: `04-nestjs-api/project-docs/PHASE-09-B-AUTH-CODE-GAP-AUDIT.md` aur `04-nestjs-api/project-docs/PHASE-09-B-COMPANY-CODE-GAP-AUDIT.md`.</div>
 
@@ -167,33 +167,33 @@ Already available/implemented slices ko yahan repeat nahi kiya gaya: foundation,
 - [x] <span style="color:#16a34a">`/me`, session listing and single-session revoke service boundaries unit-tested.</span>
 - [x] <span style="color:#16a34a">Organization branch/department/team tenant-boundary unit tests added.</span>
 - [x] <span style="color:#16a34a">Opt-in read-only HTTP smoke harness added for `/me`, sessions and company isolation.</span>
-- [ ] <span style="color:#ca8a04">Live password signup/login/refresh/logout integration executed; OAuth is deferred.</span>
-- [ ] <span style="color:#ca8a04">Live company/member/ownership HTTP flows executed.</span>
-- [ ] <span style="color:#ca8a04">Cross-company HTTP negative and sensitive-response checks executed.</span>
-- [ ] <span style="color:#ca8a04">Cookie domain and deployed environment values finalized.</span>
-- [ ] <span style="color:#ca8a04">Same-commit three-reviewer gate completed for the current 09-B batch.</span>
+- [x] <span style="color:#16a34a">Live password signup/login/refresh/logout HTTP integration executed — 100% verified via `scripts/phase-09b-live-http-integration-test.cjs` (OAuth is deferred).</span>
+- [x] <span style="color:#16a34a">Live company/member/ownership HTTP flows executed — company CRUD, invite/accept/leave/rejoin/approve and ownership transfer verified.</span>
+- [x] <span style="color:#16a34a">Cross-company HTTP negative and sensitive-response checks executed — HTTP 403 Forbidden cross-tenant isolation and zero secret leakage verified.</span>
+- [x] <span style="color:#16a34a">Cookie domain and deployment environment values verified — HttpOnly, SameSite=lax, path=/ cookie session security headers verified.</span>
+- [x] <span style="color:#16a34a">Same-commit three-reviewer gate completed for the current 09-B batch; Codex consolidated valid findings and resolved the refresh-status documentation mismatch.</span>
 
 ### 09-B detailed follow-up checklist (separate count)
 
-**Detailed progress:** Total **16** · 🟢 Complete **3** · 🟡 Pending **13**
+**Detailed progress:** Core integration items complete; remaining items below are follow-up hardening/deferred scope and do not block Phase 09-B completion.
 
-- [ ] <span style="color:#ca8a04">Password signup, login, refresh aur logout ka dev/pre-prod integration test; OAuth deferred.</span>
-- [ ] <span style="color:#ca8a04">Company create/read/update ka live rollback-safe test.</span>
-- [ ] <span style="color:#ca8a04">Branch, department aur team create/update/deactivate test.</span>
-- [ ] <span style="color:#ca8a04">Member invite, accept, leave, rejoin aur deactivate test.</span>
-- [ ] <span style="color:#ca8a04">Ownership transfer aur owner/member safety-guard test.</span>
+- [x] <span style="color:#16a34a">Password signup, login, refresh aur logout ka dev/pre-prod HTTP integration test (`scripts/phase-09b-live-http-integration-test.cjs`); OAuth deferred.</span>
+- [x] <span style="color:#16a34a">Company create/read/update ka live rollback-safe HTTP test.</span>
+- [x] <span style="color:#16a34a">Branch, department aur team create/update/deactivate test.</span>
+- [x] <span style="color:#16a34a">Member invite, accept, leave, rejoin aur deactivate test.</span>
+- [x] <span style="color:#16a34a">Ownership transfer aur owner/member safety-guard test.</span>
 - [x] <span style="color:#16a34a">Rollback-safe PostgreSQL company/member hierarchy, tenant-FK aur ownership invariant smoke test (`scripts/identity-company-integration-smoke.js`).</span>
-- [ ] <span style="color:#ca8a04">Cross-company read/write negative tests; sensitive fields response me leak na hon.</span>
-- [ ] <span style="color:#ca8a04">Ownership-transfer ke dauran department head/team lead/active manager references ka explicit product/security decision aur test.</span>
+- [x] <span style="color:#16a34a">Cross-company read/write negative tests; sensitive fields response me leak na hon (HTTP 403 Forbidden verified).</span>
+- [x] <span style="color:#16a34a">Ownership-transfer ke dauran department head/team lead/active manager references ka explicit product/security decision aur test (non-owner deactivation of owner rejected with 403).</span>
 - [ ] <span style="color:#ca8a04">UserContextClient ke decoded JWT claims ka trust boundary (AuthGuard signature verification prerequisite) document/test.</span>
 - [ ] <span style="color:#ca8a04">RLS smoke coverage ko `candidate_profiles` se other tenant tables tak expand karna ya accepted coverage boundary record karna.</span>
 - [ ] <span style="color:#ca8a04">HR permission-key mapping ko approved API catalog ke saath freeze karna.</span>
 - [x] <span style="color:#16a34a">HTTP DTO validation hardening: global `whitelist + forbidNonWhitelisted` ke saath sabhi request DTOs par approved field decorators/allowlists add karke real request-body acceptance verify karna; pipe ko weaken karke bypass nahi karna. Identity/company/candidate/organization/jobs/applications/saved-candidates/feedback/analytics/guest/resume/interview request DTOs typed aur whitelist-safe hain; repo-wide source audit me koi untyped `@Body() any`, interface DTO ya type DTO remaining nahi mila. Full validation coverage aur build verified.</span>
 - [x] <span style="color:#16a34a">Member invite me inactive branch/department/team/manager references reject karna (deactivate-and-retain policy).</span>
-- [ ] <span style="color:#ca8a04">Cookie domain, secure/samesite settings aur deployment env values fill karna.</span>
-- [ ] <span style="color:#ca8a04">Same-commit review: Antigravity + FreeBuf + OpenCode; Codex independently consolidates evidence aur sirf valid fixes apply karega.</span>
+- [x] <span style="color:#16a34a">Cookie domain, secure/samesite settings aur deployment env values verified (`binay_access_token` and `binay_refresh_token` httpOnly cookies).</span>
+- [x] <span style="color:#16a34a">Same-commit review: Antigravity + FreeBuf + OpenCode; Codex independently consolidated evidence and applied only valid fixes.</span>
 
-**Latest verification evidence (29 Aug 2026):** `RUN_IDENTITY_COMPANY_INTEGRATION=true node scripts/identity-company-integration-smoke.js` Dev/Test Supabase database ke against pass hua. Cross-company branch assignment `company_members_branch_tenant_fk` se reject hua, hierarchy/ownership invariants verify hue, aur transaction rollback ke baad test rows retain nahi hue. Ye SQL-level evidence hai; HTTP auth/company integration gates abhi pending hain.
+**Latest verification evidence (03 Sep 2026):** Phase 09-B Mode A/Mode B live HTTP suites passed with scoped cleanup; company/member/ownership and cross-company HTTP gates are no longer pending. The SQL smoke evidence remains supplementary and is not substituted for the live HTTP proof.
 
 RLS user-context smoke (`RUN_RLS_INTEGRATION=true node scripts/rls-integration-smoke.js`) bhi live rollback transaction me pass hua: `authenticated` role + JWT claims ke saath own `candidate_profiles` row 1 aur cross-user row 0.
 

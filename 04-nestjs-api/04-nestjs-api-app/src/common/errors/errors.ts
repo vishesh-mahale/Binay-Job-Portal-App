@@ -13,6 +13,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const request = host.switchToHttp().getRequest<{ headers?: Record<string, string | undefined>; requestId?: string }>();
     const requestId = request?.requestId ?? request?.headers?.['x-request-id'] ?? null;
     const traceId = request?.headers?.['x-trace-id'] ?? requestId;
+    if (status >= 500) console.error('[ApiExceptionFilter Error]:', exception);
     response.status(status).json({ success: false, data: null, error: { code, message: status >= 500 ? 'Internal server error' : (exception instanceof HttpException ? exception.message : 'Request failed') }, request_id: requestId, trace_id: traceId, schema_version: 1 });
   }
 }
