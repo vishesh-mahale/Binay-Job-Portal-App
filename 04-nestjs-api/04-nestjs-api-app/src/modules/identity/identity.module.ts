@@ -5,9 +5,10 @@ import { OrganizationController, OrganizationService } from './organization';
 import { MembershipController, MembershipService } from './membership';
 import { OwnershipController, OwnershipService } from './ownership';
 import { CompanySettingsController, CompanySettingsService } from './company-settings';
+import { AdminCompanyController, AdminCompanyService } from './admin-company';
 
 @Module({
-  controllers: [IdentityController, CompanyController, OrganizationController, MembershipController, OwnershipController, CompanySettingsController],
-  providers: [IdentityService, CompanyService, OrganizationService, MembershipService, OwnershipService, CompanySettingsService],
+  controllers: [IdentityController, CompanyController, OrganizationController, MembershipController, OwnershipController, CompanySettingsController, AdminCompanyController],
+  providers: [IdentityService, CompanyService, OrganizationService, MembershipService, OwnershipService, CompanySettingsService, AdminCompanyService],
 })
 export class IdentityModule {}

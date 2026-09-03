@@ -18,10 +18,13 @@ test('membership leave rejects company owner', async () => {
 });
 
 test('membership rejoin request does not reactivate row', async () => {
-  const client = { query: jest.fn().mockResolvedValueOnce({ rowCount:1, rows:[{ id:'m1', user_id:'u', rejoin_requested_at:'now' }] }).mockResolvedValue({}) };
+  const client = { query: jest.fn()
+    .mockResolvedValueOnce({ rowCount:1, rows:[{ id:'m1', user_id:'u', is_active:false }] })
+    .mockResolvedValueOnce({ rowCount:1, rows:[{ id:'m1', user_id:'u', rejoin_requested_at:'now' }] })
+    .mockResolvedValue({}) };
   const service = new MembershipService(db(client));
   await expect(service.rejoin('u','company')).resolves.toMatchObject({ id:'m1' });
-  expect(client.query).toHaveBeenCalledWith(expect.stringContaining('rejoin_requested_at=NOW()'), ['company','u']);
+  expect(client.query).toHaveBeenCalledWith(expect.stringContaining('rejoin_requested_at=NOW()'), ['m1']);
 });
 
 test('membership add requires active organizational references', async () => {
@@ -70,10 +73,8 @@ test('membership add proceeds when all organizational references are active', as
 
 test('membership deactivation succeeds when no active hierarchy references exist', async () => {
   const client = { query: jest.fn()
-    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] }) // admin
+    .mockResolvedValueOnce({ rowCount: 1, rows: [{}] }) // admin check
     .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'member-1', user_id: 'target', is_active: true }] })
-    .mockResolvedValueOnce({ rowCount: 1, rows: [{ owner_id: 'owner' }] })
-    .mockResolvedValueOnce({ rowCount: 1, rows: [{ head: false, lead: false, manager: false }] })
     .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'member-1', is_active: false }] })
     .mockResolvedValueOnce({ rowCount: 1, rows: [] }) };
   const service = new MembershipService(db(client));

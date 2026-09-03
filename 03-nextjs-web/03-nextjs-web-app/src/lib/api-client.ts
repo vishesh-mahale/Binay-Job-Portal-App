@@ -180,6 +180,102 @@ export class ApiClient {
       skipAuthRefresh: true,
     });
   }
+
+  // ==========================================
+  // Phase 09-B Company & Organization Endpoints
+  // ==========================================
+
+  public async getMyCompany(): Promise<any> {
+    return this.request<any>('/api/v1/companies/me/current', {
+      method: 'GET',
+    });
+  }
+
+  public async createCompany(data: { name: string; slug: string; email?: string; phone?: string; industry?: string; company_size?: string }): Promise<any> {
+    return this.request<any>('/api/v1/companies', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getCompany(companyId: string): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}`, {
+      method: 'GET',
+    });
+  }
+
+  public async updateCompany(companyId: string, data: any): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getBranches(companyId: string): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/companies/${companyId}/branches`, {
+      method: 'GET',
+    });
+  }
+
+  public async createBranch(companyId: string, data: { name: string; city: string; country: string; is_headquarters?: boolean }): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/branches`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getDepartments(companyId: string): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/companies/${companyId}/departments`, {
+      method: 'GET',
+    });
+  }
+
+  public async createDepartment(companyId: string, data: { name: string; description?: string }): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/departments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getTeams(companyId: string): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/companies/${companyId}/teams`, {
+      method: 'GET',
+    });
+  }
+
+  public async createTeam(companyId: string, data: { department_id: string; name: string; description?: string }): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/teams`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async inviteMember(companyId: string, data: { email?: string; user_id?: string; title?: string }): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async acceptMembership(companyId: string): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/membership/accept`, {
+      method: 'POST',
+    });
+  }
+
+  public async transferOwnership(companyId: string, data: { new_owner_user_id: string }): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/ownership-transfer`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async verifyCompanyAdmin(companyId: string, status: 'verified' | 'rejected' | 'pending'): Promise<any> {
+    return this.request<any>(`/api/v1/admin/companies/${companyId}/verification`, {
+      method: 'PATCH',
+      body: JSON.stringify({ verification_status: status }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

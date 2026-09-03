@@ -13,8 +13,8 @@ export class OwnershipService {
   async transfer(actorId: string, companyId: string, dto: TransferOwnershipDto) {
     if (!dto.new_owner_user_id || dto.new_owner_user_id === actorId) throw new BadRequestException('VALIDATION_ERROR');
     return this.db.transaction(async (client) => {
-      const company = await client.query('SELECT id, owner_id FROM public.companies WHERE id=$1 AND deleted_at IS NULL FOR UPDATE', [companyId]);
-      if (!company.rowCount) throw new BadRequestException('NOT_FOUND');
+      const company = await client.query('SELECT id, owner_id FROM public.companies WHERE id=$1 AND deleted_at IS NULL AND verification_status=\'verified\' FOR UPDATE', [companyId]);
+      if (!company.rowCount) throw new ForbiddenException('FORBIDDEN');
       if (company.rows[0].owner_id !== actorId) throw new ForbiddenException('FORBIDDEN');
       const target = await client.query(`SELECT m.user_id FROM public.company_members m JOIN public.users u ON u.id=m.user_id WHERE m.company_id=$1 AND m.user_id=$2 AND m.is_active=true AND u.status='active' AND u.deleted_at IS NULL FOR UPDATE`, [companyId,dto.new_owner_user_id]);
       if (!target.rowCount) throw new BadRequestException('NOT_FOUND');
