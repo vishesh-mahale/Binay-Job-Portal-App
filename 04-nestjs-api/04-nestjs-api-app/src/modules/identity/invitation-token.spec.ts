@@ -1,6 +1,10 @@
 import { InvitationTokenUtil, UnknownKeyIdException } from './invitation-token.util';
 
 describe('InvitationTokenUtil Unit Tests', () => {
+  beforeEach(() => {
+    process.env.INVITATION_TOKEN_SECRET = 'test_invitation_secret_key_32_characters_minimum_len!!';
+  });
+
   it('1. Generates 32-byte raw token and valid 64-char SHA-256 hash', () => {
     const { rawToken, tokenHash } = InvitationTokenUtil.generateToken();
     expect(rawToken).toBeDefined();
@@ -44,5 +48,11 @@ describe('InvitationTokenUtil Unit Tests', () => {
     const hash1 = InvitationTokenUtil.hashToken('my_raw_token_xyz');
     const hash2 = InvitationTokenUtil.hashToken('  my_raw_token_xyz  ');
     expect(hash1).toBe(hash2);
+  });
+
+  it('5. FAIL-CLOSED GUARD: Throws error when INVITATION_TOKEN_SECRET is missing', () => {
+    delete process.env.INVITATION_TOKEN_SECRET;
+    delete process.env.INVITATION_TOKEN_SECRET_V1;
+    expect(() => InvitationTokenUtil.encryptPayload({ test: 123 })).toThrow('FAIL-CLOSED SECURITY: INVITATION_TOKEN_SECRET environment variable is missing!');
   });
 });

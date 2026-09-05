@@ -939,7 +939,7 @@ export class JobService {
 
   async searchPublicJobs(filters: JobSearchFilters, limitParam?: number, cursorToken?: string) {
     const limit = assertPageSize(limitParam);
-    const secret = process.env.SEARCH_CURSOR_SECRET || process.env.JWT_SECRET;
+    const secret = process.env.SEARCH_CURSOR_SECRET;
     if (!secret || secret.length < 32) {
       throw new ServiceUnavailableException('SEARCH_CURSOR_SECRET_NOT_CONFIGURED');
     }

@@ -121,12 +121,15 @@ Key functional milestones implemented:
 | :--- | :--- | :--- |
 | **Strict Interview Rounds Validation** | `npm test -- src/modules/jobs/jobs.spec.ts` | **PASS** (Rejects blank names, non-positive rounds, duplicates) |
 | **Fail-Visible UI Error Handling** | `npm test -- src/components/employer/job-posting-manager.spec.tsx` | **PASS** (`listCompanyJobs` & `getCompanySettings` 403/Network errors render red banner with Retry button) |
-| **Git Migration Source Control Tracking** | `git status` / `git log` | **PASS** (Committed in Git commit `aa4dad6` — all 5 standalone migrations + baseline SQL files committed, working tree clean) |
+| **Git Migration Source Control Tracking** | `git status` / `git log` | **PASS** (Committed in Git commit `aa4dad6` — all 5 standalone migrations + baseline SQL files committed) |
 | **Live Supabase DB Custom Skill Verification** | `node scratch/verify-codex-audit-live.cjs` | **PASS** (`skill_requests = 1`, `job_skills = 0`, `skills = 0`) |
 | **Live Inactive Skill Rejection & Rollback** | `node scratch/verify-codex-audit-live.cjs` | **PASS** (`400 VALIDATION_ERROR` & 0 orphan job rows) |
 | **Read-Only Migration & Schema Audit** | `node scratch/verify-codex-audit-live.cjs` | **PASS** (All 5 tables & job enhancement columns verified live) |
-| **NestJS Core API Full Test Suite** | `npm test` (41 test suites) | **291 / 291 PASS** (100%) |
-| **Next.js Web Frontend Full Test Suite** | `npm test` (3 test suites) | **19 / 19 PASS** (100%) |
+| **Invitation Token Secret (No Fallback)** | `npm test -- src/modules/identity/invitation-token.spec.ts` | **PASS** (Strict `INVITATION_TOKEN_SECRET` requirement enforced; throws fail-closed error) |
+| **Outbox Worker Email & Logging** | `npm test -- src/modules/identity/outbox-worker.spec.ts` | **PASS** (Removed `dev-simulated-*` fake delivery, masked raw tokens, required `SMTP_USER`) |
+| **Search Cursor Secret (No JWT Fallback)** | `npm test -- src/modules/jobs/jobs.spec.ts` | **PASS** (Dedicated `SEARCH_CURSOR_SECRET` enforced; throws `SEARCH_CURSOR_SECRET_NOT_CONFIGURED`) |
+| **NestJS Core API Full Test Suite** | `npm test` (41 test suites) | **294 / 294 PASS** (100%) |
+| **Next.js Web Frontend Full Test Suite** | `npm test` (3 test suites) | **20 / 20 PASS** (100%) |
 | **NestJS Core API Production Build** | `npm run build` | **0 Errors (Clean TS Compile)** |
 | **Next.js Web Production Build** | `npm run build` | **0 Errors (Clean Next.js Build)** |
 

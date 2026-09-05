@@ -459,6 +459,14 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
     expect(lastQueryCall[0]).toContain('(j.published_at < $');
   });
 
+  it('28. searchPublicJobs throws ServiceUnavailableException when SEARCH_CURSOR_SECRET is missing (ignoring JWT_SECRET)', async () => {
+    delete process.env.SEARCH_CURSOR_SECRET;
+    process.env.JWT_SECRET = 'jwt_secret_key_32_characters_minimum_len';
+    const system = { query: jest.fn() } as any;
+
+    await expect(new JobService(system).searchPublicJobs({}, 20)).rejects.toThrow('SEARCH_CURSOR_SECRET_NOT_CONFIGURED');
+  });
+
   // 28. listCompanyJobs fetches company jobs for authorized actor
   it('28. listCompanyJobs fetches company jobs for authorized HR/employer', async () => {
     const client = {

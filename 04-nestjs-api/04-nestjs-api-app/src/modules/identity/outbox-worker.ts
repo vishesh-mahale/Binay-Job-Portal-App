@@ -25,13 +25,7 @@ export class BrevoEmailService implements EmailDeliveryService {
     const inviteLink = `${frontendUrl}/invite/accept?token=${encodeURIComponent(options.rawToken)}`;
 
     if (!apiKey) {
-      if (process.env.NODE_ENV === 'test' || process.env.FAIL_CLOSED_EMAIL === 'true') {
-        throw new Error('INVITATION_EMAIL_SERVICE_NOT_CONFIGURED');
-      }
-      this.lastMessageId = `dev-simulated-${Date.now()}`;
-      this.lastDeliveryStatus = 'delivered';
-      this.logger.warn(`[DEV_MODE] BREVO_API_KEY missing in .env. Generated invitation link for ${options.email}: ${inviteLink}`);
-      return;
+      throw new Error('INVITATION_EMAIL_SERVICE_NOT_CONFIGURED');
     }
 
     const htmlContent = `<p>Hello,</p><p>You have been invited to join <strong>${options.companyName || 'our team'}</strong> as ${options.title || 'HR'}.</p><p>Accept your invitation by clicking the link below:</p><p><a href="${inviteLink}">${inviteLink}</a></p>`;
@@ -40,7 +34,10 @@ export class BrevoEmailService implements EmailDeliveryService {
 
     // 1. If key is SMTP relay key (starts with xsmtpsib-) or explicit SMTP usage
     if (apiKey.startsWith('xsmtpsib-') || process.env.SMTP_USER) {
-      const smtpUser = process.env.SMTP_USER || process.env.BREVO_SMTP_USER || 'b783a8001@smtp-brevo.com';
+      const smtpUser = process.env.SMTP_USER || process.env.BREVO_SMTP_USER;
+      if (!smtpUser) {
+        throw new Error('SMTP_USER_NOT_CONFIGURED');
+      }
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
         port: Number(process.env.SMTP_PORT || 587),

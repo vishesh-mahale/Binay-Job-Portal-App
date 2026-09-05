@@ -10,6 +10,7 @@ describe('OutboxWorkerService Baseline 15_infrastructure.sql Schema Reconciliati
   let transactionExecutionOrder: string[];
 
   beforeEach(() => {
+    process.env.INVITATION_TOKEN_SECRET = 'test_invitation_secret_key_32_characters_minimum_len!!';
     transactionExecutionOrder = [];
     mockClient = {
       query: jest.fn(),
@@ -321,6 +322,18 @@ describe('OutboxWorkerService Baseline 15_infrastructure.sql Schema Reconciliati
 
       expect(brevoService.lastMessageId).toBeNull();
       expect(brevoService.lastDeliveryStatus).toBeNull();
+    });
+
+    it('9. SMTP USER MISSING GUARD: Throws SMTP_USER_NOT_CONFIGURED when SMTP key is provided without SMTP_USER', async () => {
+      process.env.BREVO_API_KEY = 'xsmtpsib-key-12345';
+      delete process.env.SMTP_USER;
+      delete process.env.BREVO_SMTP_USER;
+
+      await expect(brevoService.sendInvitationEmail({
+        email: 'invitee@collabfor.com',
+        companyName: 'Acme Corp',
+        rawToken: 'raw_token_secret_123'
+      })).rejects.toThrow('SMTP_USER_NOT_CONFIGURED');
     });
   });
 });

@@ -17,10 +17,12 @@ export class UnknownKeyIdException extends Error {
 
 export class InvitationTokenUtil {
   private static getKeyRegistry(): Record<string, string> {
-    const defaultSecret = process.env.INVITATION_TOKEN_SECRET || 'binay_invitation_secret_key_32_bytes_long_default!!';
-    const v1Secret = process.env.INVITATION_TOKEN_SECRET_V1 || defaultSecret;
+    const secret = process.env.INVITATION_TOKEN_SECRET || process.env.INVITATION_TOKEN_SECRET_V1;
+    if (!secret || typeof secret !== 'string' || !secret.trim()) {
+      throw new Error('FAIL-CLOSED SECURITY: INVITATION_TOKEN_SECRET environment variable is missing!');
+    }
     return {
-      v1: v1Secret,
+      v1: secret.trim(),
     };
   }
 

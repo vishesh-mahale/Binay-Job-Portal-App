@@ -110,4 +110,9 @@ Use this file as the only Phase 09-D prompt. Do not send the earlier duplicate p
   - **Fail-Visible UI Error Handling:** `COMPLETE & VERIFIED` (`getCompanySettings` catch fallback removed. Primary data load failures render red alert banner with Retry button; master catalog failures render warning banner).
   - **Git Migration Source Control Tracking:** `COMPLETE & VERIFIED` (All 5 standalone migrations `20260903000000` to `20260906000001` + baseline SQL files staged & tracked in Git index).
   - **Security Rotation & Fail-Closed Enforcement:** `COMPLETE & VERIFIED` (No hardcoded secret fallbacks in any script across workspace; rotated 256-bit secret configured in `.env`).
+  - **Copilot Security Review Blockers Resolution:** `COMPLETE & VERIFIED`
+    1. *Invitation Token Secret:* Removed `SEARCH_CURSOR_SECRET` fallback in `InvitationTokenUtil`. Throws fail-closed error if `INVITATION_TOKEN_SECRET` is missing. Added unit test 5 in `invitation-token.spec.ts`.
+    2. *Outbox Email Delivery & Token Logging:* Removed `dev-simulated-*` fake delivery on missing key in `BrevoEmailService`. Throws `INVITATION_EMAIL_SERVICE_NOT_CONFIGURED`. Removed raw token logging. Required `SMTP_USER` when SMTP key used (throws `SMTP_USER_NOT_CONFIGURED`). Added unit test 9 in `outbox-worker.spec.ts`.
+    3. *Cursor Secret Requirement:* Dedicated `SEARCH_CURSOR_SECRET` required in `jobs.ts`. Removed fallback to `JWT_SECRET`. Throws `ServiceUnavailableException('SEARCH_CURSOR_SECRET_NOT_CONFIGURED')`. Added unit test 28 in `jobs.spec.ts`.
+    4. *Full Verification:* 41/41 NestJS test suites (294/294 tests) passed 100%, 3/3 Next.js web test suites (20/20 tests) passed 100%, both production builds passed 0 errors, live PostgreSQL audit script verified 100%.
 

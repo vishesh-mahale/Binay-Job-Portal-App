@@ -8,6 +8,7 @@ describe('CompanyInvitationService.createInvitation Unit Tests & Security Regres
   let mockDb: any;
 
   beforeEach(() => {
+    process.env.INVITATION_TOKEN_SECRET = 'test_invitation_secret_key_32_characters_minimum_len!!';
     mockClient = {
       query: jest.fn(),
     };
