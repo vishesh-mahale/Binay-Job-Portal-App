@@ -81,6 +81,7 @@ CREATE TABLE companies (
     verification_status company_verification_status NOT NULL DEFAULT 'unverified',
     verified_at         TIMESTAMPTZ,
     verification_document_path TEXT,
+    rejection_reason    TEXT,
     
     -- Settings (JSONB for flexible configuration)
     settings            JSONB DEFAULT '{}'::JSONB,

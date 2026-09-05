@@ -35,7 +35,10 @@ def fetch_worker_id_token(target_url: str):
 
 DISPATCHER_URL = "https://dev-outbox-dispatcher-163481994238.asia-south1.run.app"
 WORKER_URL = "https://dev-fastapi-ai-worker-163481994238.asia-south1.run.app"
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "7e36febbc2e4aa47655503d6a0d16adddce32cdc5ae20ff9020db14a2f85bd5b")
+webhook_secret_env = os.getenv("WEBHOOK_SECRET")
+if not webhook_secret_env:
+    raise ValueError("WEBHOOK_SECRET environment variable is required and missing! Set WEBHOOK_SECRET before running this script.")
+WEBHOOK_SECRET = webhook_secret_env
 DB_URL = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
 
 async def run_option_5_e2e():

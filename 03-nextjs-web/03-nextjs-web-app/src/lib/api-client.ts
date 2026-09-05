@@ -7,6 +7,7 @@ import type {
   UserSessionInfo,
   UserSummary,
 } from '../types/auth';
+import type { CompanySettings, CreateJobDto, Job, UpdateJobDto } from '../types/jobs';
 
 export interface RequestOptions extends RequestInit {
   timeoutMs?: number;
@@ -67,7 +68,16 @@ export class ApiClient {
             // Retry original request once
             return await this.request<T>(path, { ...options, skipAuthRefresh: true });
           } catch {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+            }
             throw mapHttpErrorToAppError(response.status, payload);
+          }
+        }
+
+        if (response.status === 401) {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
           }
         }
 
@@ -270,12 +280,163 @@ export class ApiClient {
     });
   }
 
-  public async verifyCompanyAdmin(companyId: string, status: 'verified' | 'rejected' | 'pending'): Promise<any> {
+  public async listAdminCompanies(): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/admin/companies`, {
+      method: 'GET',
+    });
+  }
+
+  public async verifyCompanyAdmin(companyId: string, status: 'verified' | 'rejected' | 'pending', rejectionReason?: string): Promise<any> {
     return this.request<any>(`/api/v1/admin/companies/${companyId}/verification`, {
       method: 'PATCH',
-      body: JSON.stringify({ verification_status: status }),
+      body: JSON.stringify({ verification_status: status, rejection_reason: rejectionReason }),
+    });
+  }
+
+  // --- Option B Company Invitation Endpoints ---
+
+  public async verifyInvitation(token: string): Promise<any> {
+    return this.request<any>(`/api/v1/invitations/verify?token=${encodeURIComponent(token)}`, {
+      method: 'GET',
+    });
+  }
+
+  public async signupWithInvite(data: { token: string; full_name: string; password: string }): Promise<any> {
+    return this.request<any>(`/api/v1/auth/signup-with-invite`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async createCompanyInvitation(companyId: string, data: { email: string; title?: string; is_primary_hr?: boolean; branch_id?: string; department_id?: string; team_id?: string }): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getCompanyInvitations(companyId: string): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/companies/${companyId}/invitations`, {
+      method: 'GET',
+    });
+  }
+
+  public async revokeCompanyInvitation(companyId: string, invitationId: string, reason?: string): Promise<any> {
+    return this.request<any>(`/api/v1/companies/${companyId}/invitations/${invitationId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  // --- Phase 09-D Employer Job Management & Company Settings Endpoints ---
+
+  public async getCompanySettings(companyId: string): Promise<CompanySettings> {
+    return this.request<CompanySettings>(`/api/v1/companies/${companyId}/settings`, {
+      method: 'GET',
+    });
+  }
+
+  public async updateCompanySettings(companyId: string, data: { job_approval_required: boolean }): Promise<CompanySettings> {
+    return this.request<CompanySettings>(`/api/v1/companies/${companyId}/settings`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async listCompanyJobs(companyId: string): Promise<Job[]> {
+    return this.request<Job[]>(`/api/v1/companies/${companyId}/jobs`, {
+      method: 'GET',
+    });
+  }
+
+  public async getCompanyJob(companyId: string, jobId: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}`, {
+      method: 'GET',
+    });
+  }
+
+  public async createJob(companyId: string, dto: CreateJobDto): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs`, {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  public async updateJob(companyId: string, jobId: string, dto: UpdateJobDto): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  public async publishJob(companyId: string, jobId: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/publish`, {
+      method: 'POST',
+    });
+  }
+
+  public async submitJobForApproval(companyId: string, jobId: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/submit-for-approval`, {
+      method: 'POST',
+    });
+  }
+
+  public async approveJob(companyId: string, jobId: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  public async rejectJob(companyId: string, jobId: string, reason: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  public async pauseJob(companyId: string, jobId: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/pause`, {
+      method: 'POST',
+    });
+  }
+
+  public async resumeJob(companyId: string, jobId: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/resume`, {
+      method: 'POST',
+    });
+  }
+
+  public async closeJob(companyId: string, jobId: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/close`, {
+      method: 'POST',
+    });
+  }
+
+  public async archiveJob(companyId: string, jobId: string, reason?: string): Promise<Job> {
+    return this.request<Job>(`/api/v1/companies/${companyId}/jobs/${jobId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  public async listJobCategories(): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/job-categories`, {
+      method: 'GET',
+    });
+  }
+
+  public async listSkills(): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/skills`, {
+      method: 'GET',
+    });
+  }
+
+  public async listCities(): Promise<any[]> {
+    return this.request<any[]>(`/api/v1/cities`, {
+      method: 'GET',
     });
   }
 }
 
 export const apiClient = new ApiClient();
+

@@ -3,6 +3,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import EmployerDashboardPage from './page';
 import { apiClient } from '@/lib/api-client';
 
+// Mock Next Navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+  }),
+}));
+
 // Mock Auth Context
 jest.mock('@/context/auth-context', () => ({
   useAuth: () => ({
@@ -31,6 +39,9 @@ jest.mock('@/lib/api-client', () => ({
     createTeam: jest.fn(),
     inviteMember: jest.fn(),
     transferOwnership: jest.fn(),
+    getCompanyInvitations: jest.fn().mockResolvedValue([]),
+    createCompanyInvitation: jest.fn(),
+    revokeCompanyInvitation: jest.fn(),
   },
 }));
 
@@ -125,8 +136,7 @@ describe('EmployerDashboardPage Component Unit Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('VERIFIED')).toBeInTheDocument();
       expect(screen.getByText('Branch Management')).toBeInTheDocument();
-      expect(screen.getByText('Invite Registered Team Member')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Invitee Account Email (e.g. hr@acme.com)')).toBeInTheDocument();
+      expect(screen.getByText('Invite HR Team Member')).toBeInTheDocument();
     });
   });
 });

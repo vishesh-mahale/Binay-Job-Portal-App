@@ -28,7 +28,10 @@ load_dotenv("05-outbox-dispatcher-nestjs/.env")
 db_url = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
 DISPATCHER_URL = os.getenv("DISPATCHER_URL", "http://localhost:3000")
 FASTAPI_WORKER_URL = os.getenv("FASTAPI_WORKER_URL", "https://dev-fastapi-ai-worker-163481994238.asia-south1.run.app")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "dev-secret")
+webhook_secret_env = os.getenv("WEBHOOK_SECRET")
+if not webhook_secret_env:
+    raise ValueError("WEBHOOK_SECRET environment variable is required and missing!")
+WEBHOOK_SECRET = webhook_secret_env
 GCP_PROJECT = os.getenv("GCP_PROJECT_ID", "project-8b4c2600-aeab-484d-82e")
 GCP_LOCATION = os.getenv("GCP_LOCATION", "asia-south1")
 

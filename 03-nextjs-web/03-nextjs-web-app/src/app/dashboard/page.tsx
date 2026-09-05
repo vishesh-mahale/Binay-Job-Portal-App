@@ -15,7 +15,9 @@ export default function DashboardPage() {
         router.push('/login');
       } else if (user.role === 'admin') {
         router.push('/dashboard/admin');
-      } else if (user.role === 'employer' || user.role === 'hr') {
+      } else if (user.role === 'hr') {
+        router.push('/dashboard/hr');
+      } else if (user.role === 'employer') {
         router.push('/dashboard/employer');
       } else {
         router.push('/dashboard/candidate');

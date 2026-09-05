@@ -17,7 +17,10 @@ assert "prod" not in db_url.lower(), "Safety Guard: Do not run smoke suite again
 
 DISPATCHER_URL = os.getenv("DISPATCHER_URL", "http://localhost:3000")
 FASTAPI_WORKER_URL = os.getenv("FASTAPI_WORKER_URL", "https://dev-fastapi-ai-worker-163481994238.asia-south1.run.app")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "dev-secret")
+webhook_secret_env = os.getenv("WEBHOOK_SECRET")
+if not webhook_secret_env:
+    raise ValueError("WEBHOOK_SECRET environment variable is required and missing!")
+WEBHOOK_SECRET = webhook_secret_env
 
 def trigger_wake(secret=WEBHOOK_SECRET):
     req = urllib.request.Request(

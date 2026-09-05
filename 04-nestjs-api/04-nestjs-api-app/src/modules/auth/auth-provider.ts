@@ -303,12 +303,12 @@ export class ResetPasswordDto {
   new_password!: string;
 }
 
-function setSessionCookies(response: Response, session: AuthSession, secure: boolean) {
+export function setSessionCookies(response: Response, session: AuthSession, secure: boolean) {
   if (session.accessToken) response.cookie('binay_access_token', session.accessToken, { httpOnly: true, secure, sameSite: 'lax', path: '/' });
   if (session.refreshToken) response.cookie('binay_refresh_token', session.refreshToken, { httpOnly: true, secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
 }
 
-function setPresenceCookie(response: Response, sessionId: string, secure: boolean) {
+export function setPresenceCookie(response: Response, sessionId: string, secure: boolean) {
   response.cookie('binay_presence_session', sessionId, { httpOnly: true, secure, sameSite: 'lax', path: '/api/v1' });
 }
 

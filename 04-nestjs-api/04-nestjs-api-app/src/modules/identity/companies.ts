@@ -61,7 +61,7 @@ export class UpdateCompanyDto {
 
 type AuthReq = Request & { user?: RequestUser };
 const COMPANY_FIELDS = ['name','legal_name','description','short_description','industry','company_size','website','linkedin_url','twitter_url','facebook_url','youtube_url','logo_path','cover_image_path','brand_color','email','phone','address_line1','address_line2','city','state','country','postal_code','latitude','longitude'] as const;
-const COMPANY_RESPONSE_FIELDS = 'id,name,slug,legal_name,description,industry,company_size,website,is_active,verification_status,verified_at,created_at,updated_at';
+const COMPANY_RESPONSE_FIELDS = 'id,name,slug,legal_name,description,industry,company_size,website,is_active,verification_status,verified_at,rejection_reason,created_at,updated_at';
 
 @Injectable()
 export class CompanyService {
@@ -168,11 +168,14 @@ export class CompanyService {
 
   async update(userId: string, companyId: string, dto: UpdateCompanyDto) {
     const current = await this.get(userId, companyId);
+    const userRes = await this.system.query<{ role: string }>('SELECT role FROM public.users WHERE id = $1', [userId]);
+    const isPlatformAdmin = userRes.rows[0]?.role === 'admin';
+
     const ownerCheck = await this.system.query<{ owner_id: string }>(
       'SELECT owner_id FROM public.companies WHERE id = $1 AND deleted_at IS NULL',
       [companyId]
     );
-    if (!ownerCheck.rows[0] || ownerCheck.rows[0].owner_id !== userId) {
+    if (!isPlatformAdmin && (!ownerCheck.rows[0] || ownerCheck.rows[0].owner_id !== userId)) {
       throw new ForbiddenException('FORBIDDEN');
     }
 
@@ -180,9 +183,10 @@ export class CompanyService {
     if (typeof normalized.name === 'string') normalized.name = normalized.name.trim();
     if (normalized.name === '') throw new BadRequestException('VALIDATION_ERROR');
 
-    const entries = Object.entries(normalized).filter(
-      ([k, v]) => (COMPANY_FIELDS as readonly string[]).includes(k) && v !== undefined
-    );
+    const entries = Object.entries(normalized)
+      .filter(([k, v]) => (COMPANY_FIELDS as readonly string[]).includes(k) && v !== undefined)
+      .map(([k, v]) => [k, typeof v === 'string' && v.trim() === '' ? null : v]);
+      
     if (!entries.length) return current;
 
     const sets = entries.map(([k], i) => `${k}=$${i + 1}`).join(', ');
@@ -190,7 +194,7 @@ export class CompanyService {
     values.push(companyId);
 
     const r = await this.system.query(
-      `UPDATE public.companies SET ${sets} WHERE id=$${values.length} AND deleted_at IS NULL RETURNING ${COMPANY_RESPONSE_FIELDS}`,
+      `UPDATE public.companies SET ${sets}, updated_at = NOW() WHERE id=$${values.length} AND deleted_at IS NULL RETURNING ${COMPANY_RESPONSE_FIELDS}`,
       values
     );
     return r.rows[0];
@@ -201,6 +205,11 @@ export class CompanyService {
 @UseGuards(AuthGuard)
 export class CompanyController {
   constructor(private readonly companies: CompanyService) {}
+
+  @Get('me')
+  getMineAlias(@Req() req: AuthReq) {
+    return this.companies.getMyCompany(req.user!.sub);
+  }
 
   @Get('me/current')
   getMine(@Req() req: AuthReq) {

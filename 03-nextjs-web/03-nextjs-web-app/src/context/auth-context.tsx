@@ -38,6 +38,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const handleSignoutSync = useCallback(() => {
+    setUser(null);
+    setError(null);
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup') && !window.location.pathname.startsWith('/invite')) {
+      window.location.href = '/login?message=Session+expired.+Please+sign+in+again.';
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -56,10 +64,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     })();
+
+    // Multi-tab logout broadcast & 401 unauthorized listener
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined') {
+      const handleUnauthorized = () => {
+        handleSignoutSync();
+      };
+      window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+      try {
+        bc = new BroadcastChannel('binay_auth_channel');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'LOGOUT') {
+            handleSignoutSync();
+          }
+        };
+      } catch {}
+
+      return () => {
+        mounted = false;
+        window.removeEventListener('auth:unauthorized', handleUnauthorized);
+        if (bc) bc.close();
+      };
+    }
+
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [handleSignoutSync]);
 
   const login = async (data: LoginRequest): Promise<void> => {
     setLoading(true);
@@ -68,6 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiClient.login(data);
       const u = await apiClient.getMe();
       setUser(u);
+      if (typeof window !== 'undefined') {
+        try {
+          const bc = new BroadcastChannel('binay_auth_channel');
+          bc.postMessage({ type: 'LOGIN' });
+          bc.close();
+        } catch {}
+      }
     } catch (err: any) {
       setUser(null);
       const msg = err instanceof AppApiError ? err.message : 'Login failed. Please check your credentials.';
@@ -108,6 +148,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setError(null);
       setLoading(false);
+
+      if (typeof window !== 'undefined') {
+        try {
+          const bc = new BroadcastChannel('binay_auth_channel');
+          bc.postMessage({ type: 'LOGOUT' });
+          bc.close();
+        } catch {}
+      }
     }
   };
 

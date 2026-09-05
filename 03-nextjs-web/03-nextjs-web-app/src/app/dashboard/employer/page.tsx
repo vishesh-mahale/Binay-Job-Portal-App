@@ -1,14 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { RoleGuard } from '@/components/role-guard';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api-client';
+import { CompanyInvitationManager } from '@/components/company/company-invitation-manager';
+import { JobPostingManager } from '@/components/employer/job-posting-manager';
 
 export default function EmployerDashboardPage() {
+  const router = useRouter();
   const { user, logout } = useAuth();
 
   const [company, setCompany] = useState<any>(null);
@@ -130,11 +134,15 @@ export default function EmployerDashboardPage() {
     setError(null);
     try {
       const updated = await apiClient.updateCompany(company.id, {
-        name: editName,
-        industry: editIndustry,
-        website: editWebsite,
+        name: editName.trim(),
+        industry: editIndustry.trim() || undefined,
+        website: editWebsite.trim() || undefined,
       });
-      setCompany(updated);
+      const finalComp = updated || company;
+      setCompany(finalComp);
+      setEditName(finalComp.name || editName);
+      setEditIndustry(finalComp.industry || editIndustry);
+      setEditWebsite(finalComp.website || editWebsite);
       setIsEditingCompany(false);
       setSuccessMsg('Company profile updated successfully!');
     } catch (err: any) {
@@ -201,22 +209,7 @@ export default function EmployerDashboardPage() {
     }
   };
 
-  const handleInviteMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!company) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await apiClient.inviteMember(company.id, { email: inviteEmail, title: inviteTitle });
-      setSuccessMsg(`Invitation sent successfully to ${inviteEmail}!`);
-      setInviteEmail('');
-      setInviteTitle('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to invite member. Please verify the user has a registered account.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleTransferOwnership = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,6 +228,13 @@ export default function EmployerDashboardPage() {
   };
 
   const isVerified = company?.verification_status === 'verified';
+  const isEmployerOrOwner = user?.role === 'employer' || user?.role === 'admin';
+
+  useEffect(() => {
+    if (!initialLoading && user?.role === 'hr') {
+      router.replace('/dashboard/hr');
+    }
+  }, [user, initialLoading, router]);
 
   if (initialLoading) {
     return (
@@ -357,8 +357,8 @@ export default function EmployerDashboardPage() {
                   <p><strong>Industry:</strong> {company.industry || 'N/A'}</p>
                   {company.website && <p><strong>Website:</strong> {company.website}</p>}
 
-                  {/* Company Profile Edit Toggle */}
-                  {!isEditingCompany ? (
+                  {/* Company Profile Edit Toggle (Employer / Admin Only) */}
+                  {isEmployerOrOwner && (!isEditingCompany ? (
                     <Button variant="outline" size="sm" onClick={() => setIsEditingCompany(true)}>
                       Edit Company Profile
                     </Button>
@@ -394,13 +394,25 @@ export default function EmployerDashboardPage() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button type="submit" size="sm" disabled={loading}>Save Profile</Button>
+                        <Button type="submit" size="sm" disabled={loading}>{loading ? 'Saving...' : 'Save Profile'}</Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => setIsEditingCompany(false)}>Cancel</Button>
                       </div>
                     </form>
-                  )}
+                  ))}
 
-                  {!isVerified ? (
+                  {company.verification_status === 'rejected' ? (
+                    <div className="p-4 rounded bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800 space-y-2">
+                      <p className="font-semibold text-base">🔴 Verification Rejected / Revision Required</p>
+                      {company.rejection_reason && (
+                        <p className="text-xs font-semibold bg-rose-100 dark:bg-rose-900/50 p-2 rounded border border-rose-200 dark:border-rose-800">
+                          💬 Feedback from Admin: &quot;{company.rejection_reason}&quot;
+                        </p>
+                      )}
+                      <p className="text-xs">
+                        Please update your company details using <strong>Edit Company Profile</strong> above and save changes to resubmit for verification.
+                      </p>
+                    </div>
+                  ) : !isVerified ? (
                     <div className="p-4 rounded bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 space-y-2">
                       <p className="font-semibold text-base">🟡 Verification Pending with Platform Admin</p>
                       <p className="text-xs">
@@ -410,14 +422,48 @@ export default function EmployerDashboardPage() {
                   ) : (
                     <div className="p-4 rounded bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800 space-y-1">
                       <p className="font-semibold text-base">🟢 Verified Company Workspace</p>
-                      <p className="text-xs">Your company is fully verified by Platform Admin. All HR and organization tools are unlocked.</p>
+                      <p className="text-xs">Your company is fully verified by Platform Admin. All recruitment tools are unlocked.</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Organization Modules - Disabled/Restricted when unverified */}
-              {isVerified && (
+              {/* Employer & HR Job Posting Workstream Manager */}
+              <JobPostingManager
+                companyId={company.id}
+                verificationStatus={company.verification_status}
+                isOwnerOrAdmin={isEmployerOrOwner}
+                branches={branches}
+                departments={departments}
+                teams={teams}
+              />
+
+              {/* Dedicated HR Workspace (HR Role Only) */}
+              {isVerified && user?.role === 'hr' && (
+                <Card className="border-indigo-200 bg-indigo-50/50 dark:bg-slate-900">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold text-indigo-900 dark:text-indigo-200">
+                      HR Recruitment & ATS Portal
+                    </CardTitle>
+                    <CardDescription>
+                      Manage job postings, review candidate applications, and schedule candidate interviews for {company.name}.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 rounded-lg bg-white dark:bg-slate-800 border text-sm space-y-2">
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">📋 Active HR Role Capabilities:</p>
+                      <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-300">
+                        <li>Create, edit & publish job openings for {company.name}</li>
+                        <li>Review candidate resumes & ATS application status</li>
+                        <li>Schedule In-Person and Online Candidate Interviews</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Administrative Organization Modules (Employer / Admin Only) */}
+              {isVerified && isEmployerOrOwner && (
                 <div className="space-y-6">
                   {/* Branch Module */}
                   <Card>
@@ -540,33 +586,8 @@ export default function EmployerDashboardPage() {
                     </CardContent>
                   </Card>
 
-                  {/* Email-Based Member Invite Module */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Invite Registered Team Member</CardTitle>
-                      <CardDescription>Send invitation to existing registered user by email (Option A Flow).</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <form onSubmit={handleInviteMember} className="space-y-3 text-sm">
-                        <input
-                          type="email"
-                          required
-                          placeholder="Invitee Account Email (e.g. hr@acme.com)"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          className="w-full p-2 border rounded dark:bg-slate-900"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Job Title (e.g. Senior Software Engineer)"
-                          value={inviteTitle}
-                          onChange={(e) => setInviteTitle(e.target.value)}
-                          className="w-full p-2 border rounded dark:bg-slate-900"
-                        />
-                        <Button type="submit" disabled={loading}>Send Invitation</Button>
-                      </form>
-                    </CardContent>
-                  </Card>
+                  {/* Option B HR Invitation Manager */}
+                  {company?.id && <CompanyInvitationManager companyId={company.id} />}
 
                   {/* Ownership Transfer Module */}
                   <Card>

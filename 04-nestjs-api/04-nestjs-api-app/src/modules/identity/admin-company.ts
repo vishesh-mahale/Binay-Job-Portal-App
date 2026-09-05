@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Injectable, NotFoundException, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Injectable, NotFoundException, Param, Patch, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard, RequestUser } from '../auth/auth';
 import { SystemClient } from '../../infrastructure/database/clients';
@@ -16,7 +16,7 @@ export class VerifyCompanyDto {
 }
 
 type AuthReq = Request & { user?: RequestUser };
-const COMPANY_RESPONSE_FIELDS = 'id,name,slug,legal_name,description,industry,company_size,website,is_active,verification_status,verified_at,created_at,updated_at';
+const COMPANY_RESPONSE_FIELDS = 'id,name,slug,legal_name,description,industry,company_size,website,is_active,verification_status,verified_at,rejection_reason,created_at,updated_at';
 
 @Injectable()
 export class AdminCompanyService {
@@ -31,6 +31,14 @@ export class AdminCompanyService {
     if (!u || u.status !== 'active' || u.role !== 'admin') {
       throw new ForbiddenException('FORBIDDEN');
     }
+  }
+
+  async listCompanies(adminUserId: string) {
+    await this.assertPlatformAdmin(adminUserId);
+    const result = await this.system.query(
+      `SELECT ${COMPANY_RESPONSE_FIELDS} FROM public.companies WHERE deleted_at IS NULL ORDER BY created_at DESC`
+    );
+    return result.rows;
   }
 
   async verifyCompany(adminUserId: string, companyId: string, dto: VerifyCompanyDto) {
@@ -67,13 +75,14 @@ export class AdminCompanyService {
       }
 
       const newVerifiedAt = targetStatus === 'verified' ? new Date().toISOString() : null;
+      const rejectionReason = targetStatus === 'rejected' ? (dto.rejection_reason?.trim() || 'Profile details require revision.') : null;
 
       const updated = await client.query(
         `UPDATE public.companies 
-         SET verification_status = $1, verified_at = $2, updated_at = NOW() 
-         WHERE id = $3 AND deleted_at IS NULL 
+         SET verification_status = $1, verified_at = $2, rejection_reason = $3, updated_at = NOW() 
+         WHERE id = $4 AND deleted_at IS NULL 
          RETURNING ${COMPANY_RESPONSE_FIELDS}`,
-        [targetStatus, newVerifiedAt, companyId]
+        [targetStatus, newVerifiedAt, rejectionReason, companyId]
       );
 
       const updatedCompany = updated.rows[0];
@@ -102,6 +111,11 @@ export class AdminCompanyService {
 @UseGuards(AuthGuard)
 export class AdminCompanyController {
   constructor(private readonly adminService: AdminCompanyService) {}
+
+  @Get()
+  async listCompanies(@Req() req: AuthReq) {
+    return this.adminService.listCompanies(req.user!.sub);
+  }
 
   @Patch(':companyId/verification')
   async verifyCompany(

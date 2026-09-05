@@ -116,7 +116,13 @@ CREATE TABLE jobs (
     -- Employment details
     employment_type     employment_type NOT NULL DEFAULT 'full_time',
     work_mode           work_mode NOT NULL DEFAULT 'onsite',
+    work_shift          VARCHAR(50) DEFAULT 'day_shift',
     experience_level    experience_level,
+    experience_min      INTEGER,
+    experience_max      INTEGER,
+    max_notice_period_days INTEGER,
+    education_type      VARCHAR(50) DEFAULT 'any',
+    min_education_level VARCHAR(100),
     -- Denormalized copy of category name for search performance.
     -- Populated by NestJS during publish; allows branch category changes without affecting historical jobs.
     category            VARCHAR(100),
@@ -147,6 +153,7 @@ CREATE TABLE jobs (
     application_form_url    TEXT, -- Custom application URL (optional)
     screening_questions_enabled BOOLEAN NOT NULL DEFAULT false,
     screening_questions     JSONB NOT NULL DEFAULT '[]'::JSONB,
+    interview_rounds        JSONB NOT NULL DEFAULT '[]'::JSONB,
     -- Example: [{"question": "Do you have 5+ years of Node.js experience?", "required": true}, ...]
     
     -- AI settings

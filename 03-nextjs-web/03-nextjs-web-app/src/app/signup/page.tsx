@@ -25,7 +25,8 @@ export default function SignupPage() {
   React.useEffect(() => {
     if (user) {
       if (user.role === 'admin') router.push('/dashboard/admin');
-      else if (user.role === 'employer' || user.role === 'hr') router.push('/dashboard/employer');
+      else if (user.role === 'hr') router.push('/dashboard/hr');
+      else if (user.role === 'employer') router.push('/dashboard/employer');
       else router.push('/dashboard/candidate');
     }
   }, [user, router]);

@@ -203,7 +203,7 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 ## 🟡 Phase 09-C — Candidate, resume aur AI command completion
 
-**Status:** `CORE PRESENT — end-to-end gates baki`
+**Status:** `DEFERRED (Phase 09-D current priority)`
 
 **Sub-step progress:** Total **7** · 🟢 Complete **0** · 🟡 Pending **7**
 
@@ -226,19 +226,20 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 - [ ] AI command producers ke liye G-1 envelope alignment complete karna; provider/contract missing ho to event invent na karna.
 - [ ] FastAPI worker ke result, `processed_events` idempotency aur stale-revision behavior ka E2E test.
 
-## 🟡 Phase 09-D — Jobs, search aur applications hardening
+## 🔵 Phase 09-D — Jobs, search aur applications hardening
 
-**Status:** `CORE COMMANDS PRESENT — contract/coverage hardening baki`
+**Status:** `BOUNDED UNIT 1, UNIT 2, UNIT 3 & UNIT 4 COMPLETE (Public Job Search & Listing Backend Hardened & 100% Live Verified)`
 
-**Sub-step progress:** Total **9** · 🟢 Complete **2** · 🟡 Pending **7**
+**Sub-step progress:** Total **9** · 🟢 Complete **6** · 🟡 Pending **3**
 
 ### 09-D sub-step tracking
 
-- [ ] <span style="color:#ca8a04">Job draft → approval → publish/pause/resume/close/archive transitions fully tested.</span>
+- [x] <span style="color:#16a34a">Bounded Unit 1 & Unit 2 complete: Job create/draft update, submit-for-approval, verified publish, unverified publish rejection (403), HR approve/reject rejection (403), Owner/Admin approval & rejection, and cross-tenant isolation fully unit-tested (16/16 tests) and 100% live HTTP verified (`scripts/phase-09d-unit2-live-http-integration-test.cjs`).</span>
 - [x] <span style="color:#16a34a">Job approval default `false` and owner/admin override decision frozen.</span>
 - [x] <span style="color:#16a34a">Company job-approval settings GET/PATCH API and audit behavior implemented/tested.</span>
-- [ ] <span style="color:#ca8a04">Search routes, DTOs and permissions frozen and wired.</span>
-- [ ] <span style="color:#ca8a04">FTS/semantic ranking, filters, cursor and visibility tests completed.</span>
+- [x] <span style="color:#16a34a">Bounded Unit 3 complete: Job lifecycle actions (pause, resume, close, archive), terminal-state protection, candidate/non-member 403 rejections, cross-tenant isolation, and audit logging (`job.status_changed`, `job.archived`) fully unit-tested (24/24 tests in `jobs.spec.ts`) and 100% live HTTP verified (`scripts/phase-09d-unit3-live-http-integration-test.cjs`).</span>
+- [x] <span style="color:#16a34a">Bounded Unit 4 complete: Public job search and listing backend (`GET /api/v1/jobs`, `GET /api/v1/jobs/:id`, `GET /api/v1/jobs/slug/:slug`, `GET /api/v1/companies/:companySlugOrId/jobs/public/:jobSlug`). Enforces `published` + non-deleted + non-expired + verified company guards. Confidential jobs (`is_confidential = true`) masked (`company_name: "Confidential Employer"`). Global slug ambiguity guard (`AMBIGUOUS_SLUG`). SQL cursor position filtering (`(published_at < $N OR (published_at = $N AND id < $M))`), page-1/page-2 non-overlap, filter-mismatch rejection (`INVALID_CURSOR`), fail-closed cursor secret guard (`SEARCH_CURSOR_SECRET`). Unit tests (33/33 passed, 41/41 full suite passed) and 100% live HTTP integration verified (`scripts/phase-09d-unit4-live-http-integration-test.cjs`).</span>
+- [x] <span style="color:#16a34a">Search routes, DTOs, confidential masking, and static-before-dynamic route ordering frozen and wired in PublicJobController (@Controller('api/v1')).</span>
 - [ ] <span style="color:#ca8a04">Registered application idempotency and immutable snapshot E2E-tested.</span>
 - [ ] <span style="color:#ca8a04">Application status transition matrix, terminal-state and concurrency tests completed.</span>
 - [ ] <span style="color:#ca8a04">Saved-candidate privacy, uniqueness and delete behavior fully tested.</span>
@@ -410,6 +411,6 @@ Production readiness approval
 
 ## Abhi ka next actionable step
 
-Codex ko **Phase 09-B Identity & Company integration tests** continue karne hain. Pehle implementation plan/contract ke against code gap list banaye, phir related code + tests kare. Uske baad same commit Antigravity, FreeBuf aur OpenCode ko read-only review ke liye diya jaye; Codex valid findings consolidate kare.
+Antigravity ne Phase 09-D read-only audit aur implementation plan complete karke `04-nestjs-api/project-docs/PHASE-09-D-JOB-POSTING-IMPLEMENTATION-PLAN.md` aur `implementation_plan.md` artifact document create kar diya hai. Current status **Phase 09-D = CURRENT / PLAN REVIEW** hai. User ke explicit approval ke baad bounded execution units shuru honge.
 
 **Overall status:** `NESTJS API IN PROGRESS — PRODUCTION RELEASE GATES OPEN`

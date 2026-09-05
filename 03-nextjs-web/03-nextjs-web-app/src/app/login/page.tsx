@@ -25,7 +25,8 @@ function LoginFormContent() {
 
   const getRoleDashboard = (role: string) => {
     if (role === 'admin') return '/dashboard/admin';
-    if (role === 'employer' || role === 'hr') return '/dashboard/employer';
+    if (role === 'hr') return '/dashboard/hr';
+    if (role === 'employer') return '/dashboard/employer';
     return '/dashboard/candidate';
   };
 

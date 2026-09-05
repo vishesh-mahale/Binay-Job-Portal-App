@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JobController, JobService } from './jobs';
+import { JobController, PublicJobController, JobService } from './jobs';
 
-@Module({ controllers: [JobController], providers: [JobService] })
+@Module({ controllers: [JobController, PublicJobController], providers: [JobService] })
 export class JobsModule {}
