@@ -121,7 +121,7 @@ Key functional milestones implemented:
 | :--- | :--- | :--- |
 | **Strict Interview Rounds Validation** | `npm test -- src/modules/jobs/jobs.spec.ts` | **PASS** (Rejects blank names, non-positive rounds, duplicates) |
 | **Fail-Visible UI Error Handling** | `npm test -- src/components/employer/job-posting-manager.spec.tsx` | **PASS** (`listCompanyJobs` & `getCompanySettings` 403/Network errors render red banner with Retry button) |
-| **Git Migration Source Control Tracking** | `git status` / `git add` | **PASS** (All 5 standalone migrations + baseline SQL files staged & tracked in Git index) |
+| **Git Migration Source Control Tracking** | `git status` / `git log` | **PASS** (Committed in Git commit `aa4dad6` — all 5 standalone migrations + baseline SQL files committed, working tree clean) |
 | **Live Supabase DB Custom Skill Verification** | `node scratch/verify-codex-audit-live.cjs` | **PASS** (`skill_requests = 1`, `job_skills = 0`, `skills = 0`) |
 | **Live Inactive Skill Rejection & Rollback** | `node scratch/verify-codex-audit-live.cjs` | **PASS** (`400 VALIDATION_ERROR` & 0 orphan job rows) |
 | **Read-Only Migration & Schema Audit** | `node scratch/verify-codex-audit-live.cjs` | **PASS** (All 5 tables & job enhancement columns verified live) |
