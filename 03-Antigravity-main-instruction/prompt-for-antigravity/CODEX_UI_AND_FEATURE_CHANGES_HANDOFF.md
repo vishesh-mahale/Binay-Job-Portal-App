@@ -138,17 +138,19 @@ Key functional milestones implemented:
 ## 5. Security Secret Rotation & Hardening Evidence
 
 > [!IMPORTANT]
-> 1. **Secret Rotation:** `WEBHOOK_SECRET` was rotated immediately to a fresh 256-bit cryptographically secure random 64-hex string in `.env` files. The previous exposed secret was completely invalidated.
-> 2. **Fail-Closed Code Enforcement:** Hardcoded secret fallback string was removed from `scratch/test_option_5_full_cloud_live.py` and `verify-codex-audit-live.cjs`. Both scripts now enforce fail-closed behavior (`ValueError` / `Error` thrown) if `WEBHOOK_SECRET` environment variable is absent.
-> 3. **Zero Plaintext Exposes:** Outbox dispatcher wake requests and live verification scripts dynamically load `process.env.WEBHOOK_SECRET` from environment variables without exposing literal secrets in command line calls or scripts.
-> 4. **Live Security Re-verification:** Live PostgreSQL tests (`skill_requests`, `job_skills=0`, `skills=0`, `400 VALIDATION_ERROR` inactive skill rejection, atomic rollback, and 42/42 jobs tests + 10/10 web component tests) re-run and passed 100%.
+> 1. **Target Review Commit:** FreeBuf and OpenCode reviewers MUST specifically review **commit `7b906a3`**. Reviews of older commits are invalid.
+> 2. **Secret Rotation & Service Restart:** `WEBHOOK_SECRET` was rotated immediately to a fresh 256-bit cryptographically secure random 64-hex string in `.env` files. All running background services were checked and environment secrets loaded.
+> 3. **Dispatcher Wake Secret Verification:**
+>    - *New Rotated Secret:* Requests with `x-webhook-secret: <rotated_secret>` pass `WebhookSecretGuard` with `200 OK`.
+>    - *Old / Missing Secret:* Requests with old/invalid or missing `x-webhook-secret` are rejected with `401 UnauthorizedException` as verified in `test-dispatcher-wake-secret.cjs`.
+> 4. **Inactive-Skill Trusted API Write Boundary:** Enforced strictly in `JobService.processSkillsInput()`. Inactive skill IDs return `400 VALIDATION_ERROR` (0 `job_skills` attached). Custom skill strings create 1 pending row in `public.skill_requests` ONLY (0 `skills`, 0 `job_skills` attached). Verified via unit tests (`jobs.spec.ts`) and live Supabase PostgreSQL audit (`verify-codex-audit-live.cjs`).
+> 5. **Fail-Closed Secret Enforcement:** Hardcoded secret fallbacks removed from all scripts across workspace. Missing secret environment variables throw fail-closed errors.
 
 ---
 
-## 6. Instructions for Codex / Future AI Agents
+## 6. Instructions for Codex / FreeBuf / OpenCode Reviewers
 
-When verifying or building upon this codebase:
-1. **Do not remove or alter** `preferred_qualifications` in Section 5 or `CreateJobDto`/`UpdateJobDto`. It complements the structured education stream selectors.
-2. **Preserve unit test mocks:** When adding endpoints to `ApiClient` in Next.js web, ensure corresponding mocks in `job-posting-manager.spec.tsx` (`listJobCategories`, `listSkills`, `listCities`, etc.) are updated.
-3. **Database migrations:** Any new columns added to any table must be reflected in both `02-database/migrations/baseline/` AND a new standalone migration file in `02-database/migrations/`.
-4. **Environment Security:** Never introduce default string fallbacks for secrets in scripts or code. Always use `process.env.WEBHOOK_SECRET` / `os.getenv("WEBHOOK_SECRET")` with fail-closed checks.
+When reviewing commit `7b906a3`:
+1. **Target Commit:** Verify code changes strictly against commit `7b906a3`.
+2. **Read-Only Verification:** Perform read-only inspection. Do NOT re-apply database migrations.
+3. **Public Job Search UI:** Do NOT start Public Job Search & Job Detail UI until both FreeBuf and OpenCode issue explicit `APPROVE` verdicts for commit `7b906a3`.
