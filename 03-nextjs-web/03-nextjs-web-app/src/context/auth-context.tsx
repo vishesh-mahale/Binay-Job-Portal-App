@@ -57,6 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {
         if (mounted) {
           setUser(null);
+          if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
+            handleSignoutSync();
+          }
         }
       } finally {
         if (mounted) {

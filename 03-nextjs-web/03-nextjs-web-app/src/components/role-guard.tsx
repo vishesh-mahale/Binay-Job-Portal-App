@@ -20,6 +20,9 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     if (!loading) {
       if (!user) {
         router.push('/login');
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = `/login?redirectTo=${encodeURIComponent(window.location.pathname)}`;
+        }
       } else if (!allowedRoles.includes(user.role)) {
         router.push('/forbidden');
       }
