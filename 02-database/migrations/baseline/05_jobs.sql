@@ -663,20 +663,32 @@ CREATE TRIGGER skills_search_vector_refresh_trigger
 
 CREATE OR REPLACE FUNCTION jobs_refresh_search_vector_from_locations()
 RETURNS TRIGGER AS $$
-DECLARE
-    v_job_id UUID := COALESCE(NEW.job_id, OLD.job_id);
 BEGIN
+    IF (TG_OP = 'UPDATE' AND OLD.job_id IS NOT NULL AND NEW.job_id IS DISTINCT FROM OLD.job_id) THEN
+        UPDATE jobs AS j
+            SET search_vector = jobs_build_search_vector_for_job(
+                j,
+                (
+                    SELECT COALESCE(string_agg(s.name, ' '), '')
+                    FROM job_skills js
+                    JOIN skills s ON s.id = js.skill_id
+                    WHERE js.job_id = j.id
+                )
+            )
+        WHERE j.id = OLD.job_id;
+    END IF;
+
     UPDATE jobs AS j
         SET search_vector = jobs_build_search_vector_for_job(
             j,
             (
-            SELECT COALESCE(string_agg(s.name, ' '), '')
-            FROM job_skills js
+                SELECT COALESCE(string_agg(s.name, ' '), '')
+                FROM job_skills js
                 JOIN skills s ON s.id = js.skill_id
                 WHERE js.job_id = j.id
             )
         )
-    WHERE j.id = v_job_id;
+    WHERE j.id = COALESCE(NEW.job_id, OLD.job_id);
 
     RETURN COALESCE(NEW, OLD);
 END;
