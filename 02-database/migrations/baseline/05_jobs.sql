@@ -26,6 +26,7 @@
 --                                         updates full-text search vector
 --   7. job_skills_search_vector_trigger   -> refreshes FTS after job-skill changes
 --   8. skills_search_vector_refresh_trigger -> refreshes affected jobs after skill rename
+--   9. job_locations_search_vector_trigger   -> refreshes affected jobs after location changes
 --
 -- FUNCTIONS CREATED HERE (6):
 --   1. job_views_aggregate_daily_count()  -> updates daily view aggregates for jobs
@@ -35,6 +36,7 @@
 --   4. jobs_build_search_vector_for_job() -> builds weighted job FTS document
 --   5. jobs_refresh_search_vector_from_skills() -> refreshes one changed job
 --   6. jobs_refresh_search_vector_from_skill_name_change() -> refreshes affected jobs
+--   7. jobs_refresh_search_vector_from_locations() -> refreshes affected jobs after location changes
 --
 -- NOTE:
 --   update_updated_at_column() is referenced here but defined in
@@ -525,22 +527,50 @@ COMMENT ON COLUMN job_view_aggregates_daily.created_at IS 'Timestamp when the da
 -- ============================================================================
 -- FUNCTION & TRIGGER: Auto-update search_vector for full-text search
 -- ============================================================================
-CREATE OR REPLACE FUNCTION jobs_build_search_vector_for_job(p_job jobs, p_skill_names TEXT DEFAULT NULL)
+CREATE OR REPLACE FUNCTION jobs_build_search_vector_for_job(
+    p_job jobs,
+    p_skill_names TEXT DEFAULT NULL
+)
 RETURNS TSVECTOR AS $$
+DECLARE
+    v_custom_skills TEXT := '';
+    v_location_names TEXT := '';
 BEGIN
+    -- custom_skills is application-validated, but keep the FTS function
+    -- fail-safe if a legacy/direct writer has stored a non-array JSON value.
+    IF jsonb_typeof(p_job.custom_skills) = 'array' THEN
+        SELECT COALESCE(string_agg(value, ' '), '') INTO v_custom_skills
+        FROM jsonb_array_elements_text(p_job.custom_skills);
+    END IF;
+
+    -- Resolve all normalized job locations centrally so direct function calls
+    -- and every refresh path include secondary-location terms consistently.
+    SELECT COALESCE(string_agg(
+        concat_ws(' ', jl.city, jl.state, jl.country), ' '
+    ), '') INTO v_location_names
+    FROM job_locations jl
+    WHERE jl.job_id = p_job.id;
+
     RETURN
         setweight(to_tsvector('english', COALESCE(p_job.title, '')), 'A') ||
         setweight(to_tsvector('english', COALESCE(p_job.description, '')), 'B') ||
         setweight(to_tsvector('english', COALESCE(p_job.requirements, '')), 'B') ||
+        setweight(to_tsvector('english', COALESCE(p_job.preferred_qualifications, '')), 'B') ||
         setweight(to_tsvector('english', COALESCE(p_job.responsibilities, '')), 'C') ||
         setweight(to_tsvector('english', COALESCE(p_job.category, '')), 'C') ||
         setweight(to_tsvector('english', COALESCE(p_job.employment_type::text, '')), 'C') ||
         setweight(to_tsvector('english', COALESCE(p_job.work_mode::text, '')), 'C') ||
+        setweight(to_tsvector('english', COALESCE(p_job.work_shift, '')), 'C') ||
+        setweight(to_tsvector('english', COALESCE(p_job.education_type, '')), 'C') ||
+        setweight(to_tsvector('english', COALESCE(p_job.min_education_level, '')), 'C') ||
         setweight(to_tsvector('english', COALESCE(p_job.experience_level::text, '')), 'C') ||
         setweight(to_tsvector('english', COALESCE(p_job.location_city, '')), 'C') ||
+        setweight(to_tsvector('english', COALESCE(p_job.location_state, '')), 'C') ||
+        setweight(to_tsvector('english', COALESCE(v_location_names, '')), 'C') ||
         setweight(to_tsvector('english', COALESCE(p_job.location_country, '')), 'D') ||
         setweight(to_tsvector('english', COALESCE(p_job.benefits, '')), 'D') ||
-        setweight(to_tsvector('english', COALESCE(p_skill_names, '')), 'B');
+        setweight(to_tsvector('english', COALESCE(p_skill_names, '')), 'B') ||
+        setweight(to_tsvector('english', COALESCE(v_custom_skills, '')), 'B');
 END;
 $$ LANGUAGE plpgsql;
 
@@ -564,8 +594,11 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER jobs_search_vector_trigger
     BEFORE INSERT OR UPDATE OF title, description, requirements, responsibilities,
-                              category, benefits, location_city, location_country,
-                              employment_type, work_mode, experience_level
+                              preferred_qualifications, category, benefits,
+                              location_city, location_state, location_country,
+                              employment_type, work_mode, work_shift,
+                              education_type, min_education_level, experience_level,
+                              custom_skills
     ON jobs
     FOR EACH ROW
     EXECUTE FUNCTION jobs_search_vector_update();
@@ -627,6 +660,32 @@ CREATE TRIGGER skills_search_vector_refresh_trigger
     AFTER UPDATE OF name ON skills
     FOR EACH ROW
     EXECUTE FUNCTION jobs_refresh_search_vector_from_skill_name_change();
+
+CREATE OR REPLACE FUNCTION jobs_refresh_search_vector_from_locations()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_job_id UUID := COALESCE(NEW.job_id, OLD.job_id);
+BEGIN
+    UPDATE jobs AS j
+        SET search_vector = jobs_build_search_vector_for_job(
+            j,
+            (
+            SELECT COALESCE(string_agg(s.name, ' '), '')
+            FROM job_skills js
+                JOIN skills s ON s.id = js.skill_id
+                WHERE js.job_id = j.id
+            )
+        )
+    WHERE j.id = v_job_id;
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER job_locations_search_vector_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON job_locations
+    FOR EACH ROW
+    EXECUTE FUNCTION jobs_refresh_search_vector_from_locations();
 
 
 -- ============================================================================
