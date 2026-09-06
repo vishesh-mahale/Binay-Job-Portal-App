@@ -434,4 +434,60 @@ describe('JobPostingManager Component', () => {
       expect(screen.getByTestId('job-manager-error')).toHaveTextContent('HTTP 403 Forbidden: Settings access denied');
     });
   });
+
+  it('10. Populates custom_skills on edit, allows removing all custom skills, and asserts custom_skills: [] in updateJob payload', async () => {
+    const jobWithCustomSkills: Job = {
+      ...mockDraftJob,
+      id: 'job-custom-edit',
+      title: 'Rust Backend Developer',
+      slug: 'rust-backend-developer',
+      custom_skills: ['Mojo', 'Qdrant'],
+    };
+
+    (apiClient.listCompanyJobs as jest.Mock).mockResolvedValue([jobWithCustomSkills]);
+    (apiClient.updateJob as jest.Mock).mockResolvedValue({
+      ...jobWithCustomSkills,
+      custom_skills: [],
+    });
+
+    render(
+      <JobPostingManager
+        companyId={mockCompanyId}
+        verificationStatus="verified"
+        isOwnerOrAdmin={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`edit-btn-${jobWithCustomSkills.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`edit-btn-${jobWithCustomSkills.id}`));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Mojo/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Qdrant/i).length).toBeGreaterThan(0);
+    });
+
+    // Remove custom skill Mojo
+    const removeButtons = screen.getAllByTitle('Remove custom skill');
+    fireEvent.click(removeButtons[0]);
+
+    // Remove custom skill Qdrant
+    const removeButtons2 = screen.getAllByTitle('Remove custom skill');
+    fireEvent.click(removeButtons2[0]);
+
+    // Save changes
+    fireEvent.click(screen.getByTestId('save-job-btn'));
+
+    await waitFor(() => {
+      expect(apiClient.updateJob).toHaveBeenCalledWith(
+        mockCompanyId,
+        jobWithCustomSkills.id,
+        expect.objectContaining({
+          custom_skills: [],
+        })
+      );
+    });
+  });
 });

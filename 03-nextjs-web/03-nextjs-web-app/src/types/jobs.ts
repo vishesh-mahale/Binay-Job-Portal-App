@@ -88,6 +88,7 @@ export interface Job {
   company_name?: string | null;
   company_slug?: string | null;
   company_logo_path?: string | null;
+  custom_skills?: string[];
   is_confidential?: boolean;
   is_urgent?: boolean;
   is_featured?: boolean;
@@ -127,6 +128,7 @@ export interface CreateJobDto {
   location_remote?: boolean;
   locations?: JobLocationItem[];
   skills?: JobSkillItem[];
+  custom_skills?: string[];
   screening_questions?: ScreeningQuestionItem[];
 }
 
@@ -163,6 +165,7 @@ export interface UpdateJobDto {
   location_remote?: boolean;
   locations?: JobLocationItem[];
   skills?: JobSkillItem[];
+  custom_skills?: string[];
   screening_questions?: ScreeningQuestionItem[];
 }
 

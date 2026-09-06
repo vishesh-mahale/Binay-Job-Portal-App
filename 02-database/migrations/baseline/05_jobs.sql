@@ -154,6 +154,7 @@ CREATE TABLE jobs (
     screening_questions_enabled BOOLEAN NOT NULL DEFAULT false,
     screening_questions     JSONB NOT NULL DEFAULT '[]'::JSONB,
     interview_rounds        JSONB NOT NULL DEFAULT '[]'::JSONB,
+    custom_skills           JSONB NOT NULL DEFAULT '[]'::JSONB,
     -- Example: [{"question": "Do you have 5+ years of Node.js experience?", "required": true}, ...]
     
     -- AI settings

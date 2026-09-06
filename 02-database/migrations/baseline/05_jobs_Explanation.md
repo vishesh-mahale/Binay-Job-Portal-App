@@ -1,4 +1,4 @@
-﻿# Why this job schema is designed this way
+# Why this job schema is designed this way
 
 This document explains why a job portal schema uses multiple related tables instead of storing everything inside a single `jobs` table.
 
@@ -516,3 +516,20 @@ Skills: Java, Spring Boot, Kafka, Docker, AWS
 ```
 
 This is the cleanest way to keep filtering, search, and AI matching reliable.
+
+---
+
+## 20. Product Policy: Direct `jobs.custom_skills` JSONB vs `skill_requests` Master Catalog Workflow
+
+### Design Decision & Rationale
+
+1. **`jobs.custom_skills` (Job-Entity Free-Text Tags)**:
+   - Used for employer flexibility when adding niche, emerging, or job-specific free-text skill tags (e.g. Bun, Mojo, Qdrant, proprietary tools) without waiting for catalog approval.
+   - Prevents **master skill catalog pollution** with one-off, misspelled, or hyper-niche terms.
+
+2. **`skill_requests` & `skills` (Global Master Skill Catalog)**:
+   - Used when an HR or employer explicitly requests that a new skill be added permanently to the platform's standardized, normalized master catalog (`skills` table).
+   - Once approved by Admin, the skill becomes available to all employers in the catalog UI and is used for site-wide taxonomy and candidate profile indexing.
+
+3. **Bypass Intentionality**:
+   - Storing custom skills directly inside `jobs.custom_skills` JSONB is an **intentional product design decision** to ensure instant posting velocity for employers while keeping the master `skills` taxonomy clean and curated.

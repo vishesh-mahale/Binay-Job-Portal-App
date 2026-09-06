@@ -45,6 +45,7 @@ export class CreateJobDto {
   @Allow() @IsOptional() is_featured?: boolean;
   @Allow() @IsOptional() locations?: unknown[];
   @Allow() @IsOptional() skills?: unknown[];
+  @Allow() @IsOptional() custom_skills?: unknown[];
   @Allow() @IsOptional() screening_questions?: unknown[];
   @Allow() @IsOptional() interview_rounds?: unknown[];
   [key: string]: unknown;
@@ -87,6 +88,7 @@ export class UpdateJobDto {
   @Allow() @IsOptional() is_featured?: boolean;
   @Allow() @IsOptional() locations?: unknown[];
   @Allow() @IsOptional() skills?: unknown[];
+  @Allow() @IsOptional() custom_skills?: unknown[];
   @Allow() @IsOptional() screening_questions?: unknown[];
   @Allow() @IsOptional() interview_rounds?: unknown[];
   [key: string]: unknown;
@@ -101,7 +103,7 @@ const JOB_FIELDS = `j.id, j.company_id, j.branch_id, j.department_id, j.team_id,
   j.work_mode, j.work_shift, j.education_type, j.min_education_level, j.experience_level, j.experience_min, j.experience_max, j.max_notice_period_days, j.category, j.location_city, j.location_state,
   j.location_country, j.location_remote, j.salary_min, j.salary_max, j.salary_currency,
   j.salary_period, j.salary_visible, j.description, j.responsibilities, j.requirements,
-  j.preferred_qualifications, j.benefits, j.vacancies, j.screening_questions_enabled, j.screening_questions, j.interview_rounds, j.status, j.published_at, j.expires_at,
+  j.preferred_qualifications, j.benefits, j.vacancies, j.screening_questions_enabled, j.screening_questions, j.interview_rounds, j.custom_skills, j.status, j.published_at, j.expires_at,
   j.paused_at, j.closed_at, j.is_featured, j.is_urgent, j.is_confidential, j.created_by,
   j.created_at, j.updated_at`;
 
@@ -220,6 +222,38 @@ export class JobService {
       const importanceScore = typeof item === 'object' && item.importance_score !== undefined ? Math.max(1, Math.min(10, Number(item.importance_score) || 5)) : 5;
       cleaned.push({ skill_id: skillId, is_required: isRequired, min_years: minYears, importance_score: importanceScore });
     }
+    return cleaned;
+  }
+
+  private validateCustomSkills(customSkillsInput?: unknown): string[] {
+    if (customSkillsInput === undefined || customSkillsInput === null) {
+      return [];
+    }
+    if (!Array.isArray(customSkillsInput)) {
+      throw new BadRequestException('VALIDATION_ERROR');
+    }
+    if (customSkillsInput.length > 20) {
+      throw new BadRequestException('VALIDATION_ERROR');
+    }
+
+    const cleaned: string[] = [];
+    const seen = new Set<string>();
+
+    for (const item of customSkillsInput) {
+      if (typeof item !== 'string') {
+        throw new BadRequestException('VALIDATION_ERROR');
+      }
+      const trimmed = item.trim();
+      if (!trimmed || trimmed.length > 50) {
+        throw new BadRequestException('VALIDATION_ERROR');
+      }
+      const lowerKey = trimmed.toLowerCase();
+      if (!seen.has(lowerKey)) {
+        seen.add(lowerKey);
+        cleaned.push(trimmed);
+      }
+    }
+
     return cleaned;
   }
 
@@ -494,6 +528,7 @@ export class JobService {
     const locationRemote = Boolean(dto.location_remote || workMode === 'remote');
 
     const validSkills = this.validateSkills(dto.skills as any[]);
+    const customSkillsList = this.validateCustomSkills(dto.custom_skills);
     const validQuestions = this.validateScreeningQuestions(dto.screening_questions as any[]);
     const validRounds = this.validateInterviewRounds(dto.interview_rounds as any[]);
 
@@ -528,18 +563,18 @@ export class JobService {
              employment_type, work_mode, work_shift, education_type, min_education_level, experience_level, experience_min, experience_max, max_notice_period_days, category, salary_min, salary_max, salary_currency, salary_period,
              salary_visible, responsibilities, requirements, preferred_qualifications, benefits, vacancies,
              is_confidential, is_urgent, is_featured, location_city, location_state, location_country, location_remote,
-             screening_questions, screening_questions_enabled, interview_rounds
+             screening_questions, screening_questions_enabled, interview_rounds, custom_skills
            )
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft',
                    $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
-                   $37::jsonb, $38, $39::jsonb)
+                   $37::jsonb, $38, $39::jsonb, $40::jsonb)
            RETURNING ${JOB_FIELDS.replaceAll('j.', '')}`,
           [
             companyId, branchId, departmentId, teamId, categoryId, userId, title, slug, description,
             employmentType, workMode, workShift, educationType, minEducationLevel, experienceLevel, experienceMin, experienceMax, maxNoticePeriodDays, category, salaryMin, salaryMax, salaryCurrency, salaryPeriod,
             salaryVisible, responsibilities, requirements, preferredQualifications, benefits, vacancies,
             isConfidential, isUrgent, isFeatured, locationCity, locationState, locationCountry, locationRemote,
-            JSON.stringify(validQuestions), validQuestions.length > 0, JSON.stringify(validRounds)
+            JSON.stringify(validQuestions), validQuestions.length > 0, JSON.stringify(validRounds), JSON.stringify(customSkillsList)
           ]);
       } catch (err: any) {
         if (err?.code === '23505' || err?.message?.includes('duplicate key')) {
@@ -550,18 +585,18 @@ export class JobService {
                employment_type, work_mode, work_shift, education_type, min_education_level, experience_level, experience_min, experience_max, max_notice_period_days, category, salary_min, salary_max, salary_currency, salary_period,
                salary_visible, responsibilities, requirements, preferred_qualifications, benefits, vacancies,
                is_confidential, is_urgent, is_featured, location_city, location_state, location_country, location_remote,
-               screening_questions, screening_questions_enabled, interview_rounds
+               screening_questions, screening_questions_enabled, interview_rounds, custom_skills
              )
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft',
                      $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
-                     $37::jsonb, $38, $39::jsonb)
+                     $37::jsonb, $38, $39::jsonb, $40::jsonb)
              RETURNING ${JOB_FIELDS.replaceAll('j.', '')}`,
             [
               companyId, branchId, departmentId, teamId, categoryId, userId, title, fallbackSlug, description,
               employmentType, workMode, workShift, educationType, minEducationLevel, experienceLevel, experienceMin, experienceMax, maxNoticePeriodDays, category, salaryMin, salaryMax, salaryCurrency, salaryPeriod,
               salaryVisible, responsibilities, requirements, preferredQualifications, benefits, vacancies,
               isConfidential, isUrgent, isFeatured, locationCity, locationState, locationCountry, locationRemote,
-              JSON.stringify(validQuestions), validQuestions.length > 0, JSON.stringify(validRounds)
+              JSON.stringify(validQuestions), validQuestions.length > 0, JSON.stringify(validRounds), JSON.stringify(customSkillsList)
             ]);
         } else {
           throw err;
@@ -689,6 +724,7 @@ export class JobService {
     if (dto.education_type !== undefined) allowed.education_type = typeof dto.education_type === 'string' && dto.education_type.trim() ? dto.education_type.trim() : 'any';
     if (dto.min_education_level !== undefined) allowed.min_education_level = typeof dto.min_education_level === 'string' && dto.min_education_level.trim() ? dto.min_education_level.trim() : null;
     if (dto.interview_rounds !== undefined) allowed.interview_rounds = this.validateInterviewRounds(dto.interview_rounds as any[]);
+    if (dto.custom_skills !== undefined) allowed.custom_skills = this.validateCustomSkills(dto.custom_skills);
     if (dto.experience_level !== undefined) allowed.experience_level = dto.experience_level;
     if (dto.experience_min !== undefined) allowed.experience_min = dto.experience_min !== null ? Math.max(0, Number(dto.experience_min)) : null;
     if (dto.experience_max !== undefined) allowed.experience_max = dto.experience_max !== null ? Math.max(0, Number(dto.experience_max)) : null;
@@ -751,7 +787,7 @@ export class JobService {
 
       let updatedRow: any = null;
       if (entries.length > 0) {
-        const JSONB_COLUMNS = new Set(['interview_rounds', 'screening_questions']);
+        const JSONB_COLUMNS = new Set(['interview_rounds', 'screening_questions', 'custom_skills']);
         const sets = entries.map(([key], index) => JSONB_COLUMNS.has(key) ? `${key} = $${index + 4}::jsonb` : `${key} = $${index + 4}`).join(', ');
         const values = [jobId, companyId, userId, ...entries.map(([, value]) => (value !== null && typeof value === 'object' ? JSON.stringify(value) : value))];
         const updated = await client.query(`UPDATE public.jobs j SET ${sets}, updated_at = NOW()

@@ -290,6 +290,8 @@ export function JobPostingManager({
       setAdditionalLocations([]);
     }
     setSelectedSkillIds(job.skills ? job.skills.map((s) => s.skill_id) : []);
+    setCustomSkills(Array.isArray(job.custom_skills) ? job.custom_skills : []);
+    setCustomSkillInput('');
     setVacancies(job.vacancies !== undefined && job.vacancies !== null ? job.vacancies : 1);
     setIsConfidential(Boolean(job.is_confidential));
     setIsUrgent(Boolean(job.is_urgent));
@@ -343,14 +345,9 @@ export function JobPostingManager({
       }
 
       let reqText = requirements.trim();
-      if (customSkills.length > 0) {
-        const cStr = `Custom Skills Required: ${customSkills.join(', ')}`;
-        reqText = reqText ? `${reqText}\n\n${cStr}` : cStr;
-      }
 
       const allSkillsInput = [
         ...selectedSkillIds.map((id) => ({ skill_id: id, is_required: true, min_years: 1, importance_score: 5 })),
-        ...customSkills.map((name) => ({ skill_id: name, is_required: true, min_years: 1, importance_score: 5 })),
       ];
 
       const validRounds = interviewRounds
@@ -393,6 +390,7 @@ export function JobPostingManager({
         location_country: locationCountry.trim() || undefined,
         locations: validLocs.length > 0 ? validLocs : undefined,
         skills: allSkillsInput.length > 0 ? allSkillsInput : undefined,
+        custom_skills: customSkills,
         vacancies,
         is_confidential: isConfidential,
         is_urgent: isUrgent,
@@ -1225,6 +1223,8 @@ export function JobPostingManager({
               <div className="space-y-3 border-b pb-4 border-slate-200 dark:border-slate-800">
                 <h4 className="font-semibold text-sm text-indigo-600 dark:text-indigo-400">6. Required Tech Stack & Master Skills</h4>
                 <div className="text-xs text-slate-500 mb-1">Click to select skills from catalog or type a custom skill below:</div>
+
+                {/* Catalog Skills Selection Box */}
                 <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border rounded bg-slate-50 dark:bg-slate-900/50">
                   {dbSkills.length > 0 &&
                     dbSkills.map((sk) => {
@@ -1244,24 +1244,34 @@ export function JobPostingManager({
                         </button>
                       );
                     })}
-
-                  {customSkills.map((cSk) => (
-                    <span
-                      key={cSk}
-                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-600 text-white font-medium shadow-sm"
-                    >
-                      ✓ {cSk} (Custom)
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCustomSkill(cSk)}
-                        className="hover:text-emerald-200 ml-0.5 font-bold"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  ))}
                 </div>
 
+                {/* Dedicated Custom Skills Section (Prominently displayed) */}
+                {customSkills.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Custom Added Skills ({customSkills.length}):</div>
+                    <div className="flex flex-wrap gap-2 p-2.5 rounded-lg border border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20">
+                      {customSkills.map((cSk) => (
+                        <span
+                          key={cSk}
+                          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-600 text-white font-medium shadow-sm"
+                        >
+                          ✓ {cSk} (Custom)
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomSkill(cSk)}
+                            className="hover:text-emerald-200 ml-0.5 font-bold text-sm leading-none"
+                            title="Remove custom skill"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Custom Skill Input */}
                 <div className="flex gap-2 items-center pt-1">
                   <input
                     type="text"
@@ -1432,6 +1442,22 @@ export function JobPostingManager({
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <p className="text-slate-600 dark:text-slate-300 line-clamp-2 text-xs">{job.description}</p>
+
+                {/* Render Job Skills & Custom Skills Pills on Job Card */}
+                {((job.skills && job.skills.length > 0) || (job.custom_skills && Array.isArray(job.custom_skills) && job.custom_skills.length > 0)) && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {job.skills?.map((s) => (
+                      <span key={s.skill_id || s.id} className="text-[11px] px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-medium">
+                        {s.skill_name || s.skill_id}
+                      </span>
+                    ))}
+                    {job.custom_skills?.map((cSk) => (
+                      <span key={cSk} className="text-[11px] px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium">
+                        ✓ {cSk} (Custom)
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Status & Lifecycle Actions */}
                 <div className="pt-2 border-t flex flex-wrap items-center gap-2">

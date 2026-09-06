@@ -809,4 +809,83 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
 
     expect(res.id).toBe('job-rounds-1');
   });
+
+  // 43. Accepts valid custom_skills, trims strings, and deduplicates case-insensitively
+  it('43. Accepts valid custom_skills, trims strings, and deduplicates', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
+        .mockResolvedValueOnce({ rows: [{ owner_id: 'user-owner-1' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'job-custom-1', custom_skills: ['Bun', 'Qdrant'] }] })
+    } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    const service = new JobService(system);
+
+    const res = await service.createDraft('user-owner-1', 'company-1', {
+      title: 'Valid Custom Skills Job',
+      slug: 'valid-custom-skills-job',
+      description: 'Description here',
+      locations: [{ city: 'Pune', country: 'India', is_primary: true }],
+      custom_skills: [' Bun ', 'Qdrant', 'bun', 'DOCKER', 'docker']
+    });
+
+    expect(res.id).toBe('job-custom-1');
+    const insertCall = client.query.mock.calls[2];
+    expect(insertCall[1][39]).toBe(JSON.stringify(['Bun', 'Qdrant', 'DOCKER']));
+  });
+
+  // 44. Rejects malformed custom_skills (non-array, objects, numbers, blank strings)
+  it('44. Rejects malformed custom_skills with BadRequestException', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ role: 'employer' })
+        .mockResolvedValueOnce({ owner_id: 'user-owner-1' })
+    } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    const service = new JobService(system);
+
+    const basePayload = {
+      title: 'Invalid Custom Skills Job',
+      slug: 'invalid-custom-skills-job',
+      description: 'Description here',
+      locations: [{ city: 'Pune', country: 'India', is_primary: true }],
+    };
+
+    // Non-array input
+    await expect(service.createDraft('user-owner-1', 'company-1', { ...basePayload, custom_skills: 'not-an-array' as any }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    // Object item input
+    await expect(service.createDraft('user-owner-1', 'company-1', { ...basePayload, custom_skills: [{ name: 'Bun' }] as any }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    // Number item input
+    await expect(service.createDraft('user-owner-1', 'company-1', { ...basePayload, custom_skills: [123] as any }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    // Blank string item input
+    await expect(service.createDraft('user-owner-1', 'company-1', { ...basePayload, custom_skills: ['   '] }))
+      .rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  // 45. Update draft custom_skills with empty array [] clears existing custom skills in DB
+  it('45. Update draft custom_skills with [] clears existing custom skills in DB', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
+        .mockResolvedValueOnce({ rows: [{ owner_id: 'user-owner-1' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'job-custom-1', custom_skills: [] }] })
+    } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    const service = new JobService(system);
+
+    const res = await service.updateDraft('user-owner-1', 'company-1', 'job-custom-1', {
+      custom_skills: []
+    });
+
+    expect(res.id).toBe('job-custom-1');
+    const updateCall = client.query.mock.calls[2];
+    expect(updateCall[0]).toContain('custom_skills = $4::jsonb');
+    expect(updateCall[1][3]).toBe('[]');
+  });
 });
