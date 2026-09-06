@@ -543,13 +543,13 @@ BEGIN
         FROM jsonb_array_elements_text(p_job.custom_skills);
     END IF;
 
-    -- Resolve all normalized job locations centrally so direct function calls
-    -- and every refresh path include secondary-location terms consistently.
+    -- Resolve secondary job locations so secondary-location terms are included without duplicating primary location weighting.
     SELECT COALESCE(string_agg(
         concat_ws(' ', jl.city, jl.state, jl.country), ' '
     ), '') INTO v_location_names
     FROM job_locations jl
-    WHERE jl.job_id = p_job.id;
+    WHERE jl.job_id = p_job.id
+      AND jl.is_primary = false;
 
     RETURN
         setweight(to_tsvector('english', COALESCE(p_job.title, '')), 'A') ||
