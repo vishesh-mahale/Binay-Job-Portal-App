@@ -1,122 +1,101 @@
-Continue this existing project from the current workspace. Do not restart or redesign completed work.
+# Codex Continuation Handoff — Binay Job Portal
 
-The previous Codex account has limited remaining usage. Continue from this handoff exactly; do not repeat completed analysis or recreate files.
+Read this file completely before doing anything. Continue the existing project; do not restart, redesign, or repeat completed work.
 
-This handoff is intended for the next Codex account. Read it fully before taking any action.
+## Authoritative repository
 
-Repository path:
-C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App
+Use only:
 
-Authoritative architecture:
-Next.js Browser → NestJS API → Supabase.
-Next.js must never contact Supabase directly.
-No custom auth tokens, no direct Supabase browser calls, no fake admin verification toggle.
+`C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App`
 
-Completed:
-- Batch 4A password recovery/security complete.
-- Phase 09-B company/authorization core complete.
-- Company verification flow implemented:
-  employer creates company → status unverified → platform admin verifies → verified company can create branches/departments/teams and invite existing registered users.
-- Unverified organization mutations return 403.
-- Admin verification endpoint is platform-admin-only.
-- Advisory-lock duplicate company protection implemented.
-- Option A invite flow: existing registered email only; unknown email returns 404; invite creates is_active=false; authenticated invite accept changes it to true.
-- Employer dashboard persistence, status refresh, organization lists/forms implemented.
-- Database schema/migrations are already sufficient and must not be modified unless a read-only check proves something missing.
+Do not use the OneDrive copy as the source of truth. First run `git status` and inspect the current diff. The user currently prefers no automatic commit, no push, and no destructive reset/checkout. Never commit unless the user explicitly asks.
 
-Read these files first:
-1. 03-Antigravity-main-instruction/ANTIGRAVITY-MASTER-IMPLEMENTATION-PROMPT.md
-2. 03-Antigravity-main-instruction/prompt-for-antigravity/4 Batch4.md
-3. 04-nestjs-api/IMPLEMENTATION-TRACKER-HINGLISH.md
-4. 04-nestjs-api/Agent_review/phase-09b/PHASE-09B-HANDOFF.md
-5. 04-nestjs-api/Agent_review/phase-09b/walkthrough.md
+Architecture: Next.js browser → NestJS API → Supabase PostgreSQL. Next.js must not access Supabase directly. FastAPI is used only as the asynchronous AI worker through the outbox dispatcher.
 
-Current final verification already completed:
-- Live concurrent company creation: 5 parallel requests → 1 HTTP 201, 4 HTTP 400 conflicts.
-- Unverified branch mutation → HTTP 403.
-- Non-admin verification → HTTP 403.
-- Platform admin verification → HTTP 200.
-- Verified branch mutation → HTTP 201.
-- Unknown invite email → HTTP 404.
-- Existing-user invite → is_active=false.
-- Authenticated accept → is_active=true.
-- Backend: 35 suites / 234 tests passed.
-- Frontend employer UI tests passed.
-- Frontend production build passed.
-- Database directory untouched.
+## Important operating rules
 
-Approved next workstream: Phase 09-B Option B — Production HR Invite-First flow.
+- Preserve existing changes; do not revert unrelated work.
+- Do not apply or create migrations without explicit user approval.
+- Do not claim a test, live DB check, or E2E flow passed unless its output was actually observed.
+- Keep secrets, tokens, cookies, passwords, database URLs, and SMTP credentials out of logs and reports.
+- Before changing code, trace the relevant DB schema → API → worker → UI path.
+- Manual HR publish/approval testing is still important; automated tests do not replace it.
 
-Stage 1 is approved for Stage 2 by BOTH read-only reviewers:
-- 04-nestjs-api/Agent_review/phase-09b-option-b/freebuf-final-review-v2.md
-- 04-nestjs-api/Agent_review/phase-09b-option-b/opencode-final-review-v2.md
+## Completed work
 
-Stage 1 artifacts (already reconciled and frozen):
-- 04-nestjs-api/project-docs/PHASE-09-B-OPTION-B-HR-INVITE-FIRST-CONTRACT-DECISIONS.md
-- 02-database/migrations/20260903000000_option_b_company_invitations.sql
-- implementation_plan.md
+### Identity, company, and invitation flows
 
-Option B frozen business rules:
-- HR cannot use public signup; only a verified company owner or platform admin can invite.
-- Candidate and HR are mutually exclusive. Acceptance intentionally changes global users.role from candidate to hr.
-- One HR can have only one active company membership.
-- Lifecycle: Create invitation -> send email -> open and scrub URL token -> deliberate signup or login -> automatic acceptance -> HR dashboard.
-- GET/preview never activates or consumes an invitation; no separate Accept button.
-- Raw token is random, memory-only in the browser, SHA-256 hashed in DB, never logged or returned.
-- Authenticated user email must match invitation.email using normalized case-insensitive comparison.
-- New-user signup validates token before email_confirm=true; existing-user path never resets the existing password.
-- External Supabase provisioning is outside the PostgreSQL transaction. Role, membership, invitation status, and audit record are atomic with FOR UPDATE.
-- Already accepted token returns INVITATION_ALREADY_ACCEPTED before membership-conflict checks.
-- Migration is a design artifact and is NOT applied yet.
+- Phase 09-B company verification and authorization are implemented.
+- Unverified companies cannot perform protected organization mutations.
+- Owner/platform-admin verification gates are enforced.
+- Option A existing-user invitation flow is implemented.
+- Option B HR invite-first rules and security hardening are implemented at code/unit-test level.
+- Raw invitation tokens are not returned or logged.
+- Invitation verification is read-only; acceptance is atomic and protected against replay/concurrency.
+- Outbox delivery failures are fail-closed; no false successful delivery is reported.
 
-Historical Stage 2 implementation work is now complete at unit-test level. Do not repeat Units 1–4 or recreate the outbox worker. The remaining work is the live Stage 2 verification sequence listed below, followed only after approval by Stage 3 frontend work.
+### Phase 09-D employer job posting
 
-Before any new changes:
-- Run git status.
-- Inspect current source and handoff documents.
-- Do not revert completed work.
-- Do not create DB migrations.
-- Do not commit or push.
-- If proposing further work, first identify whether it belongs to Phase 09-C or another approved workstream.
-- Report actual evidence, not assumptions.
-- Do not start Stage 3 frontend work while Stage 2 is incomplete.
-- Do not apply 20260903000000_option_b_company_invitations.sql without a separate explicit approval.
-- Do not treat the old OneDrive copy as authoritative; use the Desktop repository path above.
+- Draft creation/update, locations, skills, custom skills, screening questions, interview rounds, and enhancement fields are implemented.
+- Job lifecycle is enforced: `draft → pending_approval → published`, with pause/resume/close/archive guards.
+- Direct publish and owner/admin approval publish only are allowed to emit the AI enrichment outbox event.
+- `job.ai.enrichment.requested` uses the full G-1 envelope and is inserted in the same transaction as publication and audit logging.
+- Outbox failure rolls back publication and audit rows.
+- Fail-visible frontend loading/action errors and Retry handling are implemented.
+- `custom_skills` is a validated JSONB array; empty `[]` from the edit form clears the DB value.
+- Live integrity constraints exist for interview rounds, custom skills, and non-negative notice period after explicit migration application.
 
-Latest verified state (do not overwrite these fixes):
-- Codex fixed raw token response leakage: `raw_token_preview` is removed from invitation API responses.
-- Codex removed nested transactions from resendInvitation().
-- GET invitation verification is strictly read-only.
-- signupWithInvite rejects existing accounts with `EXISTING_USER_CANNOT_BE_INVITED`.
-- HR invitations strictly serve new unregistered users only.
-- Invite auth uses the shared `setSessionCookies()` helper; refresh cookie path is `/api/v1/auth/refresh`.
-- Outbox payload includes encrypted `company_name`.
-- Missing EmailDeliveryService is a controlled retry/failure, never a false published event.
-- Outbox claims only `invitation.created` events inside the locking candidate query.
-- Outbox uses baseline `outbox_event_status` and baseline columns/procedures from `15_infrastructure.sql`.
-- External SMTP calls occur outside open PostgreSQL transactions.
+### Search and AI enrichment
 
-Latest reported verification (treat as reported evidence, re-run if needed):
-- Backend: 41 suites / 257 tests passed.
-- TypeScript backend build: 0 errors.
-- Targeted identity/outbox tests pass.
+- `jobs.search_vector` is maintained by FTS triggers/functions. It is separate from asynchronous embedding generation.
+- Do not add a DB trigger/function that calls an embedding provider. Embeddings remain an application/outbox/worker responsibility.
+- FastAPI loads the canonical job aggregate, including description, requirements, responsibilities, preferred qualifications, category, employment/work fields, experience, education, notice period, remote flag, locations, master skills, and custom skills.
+- Semantic text now includes the approved v1 fields: description, preferred qualifications, experience level/range, remote flag, work fields, education, locations, skills, custom skills, responsibilities, requirements, and selected AI domains.
+- `benefits` is intentionally excluded from the v1 technical embedding and documented as a structured/product filter.
+- AI profile JSONB is persisted in `jobs.ai_ideal_candidate_profile`; AI metadata is not duplicated into semantic text.
+- Embeddings are 768-dimensional and store model/version metadata.
+- Retryable AI provider errors return retryable HTTP responses. Non-retryable errors persist `embedding_status = 'failed'` with an optimistic timestamp guard.
+- Model name matching is exact against `Settings.EMBEDDING_MODEL`; dimension uses `Settings.EMBEDDING_DIMENSION`. Mock providers are test-only/explicitly enabled.
 
-Current blockers and exact next sequence:
-1. Do NOT apply the migration automatically. First inspect the migration against the live Supabase schema and produce a dry-run/preflight report.
-2. Request/confirm explicit user approval before applying:
-   02-database/migrations/20260903000000_option_b_company_invitations.sql
-3. After explicit approval, apply the migration through the approved database workflow only. Record exact result and rollback/repair notes.
-4. Verify live schema objects: invitation_status, company_invitations, constraints, pending-invitation unique index, and one-active-membership index.
-5. Configure/verify server-only Brevo SMTP credentials. Never expose or print them.
-6. Run live HTTP E2E against the real database/Supabase:
-   - verified owner creates HR invitation
-   - outbox event is claimed and Brevo email is delivered
-   - GET verify never consumes token
-   - new-user signup-with-invite creates candidate then atomically converts to HR
-   - existing-user login-with-invite uses existing password
-   - wrong email, expired, revoked, replay, active application, and active membership cases reject safely
-   - 5 parallel acceptance requests for one token produce exactly 1 success and 4 replay failures
-7. Redact all tokens, passwords, SMTP keys, cookies, and authorization headers from logs and reports.
-8. Stop for a live Stage 2 review after the above gates. Only after explicit approval begin Stage 3 frontend UI.
+## Primary files to read before future work
 
-Never claim Stage 2 live-complete based only on unit tests. Never start Stage 3 while live backend gates are pending.
+1. `02-database/migrations/baseline/05_jobs.sql`
+2. `02-database/migrations/baseline/05_jobs_AI_Make_Job_searchable_step3.md`
+3. `02-database/migrations/baseline/05_jobs_AI_Job_Profile_JSONB_Contract_v1_step1.md`
+4. `02-database/migrations/baseline/05_jobs_AI_Job_Embedding_Architecture_v1_step2.md`
+5. `02-database/migrations/baseline/05_jobs_AI_Job_Edit_Corner_Case_Guidelines.md`
+6. `03-Antigravity-main-instruction/prompt-for-antigravity/job_publish.md`
+7. `04-nestjs-api/04-nestjs-api-app/src/modules/jobs/jobs.ts`
+8. `04-nestjs-api/04-nestjs-api-app/src/modules/jobs/jobs.spec.ts`
+9. `03-nextjs-web/03-nextjs-web-app/src/components/employer/job-posting-manager.tsx`
+10. `07-fastapi-ai-worker/app/repositories/job_repo.py`
+11. `07-fastapi-ai-worker/app/services/job_ai_service.py`
+12. `07-fastapi-ai-worker/app/services/semantic_builders.py`
+13. `07-fastapi-ai-worker/app/api/v1/task_handlers.py`
+14. `07-fastapi-ai-worker/app/schemas/job_enrichment.py`
+15. `contracts/events/job-ai-enrichment-requested.v1.json`
+16. `03-Antigravity-main-instruction/prompt-for-antigravity/embedding-verify/CONSOLIDATED_REVIEW_DECISION.md`
+
+## Current verification evidence
+
+Reported results include:
+
+- FastAPI full suite: 317 tests passed in the latest report.
+- NestJS full suite/build and Next.js tests/typecheck/build were previously passing.
+- Live DB integrity checks found no invalid existing JSONB arrays or negative notice periods.
+- G-1 publish → outbox → dispatcher → FastAPI enrichment flow was previously exercised.
+
+Treat these as reported evidence and rerun only when needed. Do not inflate numbers or state that a live check was rerun when it was not.
+
+## Remaining final work (approximately 3%)
+
+1. Finish the final read-only code review of the latest uncommitted FastAPI changes.
+2. Run the targeted FastAPI tests and, if practical, the full suite with captured final output.
+3. Confirm the exact model/dimension compatibility path and both retryable/non-retryable failure paths.
+4. Perform manual employer tests: save draft, HR submit-for-approval, owner/admin approve, rejection, direct HR publish when approval is disabled, and verify public visibility only after publication.
+5. Recheck the working tree and document any remaining findings. Do not commit unless the user explicitly requests it.
+6. Only after the user approves the completed employer flow should Public Job Search and Job Detail UI work begin.
+
+## Expected handoff style
+
+Report concrete file/line evidence, commands actually run, and exact pass/fail output. Separate confirmed facts, reported evidence, and recommendations. If a blocker remains, explain the smallest safe next fix instead of changing unrelated files.

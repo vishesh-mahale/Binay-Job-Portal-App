@@ -70,32 +70,19 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
 
     const [sql, params] = outboxCalls[0];
     expect(sql).toContain('INSERT INTO public.outbox_events');
-    const eventId = params[0];
-    const aggregateId = params[1];
-    const payload = JSON.parse(params[2]);
-    const correlationId = params[3];
+    const storedEnvelope = JSON.parse(params[2]);
 
-    const fullEnvelope = {
-      schema_version: 1,
-      event_id: eventId,
-      aggregate_type: 'job',
-      aggregate_id: aggregateId,
-      event_type: 'job.ai.enrichment.requested',
-      correlation_id: correlationId,
-      payload: payload,
-      occurred_at: new Date().toISOString(),
-    };
-
-    expect(fullEnvelope.schema_version).toBe(1);
-    expect(fullEnvelope.event_id).toBeDefined();
-    expect(fullEnvelope.aggregate_type).toBe('job');
-    expect(fullEnvelope.aggregate_id).toBe('job-1');
-    expect(fullEnvelope.event_type).toBe('job.ai.enrichment.requested');
-    expect(fullEnvelope.correlation_id).toBe(payload.trace_id);
-    expect(fullEnvelope.payload.job_id).toBe('job-1');
-    expect(fullEnvelope.payload.company_id).toBe('company-1');
-    expect(fullEnvelope.payload.trigger).toBe('created');
-    expect(fullEnvelope.payload.trace_id).toBe(fullEnvelope.correlation_id);
+    expect(storedEnvelope.schema_version).toBe(1);
+    expect(storedEnvelope.event_id).toBe(params[0]);
+    expect(storedEnvelope.aggregate_type).toBe('job');
+    expect(storedEnvelope.aggregate_id).toBe('job-1');
+    expect(storedEnvelope.event_type).toBe('job.ai.enrichment.requested');
+    expect(storedEnvelope.correlation_id).toBe(params[3]);
+    expect(storedEnvelope.payload.job_id).toBe('job-1');
+    expect(storedEnvelope.payload.company_id).toBe('company-1');
+    expect(storedEnvelope.payload.trigger).toBe('created');
+    expect(storedEnvelope.payload.trace_id).toBe(storedEnvelope.correlation_id);
+    expect(storedEnvelope.occurred_at).toBeDefined();
   });
 
   // 2c. Outbox insertion failure causes complete transaction rollback
@@ -972,5 +959,51 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
     const updateCall = client.query.mock.calls[2];
     expect(updateCall[0]).toContain('custom_skills = $4::jsonb');
     expect(updateCall[1][3]).toBe('[]');
+  });
+
+  // 46. Supports work_shift, education_type, min_education_level, max_notice_period_days, experience_min/max, and custom_skills together
+  it('46. Supports work_shift, education_type, min_education_level, max_notice_period_days, experience_min/max, and custom_skills together', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [{ role: 'employer' }] })
+        .mockResolvedValueOnce({ rows: [{ owner_id: 'user-owner-1' }] })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'job-full-enhancement-1',
+            work_shift: 'night_shift',
+            education_type: 'bachelor',
+            min_education_level: 'B.Tech CS',
+            max_notice_period_days: 30,
+            experience_min: 2,
+            experience_max: 6,
+            custom_skills: ['Mojo', 'LangGraph'],
+          }],
+        }),
+    } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    const service = new JobService(system);
+
+    const res = await service.createDraft('user-owner-1', 'company-1', {
+      title: 'Full Enhancement Job',
+      slug: 'full-enhancement-job',
+      description: 'Description text',
+      locations: [{ city: 'Bangalore', country: 'India', is_primary: true }],
+      work_shift: 'night_shift',
+      education_type: 'bachelor',
+      min_education_level: 'B.Tech CS',
+      max_notice_period_days: 30,
+      experience_min: 2,
+      experience_max: 6,
+      custom_skills: ['Mojo', 'LangGraph'],
+    });
+
+    expect(res.id).toBe('job-full-enhancement-1');
+    expect(res.work_shift).toBe('night_shift');
+    expect(res.education_type).toBe('bachelor');
+    expect(res.min_education_level).toBe('B.Tech CS');
+    expect(res.max_notice_period_days).toBe(30);
+    expect(res.experience_min).toBe(2);
+    expect(res.experience_max).toBe(6);
+    expect(res.custom_skills).toEqual(['Mojo', 'LangGraph']);
   });
 });

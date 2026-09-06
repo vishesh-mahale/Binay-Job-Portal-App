@@ -236,10 +236,35 @@ Builder creates one clean semantic text.
 
 Semantic text is sent to the embedding model.
 
+
+Builder combines business data (jobs, skills, category, locations) with AI JSONB extracted/inferred fields.
+
+Builder ignores metadata like confidence/model/timestamps.
+
+Builder creates one clean semantic text.
+
+Semantic text is sent to the embedding model.
+
 The configured model returns a 768-dimensional vector.
 
 Store vector plus `embedding_model`, `embedding_version` and
 `embedding_generated_at` in `jobs`.
+
+## v1 Semantic Allow-List & Exclusion Policy
+
+### Included in Semantic Vector Text (v1)
+- **Core Textual Content:** `title`, `description`, `responsibilities`, `requirements`, `preferred_qualifications`
+- **Classification & Contract:** `category`, `employment_type`, `work_mode`, `work_shift`, `location_remote`, `experience_level` + quantitative range (`experience_min`-`experience_max`)
+- **Education & Availability:** `education_type`, `min_education_level`, `max_notice_period_days`
+- **Skills & Locations:** Master skills from `job_skills`, `custom_skills`, primary & secondary `job_locations`
+- **AI Inferred/Extracted Concepts:** `role_family`, `technical_domains`, `industry_domains`, `must_have_skills`, `nice_to_have_skills`
+
+### Explicitly Excluded from Semantic Vector Text (v1)
+- **`benefits`:** Kept as a non-semantic perk / structured filter. Compensation and perk details (insurance, free lunch, stock options) are handled as structured filters and excluded from 768-dim technical matching vectors to avoid similarity distortion.
+- **AI Explainability JSONB Attributes (`certifications`, `languages`, `preferred_education`, `soft_skills`, `keywords`, `seniority`, `primary_responsibilities`, `likely_career_level`):** Stored inside `ai_ideal_candidate_profile` JSONB for explainable, rule-based match breakdown and gap analysis. Original DB columns (`description`, `requirements`, `responsibilities`, `preferred_qualifications`) are used directly in semantic text to prevent LLM summarization loss.
+- **Structured Numeric Filters (`salary_min`, `salary_max`, `vacancies`):** Managed deterministically via PostgreSQL SQL `WHERE` range filters.
+- **Dynamic Operational Metrics (`views_count`, `applications_count`, `last_application_at`):** Excluded to prevent vector embedding invalidation on frequent counter updates.
+- **Lifecycle & Audit Metadata (`status`, `published_at`, `expires_at`, `confidence_score`, `model`, `generated_at`):** Managed via SQL lifecycle filters and system audit logs.
 
 ## Compatibility rule
 

@@ -15,7 +15,7 @@
 --   7. job_views        -> job impression tracking for analytics
 --   8. job_view_aggregates_daily -> daily aggregated view counts for jobs
 --
--- TRIGGERS CREATED HERE (8):
+-- TRIGGERS CREATED HERE (9):
 --   1. job_categories_updated_at          -> BEFORE UPDATE on job_categories
 --   2. jobs_updated_at                    -> BEFORE UPDATE on jobs
 --   3. skills_updated_at                  -> BEFORE UPDATE on skills
@@ -28,7 +28,7 @@
 --   8. skills_search_vector_refresh_trigger -> refreshes affected jobs after skill rename
 --   9. job_locations_search_vector_trigger   -> refreshes affected jobs after location changes
 --
--- FUNCTIONS CREATED HERE (6):
+-- FUNCTIONS CREATED HERE (7):
 --   1. job_views_aggregate_daily_count()  -> updates daily view aggregates for jobs
 --   2. jobs_refresh_views_count_from_aggregates() -> refreshes jobs.views_count from daily aggregates
 --   3. jobs_search_vector_update()        -> updates jobs.search_vector for
@@ -221,6 +221,9 @@ CREATE TABLE jobs (
     CONSTRAINT embedding_version_positive CHECK (embedding_version IS NULL OR embedding_version > 0),
     CONSTRAINT jobs_slug_lowercase CHECK (slug = lower(slug)),
     CONSTRAINT screening_questions_array CHECK (jsonb_typeof(screening_questions) = 'array'),
+    CONSTRAINT interview_rounds_array CHECK (jsonb_typeof(interview_rounds) = 'array'),
+    CONSTRAINT custom_skills_array CHECK (jsonb_typeof(custom_skills) = 'array'),
+    CONSTRAINT max_notice_period_days_non_negative CHECK (max_notice_period_days IS NULL OR max_notice_period_days >= 0),
     CONSTRAINT ai_ideal_candidate_profile_object CHECK (
         ai_ideal_candidate_profile IS NULL OR jsonb_typeof(ai_ideal_candidate_profile) = 'object'
     ),

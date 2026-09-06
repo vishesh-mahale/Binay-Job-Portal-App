@@ -49,3 +49,33 @@ async def test_job_ai_service_enrich_job_workflow():
     # Check extracted skills contain canonical skills
     assert any(s in result.ai_profile.extracted.must_have_skills for s in ["AWS", "Terraform", "Kubernetes", "Python"])
     assert result.ai_profile.metadata.prompt_version == "v1"
+
+
+def test_job_ai_service_validate_embedding_compatibility_pass():
+    """Verify valid model, version, and 768 dimension pass compatibility checks."""
+    llm = MockLLMProvider()
+    emb = MockEmbeddingProvider()
+    service = JobAIService(llm, emb)
+
+    # Valid model, version, dimension
+    service.validate_embedding_compatibility("text-embedding-004", 1, [0.1] * 768)
+    service.validate_embedding_compatibility("mock-embedding", 1, [0.1] * 768)
+
+
+def test_job_ai_service_validate_embedding_compatibility_fail():
+    """Verify incompatible model or version raises AIResponseValidationError."""
+    from app.core.exceptions import AIResponseValidationError
+
+    llm = MockLLMProvider()
+    emb = MockEmbeddingProvider()
+    service = JobAIService(llm, emb)
+
+    # Incompatible model name
+    with pytest.raises(AIResponseValidationError, match="Incompatible embedding model"):
+        service.validate_embedding_compatibility("text-embedding-001-legacy", 1, [0.1] * 768)
+
+    # Incompatible version
+    with pytest.raises(AIResponseValidationError, match="Incompatible embedding version"):
+        service.validate_embedding_compatibility("text-embedding-004", 2, [0.1] * 768)
+
+

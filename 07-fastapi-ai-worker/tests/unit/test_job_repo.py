@@ -112,3 +112,19 @@ async def test_update_job_ai_enrichment_success(mock_db):
     with patch.object(repo, "db_manager", db):
         updated = await repo.update_job_ai_enrichment(result, session=session)
     assert updated is True
+
+
+@pytest.mark.asyncio
+async def test_mark_embedding_failed(mock_db):
+    db, session = mock_db
+    repo = JobRepository(db)
+    ts = datetime.now(timezone.utc)
+
+    mock_result = MagicMock()
+    mock_result.rowcount = 1
+    session.execute = AsyncMock(return_value=mock_result)
+
+    with patch.object(repo, "db_manager", db):
+        failed = await repo.mark_embedding_failed("job-1", ts, session=session)
+    assert failed is True
+

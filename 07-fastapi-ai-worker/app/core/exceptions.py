@@ -184,6 +184,7 @@ class AIProviderError(WorkerException):
             http_status=503 if retryable else 200,
             internal_code="AI_PROVIDER_ERROR"
         )
+        self.retryable = retryable
 
 
 class AIResponseValidationError(WorkerException):

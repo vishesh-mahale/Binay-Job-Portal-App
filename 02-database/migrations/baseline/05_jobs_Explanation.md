@@ -271,18 +271,12 @@ Refresh function:
 
 Example input fields:
 
-- title
-- description
-- requirements
-- responsibilities
-- category
-- employment_type
-- work_mode
-- experience_level
-- location_city
-- location_country
-- benefits
-- job skill names
+- title (Weight A)
+- description, requirements, preferred_qualifications, job skill names, custom_skills (Weight B)
+- responsibilities, category, employment_type, work_mode, work_shift, education_type, min_education_level, experience_level, location_city, location_state, secondary locations (Weight C)
+- location_country, benefits (Weight D)
+
+> **Note on Numeric Experience:** Numeric experience fields (`experience_min`, `experience_max`) are structured B-Tree filtering parameters (`WHERE experience_min <= X AND experience_max >= Y`) and AI matching context in `ai_ideal_candidate_profile`. They are NOT indexed as FTS tokens in `search_vector`.
 
 Example search:
 

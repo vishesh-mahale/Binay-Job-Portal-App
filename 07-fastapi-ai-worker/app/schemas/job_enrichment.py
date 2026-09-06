@@ -6,8 +6,8 @@ Strictly matches 05_jobs_AI_Job_Profile_JSONB_Contract_v1_step1.md and 05_jobs_A
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any, Dict, List, Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ============================================================================
@@ -20,7 +20,7 @@ class JobExtractedProfile(BaseModel):
 
     must_have_skills: List[str] = Field(default_factory=list, description="Mandatory skills explicitly required")
     nice_to_have_skills: List[str] = Field(default_factory=list, description="Optional / preferred skills")
-    minimum_experience_years: Optional[float] = Field(default=None, description="Explicit minimum years required")
+    minimum_experience_years: Optional[float] = Field(default=None, ge=0.0, description="Explicit minimum years required (must be non-negative)")
     preferred_education: List[str] = Field(default_factory=list, description="Explicit degrees / qualifications")
     certifications: List[str] = Field(default_factory=list, description="Explicit certifications required or preferred")
     languages: List[str] = Field(default_factory=list, description="Explicit spoken / written language requirements")
@@ -59,7 +59,7 @@ class JobAIProfileV1(BaseModel):
     """
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = Field(default=1, description="Schema version (must be 1)")
+    schema_version: Literal[1] = Field(default=1, description="Schema version (must be exactly 1)")
     extracted: JobExtractedProfile = Field(default_factory=JobExtractedProfile)
     inferred: JobInferredProfile = Field(default_factory=JobInferredProfile)
     metadata: JobProfileMetadata
@@ -79,9 +79,16 @@ class JobCanonicalAggregate(BaseModel):
     category: Optional[str] = Field(default=None, description="Category name (e.g. Engineering > Backend)")
     employment_type: Optional[str] = Field(default="full_time")
     work_mode: Optional[str] = Field(default="onsite")
+    location_remote: Optional[bool] = Field(default=False, description="Location remote flag")
     experience_level: Optional[str] = None
-    experience_min_years: Optional[int] = None
-    experience_max_years: Optional[int] = None
+    experience_min: Optional[int] = Field(default=None, description="Primary DB column: jobs.experience_min")
+    experience_max: Optional[int] = Field(default=None, description="Primary DB column: jobs.experience_max")
+    experience_min_years: Optional[int] = Field(default=None, description="Backward compatibility alias for experience_min")
+    experience_max_years: Optional[int] = Field(default=None, description="Backward compatibility alias for experience_max")
+    work_shift: Optional[str] = None
+    education_type: Optional[str] = None
+    min_education_level: Optional[str] = None
+    max_notice_period_days: Optional[int] = None
     salary_min: Optional[float] = None
     salary_max: Optional[float] = None
     salary_currency: Optional[str] = "INR"
@@ -91,8 +98,27 @@ class JobCanonicalAggregate(BaseModel):
     preferred_qualifications: Optional[str] = None
     benefits: Optional[str] = None
     skills: List[str] = Field(default_factory=list, description="Associated skills from job_skills joined with skills")
+    custom_skills: List[str] = Field(default_factory=list, description="Direct custom free-text skill tags")
     locations: List[str] = Field(default_factory=list, description="Formatted location strings from job_locations")
     updated_at: datetime = Field(..., description="Job updated_at for optimistic concurrency check")
+
+    @model_validator(mode="after")
+    def sync_experience_aliases(self) -> JobCanonicalAggregate:
+        """
+        Synchronize experience_min/max (canonical DB fields) with experience_min/max_years (legacy alias).
+        Ensures 100% bidirectional backward compatibility while declaring experience_min/max as canonical.
+        """
+        if self.experience_min is not None and self.experience_min_years is None:
+            self.experience_min_years = self.experience_min
+        elif self.experience_min_years is not None and self.experience_min is None:
+            self.experience_min = self.experience_min_years
+
+        if self.experience_max is not None and self.experience_max_years is None:
+            self.experience_max_years = self.experience_max
+        elif self.experience_max_years is not None and self.experience_max is None:
+            self.experience_max = self.experience_max_years
+
+        return self
 
 
 # ============================================================================

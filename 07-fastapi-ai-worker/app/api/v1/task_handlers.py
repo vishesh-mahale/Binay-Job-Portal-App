@@ -709,10 +709,27 @@ async def handle_job_enrich_task(
         }
 
     except AIProviderError as exc:
-        logger.error("Job AI enrichment failed", job_id=job_id, error=str(exc))
-        raise HTTPException(status_code=503, detail={"status": "failed", "error": str(exc), "retryable": True})
+        retryable = getattr(exc, "retryable", True)
+        if retryable:
+            logger.error("Job AI enrichment failed (retryable)", job_id=job_id, error=str(exc))
+            raise HTTPException(status_code=503, detail={"status": "failed", "error": str(exc), "retryable": True})
+        else:
+            logger.error("Job AI enrichment failed permanently (non-retryable AIProviderError)", job_id=job_id, error=str(exc))
+            try:
+                if 'stored_updated_at' in locals() and stored_updated_at:
+                    async with db_manager.transaction() as session:
+                        await job_repo.mark_embedding_failed(job_id, stored_updated_at, session=session)
+            except Exception as mark_err:
+                logger.warning("Failed to mark job embedding_status as failed", job_id=job_id, error=str(mark_err))
+            raise HTTPException(status_code=500, detail={"status": "failed", "error": str(exc), "retryable": False})
     except Exception as exc:
-        logger.error("Job AI enrichment failed", job_id=job_id, error=str(exc))
+        logger.error("Job AI enrichment failed permanently", job_id=job_id, error=str(exc))
+        try:
+            if 'stored_updated_at' in locals() and stored_updated_at:
+                async with db_manager.transaction() as session:
+                    await job_repo.mark_embedding_failed(job_id, stored_updated_at, session=session)
+        except Exception as mark_err:
+            logger.warning("Failed to mark job embedding_status as failed", job_id=job_id, error=str(mark_err))
         raise HTTPException(status_code=500, detail={"status": "failed", "error": str(exc)})
     finally:
         try:

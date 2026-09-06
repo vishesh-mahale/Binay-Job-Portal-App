@@ -39,6 +39,13 @@ class JobRepository:
                 j.employment_type::text AS employment_type,
                 j.work_mode::text AS work_mode,
                 j.experience_level::text AS experience_level,
+                j.experience_min,
+                j.experience_max,
+                j.work_shift,
+                j.education_type,
+                j.min_education_level,
+                j.max_notice_period_days,
+                j.custom_skills,
                 j.salary_min,
                 j.salary_max,
                 j.salary_currency::text AS salary_currency,
@@ -50,6 +57,7 @@ class JobRepository:
                 j.location_city,
                 j.location_state,
                 j.location_country,
+                j.location_remote,
                 j.updated_at,
                 jc.name AS category_name
             FROM jobs j
@@ -102,6 +110,18 @@ class JobRepository:
 
             category = job_row.get("category_name") or job_row.get("denorm_category")
 
+            raw_custom = job_row.get("custom_skills")
+            custom_skills_list: List[str] = []
+            if isinstance(raw_custom, list):
+                custom_skills_list = [str(item).strip() for item in raw_custom if item and str(item).strip()]
+            elif isinstance(raw_custom, str):
+                try:
+                    parsed_custom = json.loads(raw_custom)
+                    if isinstance(parsed_custom, list):
+                        custom_skills_list = [str(item).strip() for item in parsed_custom if item and str(item).strip()]
+                except Exception:
+                    pass
+
             return JobCanonicalAggregate(
                 job_id=str(job_row["id"]),
                 title=job_row["title"] or "",
@@ -109,7 +129,16 @@ class JobRepository:
                 category=category,
                 employment_type=job_row.get("employment_type"),
                 work_mode=job_row.get("work_mode"),
+                location_remote=bool(job_row.get("location_remote")),
                 experience_level=job_row.get("experience_level"),
+                experience_min=job_row.get("experience_min"),
+                experience_max=job_row.get("experience_max"),
+                experience_min_years=job_row.get("experience_min"),
+                experience_max_years=job_row.get("experience_max"),
+                work_shift=job_row.get("work_shift"),
+                education_type=job_row.get("education_type"),
+                min_education_level=job_row.get("min_education_level"),
+                max_notice_period_days=job_row.get("max_notice_period_days"),
                 salary_min=float(job_row["salary_min"]) if job_row.get("salary_min") is not None else None,
                 salary_max=float(job_row["salary_max"]) if job_row.get("salary_max") is not None else None,
                 salary_currency=job_row.get("salary_currency") or "INR",
@@ -119,6 +148,7 @@ class JobRepository:
                 preferred_qualifications=job_row.get("preferred_qualifications"),
                 benefits=job_row.get("benefits"),
                 skills=skills_list,
+                custom_skills=custom_skills_list,
                 locations=formatted_locs,
                 updated_at=job_row["updated_at"],
             )
@@ -208,3 +238,30 @@ class JobRepository:
             embedding_model=result.embedding_model,
         )
         return True
+
+    async def mark_embedding_failed(
+        self,
+        job_id: str,
+        stored_updated_at: datetime,
+        session: AsyncSession,
+    ) -> bool:
+        """
+        Updates jobs.embedding_status to 'failed' when permanent AI provider failure occurs.
+        Enforces optimistic concurrency via WHERE id = :job_id AND updated_at = :stored_updated_at.
+        """
+        query = text("""
+            UPDATE jobs SET
+                embedding_status = 'failed',
+                updated_at = NOW()
+            WHERE id = :job_id
+              AND updated_at = :stored_updated_at
+              AND deleted_at IS NULL
+        """)
+        res = await session.execute(query, {"job_id": job_id, "stored_updated_at": stored_updated_at})
+        rowcount = getattr(res, "rowcount", 0)
+        rows_updated = rowcount if isinstance(rowcount, int) else 0
+        if rows_updated > 0:
+            logger.info("Marked job embedding_status as failed in DB", job_id=job_id)
+            return True
+        return False
+

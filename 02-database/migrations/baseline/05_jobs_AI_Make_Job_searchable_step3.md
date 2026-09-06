@@ -324,16 +324,13 @@ Trigger है।
 तो Trigger अपने आप
 
 ```
-title
-
-description
-
-requirements
-
-benefits
-
-skills
+title (Weight A)
+description, requirements, preferred_qualifications, skills, custom_skills (Weight B)
+responsibilities, category, employment_type, work_mode, work_shift, education_type, min_education_level, experience_level, location_city, location_state, secondary locations (Weight C)
+location_country, benefits (Weight D)
 ```
+
+> **Note on Numeric Experience:** Numeric experience fields (`experience_min`, `experience_max`) are used strictly for structured range filtering (`WHERE experience_min <= X AND experience_max >= Y`) and AI context in `ai_ideal_candidate_profile`. They are NOT included as FTS tokens in `search_vector`.
 
 सब पढ़ेगा।
 

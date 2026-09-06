@@ -120,47 +120,62 @@ class JobSemanticTextBuilder:
         category: Optional[str] = None,
         employment_type: Optional[str] = None,
         work_mode: Optional[str] = None,
+        work_shift: Optional[str] = None,
+        location_remote: Optional[bool] = None,
+        education_type: Optional[str] = None,
+        min_education_level: Optional[str] = None,
+        max_notice_period_days: Optional[int] = None,
+        experience_level: Optional[str] = None,
+        experience_min: Optional[int] = None,
+        experience_max: Optional[int] = None,
         experience_min_years: Optional[int] = None,
         experience_max_years: Optional[int] = None,
         locations: Optional[List[str]] = None,
         skills: Optional[List[str]] = None,
+        custom_skills: Optional[List[str]] = None,
+        description: Optional[str] = None,
         responsibilities: Optional[str] = None,
         requirements: Optional[str] = None,
+        preferred_qualifications: Optional[str] = None,
         technical_domains: Optional[List[str]] = None,
         industry_domains: Optional[List[str]] = None,
         role_family: Optional[str] = None,
     ) -> str:
         """
         Assemble symmetric job semantic representation.
-        
-        Template:
-        Title: {job.title}
-        Category: {category.name}
-        Employment Type: {job.employment_type} | Work Mode: {job.work_mode}
-        Experience Required: {job.experience_min_years}-{job.experience_max_years} years
-        Location: {job_locations_list}
-        Required Skills: {skills_list}
-        Responsibilities:
-        {job.responsibilities}
-        Requirements:
-        {job.requirements}
-        AI Domain & Concepts: {technical_domains}, {industry_domains}, {role_family}
         """
         emp_type_str = (employment_type or "Full Time").replace("_", " ").title()
         work_mode_str = (work_mode or "On Site").replace("_", " ").title()
-        
-        min_y = experience_min_years or 0
-        max_y = f"-{experience_max_years}" if experience_max_years else "+"
-        exp_req_str = f"{min_y}{max_y} years"
+        work_shift_str = (work_shift or "Day Shift").replace("_", " ").title()
+        remote_str = "Yes" if location_remote is True else ("Yes" if (work_mode or "").lower() == "remote" else "No")
+
+        exp_min = experience_min if experience_min is not None else experience_min_years
+        exp_max = experience_max if experience_max is not None else experience_max_years
+        min_y = exp_min if exp_min is not None else 0
+        max_y = f"-{exp_max}" if exp_max is not None else "+"
+        exp_lvl_str = f" ({experience_level.replace('_', ' ').title()})" if experience_level else ""
+        exp_req_str = f"{min_y}{max_y} years{exp_lvl_str}"
+
+        edu_type_str = (education_type or "Any").replace("_", " ").title()
+        min_edu_str = (min_education_level or "Not Specified").strip()
+        notice_str = f"{max_notice_period_days} days" if max_notice_period_days is not None else "Not Specified"
 
         locs = [l.strip() for l in (locations or []) if l and l.strip()]
         location_str = ", ".join(locs) if locs else "Not Specified"
 
-        skill_list = [s.strip() for s in (skills or []) if s and s.strip()]
-        skills_str = ", ".join(skill_list) if skill_list else "None"
+        all_skills: List[str] = []
+        for s in (skills or []):
+            if s and s.strip() and s.strip() not in all_skills:
+                all_skills.append(s.strip())
+        for cs in (custom_skills or []):
+            if cs and cs.strip() and cs.strip() not in all_skills:
+                all_skills.append(cs.strip())
+        skills_str = ", ".join(all_skills) if all_skills else "None"
 
+        desc_str = (description or "").strip() or "Not Specified"
         resp_str = (responsibilities or "").strip() or "Not Specified"
         req_str = (requirements or "").strip() or "Not Specified"
+        pref_qual_str = (preferred_qualifications or "").strip() or "Not Specified"
 
         domains: List[str] = []
         if technical_domains:
@@ -174,14 +189,19 @@ class JobSemanticTextBuilder:
         parts = [
             f"Title: {title.strip()}",
             f"Category: {category or 'General'}",
-            f"Employment Type: {emp_type_str} | Work Mode: {work_mode_str}",
+            f"Employment Type: {emp_type_str} | Work Mode: {work_mode_str} | Work Shift: {work_shift_str} | Remote: {remote_str}",
             f"Experience Required: {exp_req_str}",
+            f"Education: {edu_type_str} ({min_edu_str}) | Max Notice Period: {notice_str}",
             f"Location: {location_str}",
             f"Required Skills: {skills_str}",
+            "Description:",
+            desc_str,
             "Responsibilities:",
             resp_str,
             "Requirements:",
             req_str,
+            "Preferred Qualifications:",
+            pref_qual_str,
             f"AI Domain & Concepts: {domains_str}",
         ]
 

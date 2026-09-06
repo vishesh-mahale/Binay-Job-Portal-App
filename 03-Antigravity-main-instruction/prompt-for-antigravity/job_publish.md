@@ -59,8 +59,9 @@ Kyunki Company **Verified** hai aur **Direct Publish** enabled hai:
 
 ---
 
-### 4. Search Indexing (FTS Search Vector)
-* Live PostgreSQL database trigger `jobs_search_vector_trigger` run hoga aur job title, description, skills, location, experience etc. ka TSVECTOR update kar dega. 
+### 4. Search Indexing (FTS Search Vector & AI Enrichment)
+* Live PostgreSQL database trigger `jobs_search_vector_trigger` run hoga aur job title (Weight A), description, requirements, preferred_qualifications, skills, custom_skills (Weight B), responsibilities, category, employment_type, work_mode, work_shift, education_type, min_education_level, experience_level, location_city, location_state, secondary locations (Weight C), location_country, benefits (Weight D) ka `search_vector` TSVECTOR update kar dega.
+* **Note on Numeric Experience:** Numeric experience (`experience_min`, `experience_max`) B-Tree structured range filtering aur `ai_ideal_candidate_profile` context ke liye use hota hai, `search_vector` FTS token me nahi.
 * Isse ye job candidate portal par live search, filter aur candidate job listings me instantly visible hone lagegi.
 
 ---
@@ -74,3 +75,62 @@ Kyunki Company **Verified** hai aur **Direct Publish** enabled hai:
 ---
 
 > 💡 **Note (Approval Policy Case):** Agar future me Owner/Admin **"Require Approval"** toggle turn ON kar dete hain, to HR / Employer ke Publish click karne par status `'published'` ke bajaye `'pending_approval'` hoga aur message dikhega: `"Job submitted for approval (pending Owner/Admin review)"`.
+
+
+
+======================
+++++++++++++++++++++++
+
+
+### Manual Testing Instructions (Phase 09-D Flow) 🧪
+
+Aap niche diye gaye step-by-step instructions ke dwara **Next.js Web UI (`http://localhost:3001`)** ya **Postman / REST API (`http://localhost:3000`)** se end-to-end publish & AI enrichment flow test kar sakte hain.
+
+---
+
+### Step-by-Step Manual Test Flow
+
+#### Step 1: HR Account se Draft Job Create & Save karein
+- **Web UI:** Employer dashboard me log in karke `Post a Job` par jayein aur Title, Category, Location, Skills fill karke **"Save as Draft"** par click karein.
+- **REST API:**
+  `POST http://localhost:3000/api/v1/companies/:companyId/jobs`
+- **Expected DB Result:**
+  - `jobs.status = 'draft'`
+  - `jobs.embedding_status = 'pending'`
+
+---
+
+#### Step 2: HR Account se Publish / Submit for Approval karein
+- **Web UI:** HR dashboard se draft job par **"Publish Job"** click karein.
+  - Agar company policy me `job_approval_required = true` hai, to status `pending_approval` hoga.
+  - Agar `job_approval_required = false` aur company verified hai, to status directly `published` hoga.
+- **REST API:**
+  `POST http://localhost:3000/api/v1/companies/:companyId/jobs/:jobId/publish`
+
+---
+
+#### Step 3: Owner / Admin Account se Approve karein (agar approval needed ho)
+- **Web UI:** Company Owner / Admin account se log in karein, Pending Approval section me jaakar job ko **"Approve"** karein.
+- **REST API:**
+  `POST http://localhost:3000/api/v1/companies/:companyId/jobs/:jobId/approve`
+
+---
+
+#### Step 4, 5 & 6: Verification Checklist
+
+Jaise hi Job `published` hoti hai:
+
+1. **Job Status Check:** `jobs.status` update hokar `'published'` ho jayega aur `audit_logs` me `'job.published'` ya `'job.approved'` insert hoga.
+2. **Outbox Event Check:** `public.outbox_events` me 1 pending event create hoga:
+   - `event_type = 'job.ai.enrichment.requested'`
+   - `payload` me full G-1 envelope JSON.
+3. **Outbox Dispatcher Wake:** Background Dispatcher service outbox row ko claim karke FastAPI AI worker (`/internal/tasks/job/enrich`) ko push kar dega.
+4. **AI Enrichment Completion:** FastAPI AI Worker Gemini LLM se ideal candidate profile JSONB aur 768-dim embeddings generate karke update kar dega:
+   - `jobs.embedding_status = 'completed'`
+   - `jobs.ai_profile_model = 'gemini-2.0-flash'`
+   - `jobs.embedding_model = 'text-embedding-004'`
+
+---
+
+> [!NOTE]
+> All code changes remain in uncommitted state as instructed. Ready for your manual testing!

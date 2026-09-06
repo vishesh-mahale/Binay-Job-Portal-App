@@ -92,12 +92,19 @@ Audit/debug information for regeneration and model tracking.
 -   Description
 -   Responsibilities
 -   Requirements
+-   Preferred qualifications
 -   Benefits
 -   Employment type
 -   Work mode
--   Experience level
+-   Work shift
+-   Education type & min education level
+-   Max notice period days
+-   Experience level & numeric experience range (`experience_min`, `experience_max`)
 -   Category
 -   Skills from job_skills
+-   Custom skills from `custom_skills` JSONB
+
+Stored in column: `jobs.ai_ideal_candidate_profile`
 
 ## Recommended Prompt
 
@@ -124,13 +131,29 @@ Rules:
 9. Do not add extra fields.
 ```
 
-## Validation
+## Validation & Schema Boundaries
+
+### 1. Provider LLM Response Schema vs Persisted `JobAIProfileV1` Contract
+* **LLM Provider Extraction Schema:** The raw LLM provider returns a focused structured JSON payload containing `{ "extracted": {...}, "inferred": {...} }`.
+* **Final Persisted `JobAIProfileV1` Schema:** The FastAPI AI Worker validates the extracted/inferred payload, appends lineage metadata (`metadata`: model, model_version, prompt_version, generated_at, processing_time_ms), enforces `schema_version: 1` strictly (`Literal[1]`), and persists the complete `JobAIProfileV1` JSONB document into `jobs.ai_ideal_candidate_profile`.
+
+### 2. Database vs Trusted Worker Boundary
+* **Database Safeguard:** PostgreSQL constraint `ai_ideal_candidate_profile_object` validates `jsonb_typeof(ai_ideal_candidate_profile) = 'object'` as a structural database safety check.
+* **Trusted Application Boundary:** Comprehensive field validation, strict unknown key rejection (`extra="forbid"`), non-negative experience validation (`minimum_experience_years >= 0.0`), and version freezing are strictly enforced by the FastAPI Worker Pydantic model prior to database write.
+
+### 3. Published Job Edit Policy
+* **Current Scope:** Jobs in `published` status are restricted from direct semantic edits in NestJS API to maintain applicant-facing consistency.
+* **Future Enhancement (Phase 10):** Workflow for published job semantic edits with automated `job.ai.enrichment.requested` outbox re-triggering is marked as future enhancement scope.
+
+## Validation Checklist
 
 -   Parse JSON
 -   Verify top-level keys
--   Validate schema
--   Save JSONB
--   Log model/version
+-   Enforce `schema_version` strictly `Literal[1] = 1`
+-   Validate `minimum_experience_years >= 0.0`
+-   Reject undeclared fields (`extra="forbid"`)
+-   Save complete `JobAIProfileV1` to `jobs.ai_ideal_candidate_profile`
+-   Log model, version, latency, and lineage metadata
 
 # Future Roadmap
 

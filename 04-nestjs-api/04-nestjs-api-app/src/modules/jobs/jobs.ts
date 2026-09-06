@@ -907,17 +907,28 @@ export class JobService {
         await client.query(`INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, changes) VALUES ($1, $2, 'job.published', 'job', $3, $4::jsonb)`, [companyId, userId, jobId, JSON.stringify({ resulting_status: 'published' })]);
         const traceId = randomUUID();
         const eventId = randomUUID();
-        const outboxPayload = {
+        const occurredAt = new Date().toISOString();
+        const innerPayload = {
           job_id: jobId,
           company_id: companyId,
           trigger: 'created',
           trace_id: traceId,
         };
+        const fullEnvelope = {
+          schema_version: 1,
+          event_id: eventId,
+          aggregate_type: 'job',
+          aggregate_id: jobId,
+          event_type: 'job.ai.enrichment.requested',
+          correlation_id: traceId,
+          payload: innerPayload,
+          occurred_at: occurredAt,
+        };
         await client.query(
           `INSERT INTO public.outbox_events (
              id, aggregate_type, aggregate_id, event_type, schema_version, payload, correlation_id, status
            ) VALUES ($1, 'job', $2, 'job.ai.enrichment.requested', 1, $3::jsonb, $4, 'pending')`,
-          [eventId, jobId, JSON.stringify(outboxPayload), traceId]
+          [eventId, jobId, JSON.stringify(fullEnvelope), traceId]
         );
         return result.rows[0];
       }
@@ -980,17 +991,28 @@ export class JobService {
       await client.query(`INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, changes) VALUES ($1, $2, 'job.approved', 'job', $3, $4::jsonb)`, [companyId, userId, jobId, JSON.stringify({ from: 'pending_approval', to: 'published' })]);
       const traceId = randomUUID();
       const eventId = randomUUID();
-      const outboxPayload = {
+      const occurredAt = new Date().toISOString();
+      const innerPayload = {
         job_id: jobId,
         company_id: companyId,
         trigger: 'created',
         trace_id: traceId,
       };
+      const fullEnvelope = {
+        schema_version: 1,
+        event_id: eventId,
+        aggregate_type: 'job',
+        aggregate_id: jobId,
+        event_type: 'job.ai.enrichment.requested',
+        correlation_id: traceId,
+        payload: innerPayload,
+        occurred_at: occurredAt,
+      };
       await client.query(
         `INSERT INTO public.outbox_events (
            id, aggregate_type, aggregate_id, event_type, schema_version, payload, correlation_id, status
          ) VALUES ($1, 'job', $2, 'job.ai.enrichment.requested', 1, $3::jsonb, $4, 'pending')`,
-        [eventId, jobId, JSON.stringify(outboxPayload), traceId]
+        [eventId, jobId, JSON.stringify(fullEnvelope), traceId]
       );
       return result.rows[0];
     });

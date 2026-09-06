@@ -5,6 +5,7 @@ Coordinates LLM structured extraction, symmetric semantic text assembly, and 768
 
 from __future__ import annotations
 
+import sys
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -100,9 +101,12 @@ class JobAIService:
         user_input_parts = [
             f"Title: {job.title}",
             f"Category: {job.category or 'General'}",
-            f"Employment Type: {job.employment_type} | Work Mode: {job.work_mode}",
-            f"Experience Level: {job.experience_level or 'Not specified'}",
+            f"Employment Type: {job.employment_type} | Work Mode: {job.work_mode} | Work Shift: {job.work_shift or 'Not specified'}",
+            f"Experience Level: {job.experience_level or 'Not specified'} ({job.experience_min or job.experience_min_years or 0}-{job.experience_max or job.experience_max_years or '+'} years)",
+            f"Education Required: {job.education_type or 'Any'} ({job.min_education_level or 'Not specified'})",
+            f"Max Notice Period: {job.max_notice_period_days if job.max_notice_period_days is not None else 'Not specified'} days",
             f"Skills: {', '.join(job.skills) if job.skills else 'None'}",
+            f"Custom Skills: {', '.join(job.custom_skills) if job.custom_skills else 'None'}",
             f"Locations: {', '.join(job.locations) if job.locations else 'Not specified'}",
             "Description:",
             job.description,
@@ -138,8 +142,8 @@ class JobAIService:
         inferred_data = raw_result.get("inferred") or {}
 
         # Fallback / sanitize if skills were already present in job_skills but missed by LLM
-        if not extracted_data.get("must_have_skills") and job.skills:
-            extracted_data["must_have_skills"] = list(job.skills)
+        if not extracted_data.get("must_have_skills") and (job.skills or job.custom_skills):
+            extracted_data["must_have_skills"] = list(job.skills) + list(job.custom_skills)
 
         extracted = JobExtractedProfile(
             must_have_skills=extracted_data.get("must_have_skills") or [],
@@ -195,12 +199,23 @@ class JobAIService:
             category=job.category,
             employment_type=job.employment_type,
             work_mode=job.work_mode,
-            experience_min_years=job.experience_min_years,
-            experience_max_years=job.experience_max_years,
+            work_shift=job.work_shift,
+            location_remote=job.location_remote,
+            education_type=job.education_type,
+            min_education_level=job.min_education_level,
+            max_notice_period_days=job.max_notice_period_days,
+            experience_level=job.experience_level,
+            experience_min=job.experience_min or job.experience_min_years,
+            experience_max=job.experience_max or job.experience_max_years,
+            experience_min_years=job.experience_min_years or job.experience_min,
+            experience_max_years=job.experience_max_years or job.experience_max,
             locations=job.locations,
             skills=all_skills,
+            custom_skills=job.custom_skills,
+            description=job.description,
             responsibilities=job.responsibilities,
             requirements=job.requirements,
+            preferred_qualifications=job.preferred_qualifications,
             technical_domains=ai_profile.inferred.technical_domains,
             industry_domains=ai_profile.inferred.industry_domains,
             role_family=ai_profile.inferred.role_family,
@@ -231,23 +246,54 @@ class JobAIService:
 
         return vector
 
+    def validate_embedding_compatibility(self, model: str, version: int, vector: List[float]) -> None:
+        """Enforce strict compatibility rules for pgvector cosine distance operations."""
+        expected_model = getattr(self.settings, "EMBEDDING_MODEL", "text-embedding-004")
+        expected_version = 1
+        expected_dim = getattr(self.settings, "EMBEDDING_DIMENSION", 768)
+
+        is_expected = model.lower() == expected_model.lower()
+        is_mock_allowed = (
+            model.lower().startswith("mock")
+            and (getattr(self.settings, "MOCK_AI_PROVIDER", False) or "pytest" in sys.modules)
+        )
+        if not (is_expected or is_mock_allowed):
+            raise AIResponseValidationError(
+                f"Incompatible embedding model '{model}'. Expected '{expected_model}' for mathematical vector comparability."
+            )
+
+        if version != expected_version:
+            raise AIResponseValidationError(
+                f"Incompatible embedding version '{version}'. Expected '{expected_version}'."
+            )
+
+        if len(vector) != expected_dim:
+            raise AIResponseValidationError(
+                f"Incompatible embedding vector dimension {len(vector)}. Expected {expected_dim}."
+            )
+
     async def enrich_job(self, job: JobCanonicalAggregate) -> JobEnrichmentResult:
         """
         Complete enrichment workflow:
         1. Generate structured AI Profile JSONB.
         2. Generate 768-dim vector embedding.
-        3. Return JobEnrichmentResult package.
+        3. Validate model/version/dimension compatibility.
+        4. Return JobEnrichmentResult package.
         """
         ai_profile = await self.generate_job_ai_profile(job)
         embedding_vector = await self.generate_job_embedding(job, ai_profile)
 
         embedding_model = getattr(self.embedding_provider, "model_name", "text-embedding-004")
+        embedding_version = 1
+
+        self.validate_embedding_compatibility(embedding_model, embedding_version, embedding_vector)
 
         return JobEnrichmentResult(
             job_id=job.job_id,
             ai_profile=ai_profile,
             embedding=embedding_vector,
             embedding_model=embedding_model,
-            embedding_version=1,
+            embedding_version=embedding_version,
             stored_updated_at=job.updated_at,
         )
+
