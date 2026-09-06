@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Injectable, NotFoundException, Param, Patch, Post, Query, Req, ServiceUnavailableException, UseGuards } from '@nestjs/common';
 import { Allow, IsOptional, IsString } from 'class-validator';
 import type { Request } from 'express';
@@ -489,7 +490,7 @@ export class JobService {
     const branchId = this.validateUuid(typeof dto.branch_id === 'string' ? dto.branch_id : undefined);
     const departmentId = this.validateUuid(typeof dto.department_id === 'string' ? dto.department_id : undefined);
     const teamId = this.validateUuid(typeof dto.team_id === 'string' ? dto.team_id : undefined);
-    const categoryId = this.validateUuid(typeof dto.category_id === 'string' ? dto.category_id : undefined);
+    let categoryId = this.validateUuid(typeof dto.category_id === 'string' ? dto.category_id : undefined);
 
     if (!title || !slug || !description || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
       throw new BadRequestException('VALIDATION_ERROR');
@@ -504,7 +505,7 @@ export class JobService {
     const experienceMin = dto.experience_min !== undefined && dto.experience_min !== null ? Math.max(0, Number(dto.experience_min)) : null;
     const experienceMax = dto.experience_max !== undefined && dto.experience_max !== null ? Math.max(0, Number(dto.experience_max)) : null;
     const maxNoticePeriodDays = dto.max_notice_period_days !== undefined && dto.max_notice_period_days !== null ? Math.max(0, Number(dto.max_notice_period_days)) : null;
-    const category = typeof dto.category === 'string' && dto.category.trim() ? dto.category.trim() : null;
+    let category = typeof dto.category === 'string' && dto.category.trim() ? dto.category.trim() : null;
     const salaryMin = dto.salary_min !== undefined && dto.salary_min !== null ? Number(dto.salary_min) : null;
     const salaryMax = dto.salary_max !== undefined && dto.salary_max !== null ? Number(dto.salary_max) : null;
     const salaryCurrency = typeof dto.salary_currency === 'string' ? dto.salary_currency : 'INR';
@@ -548,9 +549,18 @@ export class JobService {
         const t = await client.query(`SELECT id FROM public.teams WHERE id = $1 AND department_id = $2 AND is_active = TRUE`, [teamId, departmentId]);
         if (!t.rows[0]) throw new BadRequestException('VALIDATION_ERROR');
       }
-      if (categoryId) {
+      if (category && !categoryId) {
+        const cat = await client.query(`SELECT id, name FROM public.job_categories WHERE LOWER(name) = LOWER($1) AND is_active = TRUE`, [category]);
+        if (cat.rows[0]) {
+          categoryId = cat.rows[0].id;
+          category = cat.rows[0].name;
+        }
+      } else if (categoryId) {
         const cat = await client.query(`SELECT id, name FROM public.job_categories WHERE id = $1 AND is_active = TRUE`, [categoryId]);
         if (!cat.rows[0]) throw new BadRequestException('VALIDATION_ERROR');
+        if (!category) {
+          category = cat.rows[0].name;
+        }
       }
 
       const resolvedSkills = await this.processSkillsInput(client, userId, validSkills);
@@ -762,13 +772,27 @@ export class JobService {
       allowed.screening_questions_enabled = validQuestions.length > 0;
     }
 
-    const entries = Object.entries(allowed);
-    if (!entries.length && validLocs === null && validSkills === null) {
-      throw new BadRequestException('VALIDATION_ERROR');
-    }
-
     return this.system.transaction(async (client) => {
       await this.checkActor(client, userId, companyId);
+
+      if (allowed.category && !allowed.category_id) {
+        const cat = await client.query(`SELECT id, name FROM public.job_categories WHERE LOWER(name) = LOWER($1) AND is_active = TRUE`, [allowed.category]);
+        if (cat.rows[0]) {
+          allowed.category_id = cat.rows[0].id;
+          allowed.category = cat.rows[0].name;
+        }
+      } else if (allowed.category_id) {
+        const cat = await client.query(`SELECT id, name FROM public.job_categories WHERE id = $1 AND is_active = TRUE`, [allowed.category_id]);
+        if (!cat.rows[0]) throw new BadRequestException('VALIDATION_ERROR');
+        if (!allowed.category) {
+          allowed.category = cat.rows[0].name;
+        }
+      }
+
+      const entries = Object.entries(allowed);
+      if (!entries.length && validLocs === null && validSkills === null) {
+        throw new BadRequestException('VALIDATION_ERROR');
+      }
 
       if (allowed.branch_id) {
         const b = await client.query(`SELECT id FROM public.company_branches WHERE id = $1 AND company_id = $2 AND is_active = TRUE`, [allowed.branch_id, companyId]);
@@ -846,7 +870,7 @@ export class JobService {
 
   async publish(userId: string, companyId: string, jobId: string) {
     return this.system.transaction(async (client) => {
-      await this.checkActor(client, userId, companyId);
+      const actor = await this.checkActor(client, userId, companyId);
 
       const company = await client.query(
         `SELECT c.verification_status FROM public.companies c WHERE c.id = $1 AND c.deleted_at IS NULL`,
@@ -861,7 +885,7 @@ export class JobService {
         `SELECT job_approval_required FROM public.company_settings WHERE company_id = $1`,
         [companyId]
       );
-      const approvalRequired = Boolean(settings.rows[0]?.job_approval_required);
+      const approvalRequired = Boolean(settings.rows[0]?.job_approval_required) && !(actor.isOwner || actor.isAdmin);
 
       if (approvalRequired) {
         const result = await client.query(`
@@ -881,6 +905,20 @@ export class JobService {
         if (!result.rows[0]) throw new NotFoundException('NOT_FOUND');
         await this.triggerPendingAdminRequests(client, userId, companyId, jobId);
         await client.query(`INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, changes) VALUES ($1, $2, 'job.published', 'job', $3, $4::jsonb)`, [companyId, userId, jobId, JSON.stringify({ resulting_status: 'published' })]);
+        const traceId = randomUUID();
+        const eventId = randomUUID();
+        const outboxPayload = {
+          job_id: jobId,
+          company_id: companyId,
+          trigger: 'created',
+          trace_id: traceId,
+        };
+        await client.query(
+          `INSERT INTO public.outbox_events (
+             id, aggregate_type, aggregate_id, event_type, schema_version, payload, correlation_id, status
+           ) VALUES ($1, 'job', $2, 'job.ai.enrichment.requested', 1, $3::jsonb, $4, 'pending')`,
+          [eventId, jobId, JSON.stringify(outboxPayload), traceId]
+        );
         return result.rows[0];
       }
     });
@@ -940,6 +978,20 @@ export class JobService {
       if (!result.rows[0]) throw new NotFoundException('NOT_FOUND');
       await this.triggerPendingAdminRequests(client, userId, companyId, jobId);
       await client.query(`INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, changes) VALUES ($1, $2, 'job.approved', 'job', $3, $4::jsonb)`, [companyId, userId, jobId, JSON.stringify({ from: 'pending_approval', to: 'published' })]);
+      const traceId = randomUUID();
+      const eventId = randomUUID();
+      const outboxPayload = {
+        job_id: jobId,
+        company_id: companyId,
+        trigger: 'created',
+        trace_id: traceId,
+      };
+      await client.query(
+        `INSERT INTO public.outbox_events (
+           id, aggregate_type, aggregate_id, event_type, schema_version, payload, correlation_id, status
+         ) VALUES ($1, 'job', $2, 'job.ai.enrichment.requested', 1, $3::jsonb, $4, 'pending')`,
+        [eventId, jobId, JSON.stringify(outboxPayload), traceId]
+      );
       return result.rows[0];
     });
   }

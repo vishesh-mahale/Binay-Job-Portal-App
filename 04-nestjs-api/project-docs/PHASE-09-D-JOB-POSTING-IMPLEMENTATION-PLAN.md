@@ -1,4 +1,4 @@
-﻿# Phase 09-D — Employer Job Posting Read-Only Audit & Implementation Plan (Final Product Decision Reconciled)
+# Phase 09-D — Employer Job Posting Read-Only Audit & Implementation Plan (Final Product Decision Reconciled)
 
 **Document Path:** `04-nestjs-api/project-docs/PHASE-09-D-JOB-POSTING-IMPLEMENTATION-PLAN.md`  
 **Date:** 04 September 2026  
@@ -35,7 +35,7 @@ Following direct source and schema verification against baseline SQL (`02_enums.
      - Verified company active HR can direct publish.
 3. **Outbox Events vs Audit Logging (No Invented Events):**
    - **Audit Logs:** Standard `public.audit_logs` entries written for all job CRUD and status actions (`job.created`, `job.updated`, `job.published`, `job.publish_requested`, `job.approved`, `job.rejected`, `job.status_changed`, `job.archived`).
-   - **Outbox Events:** **Audit Only / No Outbox Event** for standard job lifecycle transitions (draft, publish, pause, resume, close, archive, approve, reject). Outbox events are strictly limited to contracted schemas (`job.ai.enrichment.requested`, `job.screening_questions.requested`). Uncontracted outbox events are forbidden to prevent dispatcher fail-closed errors.
+   - **Outbox Events:** `job.ai.enrichment.requested` outbox event is transactionally emitted ONLY when a job is published (`publish` or `approve`). Non-publishing transitions (`submitForApproval`, `reject`, `pause`, `resume`, `close`, `archive`) emit zero outbox events. Uncontracted outbox events are forbidden to prevent dispatcher fail-closed errors.
 4. **Canonical API Route Reconciliation:** API endpoints match exact NestJS routes under `@Controller('api/v1/companies/:companyId/jobs')`.
 5. **Zero Database Migrations:** 100% verified. Baseline SQL schema is authoritative and requires no schema changes.
 
@@ -62,9 +62,9 @@ Following direct source and schema verification against baseline SQL (`02_enums.
 | `/api/v1/companies/:companyId/jobs` | `POST` | Owner, Admin, Active HR Member | Inserts `status = 'draft'` | Audit: `job.created`<br>Outbox: None |
 | `/api/v1/companies/:companyId/jobs/:jobId` | `GET` | Owner, Admin, Active HR Member | Fetch job details | None |
 | `/api/v1/companies/:companyId/jobs/:jobId` | `PATCH` | Owner, Admin, Active HR Member | Updates draft (`status = 'draft'`) | Audit: `job.updated`<br>Outbox: None |
-| `/api/v1/companies/:companyId/jobs/:jobId/publish` | `POST` | Owner, Admin, Active HR Member | If `approval_required`: `pending_approval`<br>Else (if verified): `published` | Audit: `job.published` / `job.publish_requested`<br>Outbox: None |
+| `/api/v1/companies/:companyId/jobs/:jobId/publish` | `POST` | Owner, Admin, Active HR Member | If `approval_required`: `pending_approval`<br>Else (if verified): `published` | Audit: `job.published` / `job.publish_requested`<br>Outbox: `job.ai.enrichment.requested` (1 event on publish only) |
 | `/api/v1/companies/:companyId/jobs/:jobId/submit-for-approval` | `POST` | Active HR Member, Owner, Admin | `draft` $\rightarrow$ `pending_approval` | Audit: `job.publish_requested`<br>Outbox: None |
-| `/api/v1/companies/:companyId/jobs/:jobId/approve` | `POST` | **Owner & Platform Admin ONLY** (HR $\rightarrow$ 403) | `pending_approval` $\rightarrow$ `published` (Requires verified company) | Audit: `job.approved`<br>Outbox: None |
+| `/api/v1/companies/:companyId/jobs/:jobId/approve` | `POST` | **Owner & Platform Admin ONLY** (HR $\rightarrow$ 403) | `pending_approval` $\rightarrow$ `published` (Requires verified company) | Audit: `job.approved`<br>Outbox: `job.ai.enrichment.requested` (1 event on publish) |
 | `/api/v1/companies/:companyId/jobs/:jobId/reject` | `POST` | **Owner & Platform Admin ONLY** (HR $\rightarrow$ 403) | `pending_approval` $\rightarrow$ `draft` (Stores rejection reason) | Audit: `job.rejected`<br>Outbox: None |
 | `/api/v1/companies/:companyId/jobs/:jobId/pause` | `POST` | Owner, Admin, Active HR Member | `published` $\rightarrow$ `paused` | Audit: `job.status_changed`<br>Outbox: None |
 | `/api/v1/companies/:companyId/jobs/:jobId/resume` | `POST` | Owner, Admin, Active HR Member | `paused` $\rightarrow$ `published` | Audit: `job.status_changed`<br>Outbox: None |

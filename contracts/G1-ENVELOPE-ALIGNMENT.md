@@ -1,11 +1,9 @@
 # G-1(b): Existing Contract Envelope Alignment
 
-> **Status: PENDING (blocked by producer freeze from 04-nestjs-api)**
+> **Status: RESOLVED & IMPLEMENTED for `job.ai.enrichment.requested`**
 >
-> The dispatcher does NOT parse or validate payload content — it forwards the
-> uniform task payload (`schema_version`, `event_id`, `aggregate_id`, `trace_id`).
-> However, for E2E integration verification, the existing 3 Phase 1 trigger event
-> contracts need to be aligned with the `outbox_events` envelope format.
+> The producer (`04-nestjs-api`) emits full outbox envelope for `job.ai.enrichment.requested` during publication transitions (`draft` $\rightarrow$ `published` and `pending_approval` $\rightarrow$ `published`).
+> The dispatcher forwards the uniform task payload (`schema_version`, `event_id`, `aggregate_id`, `trace_id`) to FastAPI worker.
 
 ---
 
@@ -90,7 +88,7 @@ Phase 1 trigger event contracts (to be created/aligned):
 - **G-1(a.1)**: IMPLEMENTED — security.scan.requested contract, task contract,
   Pydantic payload model and dedicated handler are present; ClamAV/runtime and
   compatibility tests remain required before production freeze.
-- **G-1(b)**: PENDING — Phase 1 trigger contracts alignment (this document)
+- **G-1(b)**: RESOLVED & IMPLEMENTED for `job.ai.enrichment.requested` — trigger contract `contracts/events/job-ai-enrichment-requested.v1.json` is frozen with full envelope (`schema_version: 1`, `event_id`, `aggregate_type: 'job'`, `aggregate_id`, `event_type: 'job.ai.enrichment.requested'`, `correlation_id`, `payload`, `occurred_at`).
 - **G-2**: DONE — aggregate_id semantics documented
 
 ---

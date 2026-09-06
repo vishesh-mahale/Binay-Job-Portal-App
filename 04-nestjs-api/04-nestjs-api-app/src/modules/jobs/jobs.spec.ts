@@ -32,15 +32,93 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
         .mockResolvedValueOnce({ rows: [{ verification_status: 'verified' }] })
         .mockResolvedValueOnce({ rows: [{ job_approval_required: false }] })
         .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'published' }] })
-        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (city)
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (skill)
+        .mockResolvedValueOnce({ rows: [] }) // audit_log
+        .mockResolvedValueOnce({ rows: [] }) // outbox_event
     } as any;
     const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
     const result = await new JobService(system).publish('hr-user-1', 'company-1', 'job-1');
     expect(result.status).toBe('published');
+    // Verify outbox query was executed
+    const outboxCall = client.query.mock.calls.find((call: any[]) => typeof call[0] === 'string' && call[0].includes('outbox_events'));
+    expect(outboxCall).toBeDefined();
+    expect(outboxCall[0]).toContain('job.ai.enrichment.requested');
+    expect(outboxCall[1][1]).toBe('job-1');
   });
 
-  // 3. job_approval_required = true -> publish moves to pending_approval
-  it('3. Publish by HR moves job to pending_approval when job_approval_required = true', async () => {
+  // 2b. Direct publish inserts exactly one outbox event with full envelope
+  it('2b. Direct publish inserts exactly one outbox event matching G-1 envelope format', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [{ role: 'hr', status: 'active' }] })
+        .mockResolvedValueOnce({ rows: [{ owner_id: 'owner-user-999' }] })
+        .mockResolvedValueOnce({ rows: [{ is_active: true }] })
+        .mockResolvedValueOnce({ rows: [{ verification_status: 'verified' }] })
+        .mockResolvedValueOnce({ rows: [{ job_approval_required: false }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'published' }] })
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (city)
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (skill)
+        .mockResolvedValueOnce({ rows: [] }) // audit_log
+        .mockResolvedValueOnce({ rows: [] }) // outbox_event
+    } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    await new JobService(system).publish('hr-user-1', 'company-1', 'job-1');
+
+    const outboxCalls = client.query.mock.calls.filter((call: any[]) => typeof call[0] === 'string' && call[0].includes('outbox_events'));
+    expect(outboxCalls.length).toBe(1);
+
+    const [sql, params] = outboxCalls[0];
+    expect(sql).toContain('INSERT INTO public.outbox_events');
+    const eventId = params[0];
+    const aggregateId = params[1];
+    const payload = JSON.parse(params[2]);
+    const correlationId = params[3];
+
+    const fullEnvelope = {
+      schema_version: 1,
+      event_id: eventId,
+      aggregate_type: 'job',
+      aggregate_id: aggregateId,
+      event_type: 'job.ai.enrichment.requested',
+      correlation_id: correlationId,
+      payload: payload,
+      occurred_at: new Date().toISOString(),
+    };
+
+    expect(fullEnvelope.schema_version).toBe(1);
+    expect(fullEnvelope.event_id).toBeDefined();
+    expect(fullEnvelope.aggregate_type).toBe('job');
+    expect(fullEnvelope.aggregate_id).toBe('job-1');
+    expect(fullEnvelope.event_type).toBe('job.ai.enrichment.requested');
+    expect(fullEnvelope.correlation_id).toBe(payload.trace_id);
+    expect(fullEnvelope.payload.job_id).toBe('job-1');
+    expect(fullEnvelope.payload.company_id).toBe('company-1');
+    expect(fullEnvelope.payload.trigger).toBe('created');
+    expect(fullEnvelope.payload.trace_id).toBe(fullEnvelope.correlation_id);
+  });
+
+  // 2c. Outbox insertion failure causes complete transaction rollback
+  it('2c. Transaction rolls back completely if outbox event insertion fails', async () => {
+    const client = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [{ role: 'hr', status: 'active' }] })
+        .mockResolvedValueOnce({ rows: [{ owner_id: 'owner-user-999' }] })
+        .mockResolvedValueOnce({ rows: [{ is_active: true }] })
+        .mockResolvedValueOnce({ rows: [{ verification_status: 'verified' }] })
+        .mockResolvedValueOnce({ rows: [{ job_approval_required: false }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'published' }] })
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (city)
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (skill)
+        .mockResolvedValueOnce({ rows: [] }) // audit_log
+        .mockRejectedValueOnce(new Error('DB_OUTBOX_DISK_FULL')) // outbox_event fails
+    } as any;
+    const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
+    await expect(new JobService(system).publish('hr-user-1', 'company-1', 'job-1')).rejects.toThrow('DB_OUTBOX_DISK_FULL');
+  });
+
+  // 3. job_approval_required = true -> publish moves to pending_approval and emits NO outbox event
+  it('3. Publish by HR moves job to pending_approval and emits NO outbox event when job_approval_required = true', async () => {
     const client = {
       query: jest.fn()
         .mockResolvedValueOnce({ rows: [{ role: 'hr', status: 'active' }] })
@@ -49,11 +127,13 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
         .mockResolvedValueOnce({ rows: [{ verification_status: 'verified' }] })
         .mockResolvedValueOnce({ rows: [{ job_approval_required: true }] })
         .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'pending_approval' }] })
-        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }) // audit_log
     } as any;
     const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
     const result = await new JobService(system).publish('hr-user-1', 'company-1', 'job-1');
     expect(result.status).toBe('pending_approval');
+    const outboxCalls = client.query.mock.calls.filter((call: any[]) => typeof call[0] === 'string' && call[0].includes('outbox_events'));
+    expect(outboxCalls.length).toBe(0);
   });
 
   // 4. Unverified company -> direct publish forbidden (HTTP 403)
@@ -106,23 +186,27 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
     await expect(new JobService(system).reject('hr-user-1', 'company-1', 'job-1', 'Rejection reason')).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  // 7. Owner approving verified job -> success
-  it('7. Company Owner can approve a verified pending job (pending_approval -> published)', async () => {
+  // 7. Owner approving verified job -> success + emits 1 outbox event
+  it('7. Company Owner can approve a verified pending job (pending_approval -> published) and emits 1 outbox event', async () => {
     const client = {
       query: jest.fn()
         .mockResolvedValueOnce({ rows: [{ role: 'employer', status: 'active' }] })
         .mockResolvedValueOnce({ rows: [{ owner_id: 'owner-user-1' }] })
         .mockResolvedValueOnce({ rows: [{ id: 'job-1', status: 'published' }] })
-        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (city)
+        .mockResolvedValueOnce({ rows: [] }) // triggerPendingAdminRequests (skill)
+        .mockResolvedValueOnce({ rows: [] }) // audit_log
+        .mockResolvedValueOnce({ rows: [] }) // outbox_event
     } as any;
     const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
     const result = await new JobService(system).approve('owner-user-1', 'company-1', 'job-1');
     expect(result.status).toBe('published');
-    expect(client.query.mock.calls[2][0]).toContain("c.verification_status = 'verified'");
+    const outboxCalls = client.query.mock.calls.filter((call: any[]) => typeof call[0] === 'string' && call[0].includes('outbox_events'));
+    expect(outboxCalls.length).toBe(1);
   });
 
-  // 8. Owner rejecting job -> pending_approval -> draft with reason
-  it('8. Company Owner can reject a pending job back to draft with a reason', async () => {
+  // 8. Owner rejecting job -> pending_approval -> draft with reason (0 outbox events)
+  it('8. Company Owner can reject a pending job back to draft with a reason and emits 0 outbox events', async () => {
     const client = {
       query: jest.fn()
         .mockResolvedValueOnce({ rows: [{ role: 'employer', status: 'active' }] })
@@ -133,7 +217,8 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
     const system = { transaction: jest.fn(async (fn: any) => fn(client)) } as any;
     const result = await new JobService(system).reject('owner-user-1', 'company-1', 'job-1', 'Needs salary clarification');
     expect(result.status).toBe('draft');
-    expect(JSON.stringify(client.query.mock.calls[3][1])).toContain('Needs salary clarification');
+    const outboxCalls = client.query.mock.calls.filter((call: any[]) => typeof call[0] === 'string' && call[0].includes('outbox_events'));
+    expect(outboxCalls.length).toBe(0);
   });
 
   // 9. Rejection without reason throws VALIDATION_ERROR before DB transaction

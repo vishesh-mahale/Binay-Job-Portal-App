@@ -358,6 +358,9 @@ export function JobPostingManager({
           description: r.description?.trim() || undefined,
         }));
 
+      const selectedCat = dbCategories.find((cat) => cat.name === category);
+      const categoryId = selectedCat ? selectedCat.id : undefined;
+
       const dto = {
         title: title.trim(),
         slug: slug.trim().toLowerCase(),
@@ -366,6 +369,7 @@ export function JobPostingManager({
         department_id: departmentId || undefined,
         team_id: teamId || undefined,
         category,
+        category_id: categoryId,
         employment_type: employmentType,
         work_mode: workMode,
         experience_level: derivedExpLevel,

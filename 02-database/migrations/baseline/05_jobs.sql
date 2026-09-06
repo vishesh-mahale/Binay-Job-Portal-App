@@ -155,19 +155,12 @@ CREATE TABLE jobs (
     application_form_url    TEXT, -- Custom application URL (optional)
     screening_questions_enabled BOOLEAN NOT NULL DEFAULT false,
     screening_questions     JSONB NOT NULL DEFAULT '[]'::JSONB,
-    interview_rounds        JSONB NOT NULL DEFAULT '[]'::JSONB,
-    custom_skills           JSONB NOT NULL DEFAULT '[]'::JSONB,
     -- Example: [{"question": "Do you have 5+ years of Node.js experience?", "required": true}, ...]
+    interview_rounds        JSONB NOT NULL DEFAULT '[]'::JSONB,
+    -- Example: [{"name":"round 1","round":1,"description":"aaaa"},{"name":"round 2","round":2,"description":"bbbb"}]
+    custom_skills           JSONB NOT NULL DEFAULT '[]'::JSONB,
+    -- Example: ["customskill1" , "customskill2"]
     
-    -- AI settings
-    ai_matching_enabled     BOOLEAN NOT NULL DEFAULT true,
-    ai_ideal_candidate_profile JSONB, -- Contract: 05_jobs_AI_Job_Profile_JSONB_Contract_v1_step1.md
-    ai_profile_model        VARCHAR(100),
-    ai_profile_version      INTEGER,
-    ai_generated_at         TIMESTAMPTZ,
-    embedding_model         VARCHAR(100),
-    embedding_version       INTEGER,
-    embedding_generated_at  TIMESTAMPTZ,
     
     -- Status & workflow
     status              job_status NOT NULL DEFAULT 'draft',
@@ -188,6 +181,18 @@ CREATE TABLE jobs (
     is_urgent           BOOLEAN NOT NULL DEFAULT false,
     is_confidential     BOOLEAN NOT NULL DEFAULT false, -- Hide company name?
     
+     -- Full-text search vector (populated by trigger)
+    search_vector       TSVECTOR, -- FTS design: 05_jobs_AI_Make_Job_searchable_step3.md    B-Tree Index
+
+    -- AI settings
+    ai_matching_enabled     BOOLEAN NOT NULL DEFAULT true,
+    ai_ideal_candidate_profile JSONB, -- Contract: 05_jobs_AI_Job_Profile_JSONB_Contract_v1_step1.md
+    ai_profile_model        VARCHAR(100),
+    ai_profile_version      INTEGER,
+    ai_generated_at         TIMESTAMPTZ,
+    embedding_model         VARCHAR(100),
+    embedding_version       INTEGER,
+    embedding_generated_at  TIMESTAMPTZ,
     
     -- === SEMANTIC EMBEDDING (Layer 2 — pgvector) ===
     -- Generated on publish and regenerated after semantic job changes; never per search.
@@ -196,9 +201,7 @@ CREATE TABLE jobs (
     embedding           vector(768), -- Architecture: 05_jobs_AI_Job_Embedding_Architecture_v1_step2.md
 
 
-    -- Full-text search vector (populated by trigger)
-    search_vector       TSVECTOR, -- FTS design: 05_jobs_AI_Make_Job_searchable_step3.md
-
+   
     -- Soft delete
     deleted_at          TIMESTAMPTZ,
     

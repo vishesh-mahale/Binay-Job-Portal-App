@@ -346,6 +346,8 @@ Developer को कुछ नहीं करना।
 ---
 
 # GIN Index क्या है?
+Jab search_vector column ka data change hota hai, PostgreSQL internally aur background me automatically GIN index tree ko update karta hai.
+Iske liye koi naya SQL command run nahi hota, PostgreSQL DB engine ise khud maintain karta hai taaki direct search_vector @@ to_tsquery(...) queries fast chali rahein.
 
 अब search_vector बन गया।
 

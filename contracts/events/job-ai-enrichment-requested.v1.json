@@ -1,16 +1,69 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Job AI Enrichment Requested Event",
-  "description": "Emitted when a job needs AI enrichment and embedding.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://binay-job-portal.internal/contracts/events/job-ai-enrichment-requested.v1.json",
+  "title": "JobAiEnrichmentRequestedEventV1",
+  "description": "Transactional outbox event emitted when a job is published and requires AI profile & embedding enrichment",
   "type": "object",
-  "required": ["schema_version", "event_id", "aggregate_id", "trace_id"],
+  "required": ["schema_version", "event_id", "aggregate_type", "aggregate_id", "event_type", "payload", "occurred_at"],
   "properties": {
-    "schema_version": {"type": "integer", "enum": [1]},
-    "event_id": {"type": "string", "format": "uuid"},
-    "aggregate_id": {"type": "string", "format": "uuid"},
-    "trace_id": {"type": "string", "format": "uuid"},
-    "job_id": {"type": "string", "format": "uuid"},
-    "trigger": {"type": "string", "enum": ["created", "updated", "reparsed"]}
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique UUID for this trigger event"
+    },
+    "aggregate_type": {
+      "type": "string",
+      "const": "job"
+    },
+    "aggregate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The job UUID to enrich"
+    },
+    "event_type": {
+      "type": "string",
+      "const": "job.ai.enrichment.requested"
+    },
+    "correlation_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Distributed correlation / tracing UUID (matches trace_id)"
+    },
+    "payload": {
+      "type": "object",
+      "required": ["job_id", "company_id", "trigger"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The job UUID"
+        },
+        "company_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The company UUID"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": ["created", "updated", "reparsed"],
+          "description": "Trigger cause (created for initial publication)"
+        },
+        "trace_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Distributed tracing UUID"
+        }
+      },
+      "additionalProperties": false
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
   },
   "additionalProperties": false
 }
