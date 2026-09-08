@@ -672,10 +672,21 @@ export class JobService {
         result.rows.map(async (j) => {
           const locs = await client.query(`SELECT id, city, state, country, postal_code, is_primary FROM public.job_locations WHERE job_id = $1 ORDER BY is_primary DESC, created_at ASC`, [j.id]);
           const sks = await client.query(`SELECT js.id, js.skill_id, s.name AS skill_name, js.is_required, js.min_years, js.importance_score FROM public.job_skills js JOIN public.skills s ON s.id = js.skill_id WHERE js.job_id = $1 ORDER BY js.importance_score DESC, s.name ASC`, [j.id]);
+          let rejectionReason: string | null = null;
+          if (j.status === 'draft') {
+            const auditRes = await client.query(
+              `SELECT changes->>'reason' as reason FROM public.audit_logs WHERE entity_type = 'job' AND entity_id = $1 AND action = 'job.rejected' ORDER BY created_at DESC LIMIT 1`,
+              [j.id]
+            );
+            if (auditRes.rows[0]?.reason) {
+              rejectionReason = auditRes.rows[0].reason;
+            }
+          }
           return {
             ...j,
             locations: locs?.rows || [],
             skills: sks?.rows || [],
+            rejection_reason: rejectionReason,
           };
         })
       );
@@ -710,10 +721,22 @@ export class JobService {
         [jobId]
       );
 
+      let rejectionReason: string | null = null;
+      if (job.status === 'draft') {
+        const auditRes = await client.query(
+          `SELECT changes->>'reason' as reason FROM public.audit_logs WHERE entity_type = 'job' AND entity_id = $1 AND action = 'job.rejected' ORDER BY created_at DESC LIMIT 1`,
+          [jobId]
+        );
+        if (auditRes.rows[0]?.reason) {
+          rejectionReason = auditRes.rows[0].reason;
+        }
+      }
+
       return {
         ...job,
         locations: locs.rows,
         skills: sks.rows,
+        rejection_reason: rejectionReason,
       };
     });
   }
@@ -985,7 +1008,7 @@ export class JobService {
       const result = await client.query(`UPDATE public.jobs j SET status = 'published'::job_status, published_at = NOW(), published_by = $3, approved_at = NOW(), approved_by = $3, updated_at = NOW()
         FROM public.companies c WHERE j.id = $1 AND j.company_id = $2 AND c.id = j.company_id AND c.verification_status = 'verified'
           AND j.status = 'pending_approval' AND j.deleted_at IS NULL
-        RETURNING ${JOB_FIELDS.replaceAll('j.', '')}`, [jobId, companyId, userId]);
+        RETURNING ${JOB_FIELDS}`, [jobId, companyId, userId]);
       if (!result.rows[0]) throw new NotFoundException('NOT_FOUND');
       await this.triggerPendingAdminRequests(client, userId, companyId, jobId);
       await client.query(`INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, changes) VALUES ($1, $2, 'job.approved', 'job', $3, $4::jsonb)`, [companyId, userId, jobId, JSON.stringify({ from: 'pending_approval', to: 'published' })]);
@@ -1028,10 +1051,13 @@ export class JobService {
 
       const result = await client.query(`UPDATE public.jobs j SET status = 'draft'::job_status, updated_at = NOW()
         FROM public.companies c WHERE j.id = $1 AND j.company_id = $2 AND c.id = j.company_id AND j.status = 'pending_approval' AND j.deleted_at IS NULL
-        RETURNING ${JOB_FIELDS.replaceAll('j.', '')}`, [jobId, companyId]);
+        RETURNING ${JOB_FIELDS}`, [jobId, companyId]);
       if (!result.rows[0]) throw new NotFoundException('NOT_FOUND');
       await client.query(`INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, changes) VALUES ($1, $2, 'job.rejected', 'job', $3, $4::jsonb)`, [companyId, userId, jobId, JSON.stringify({ from: 'pending_approval', to: 'draft', reason: reason.trim() })]);
-      return result.rows[0];
+      return {
+        ...result.rows[0],
+        rejection_reason: reason.trim(),
+      };
     });
   }
 
@@ -1040,7 +1066,7 @@ export class JobService {
       await this.checkActor(client, userId, companyId);
       const result = await client.query(`UPDATE public.jobs j SET status = 'archived'::job_status, updated_at = NOW()
         FROM public.companies c WHERE j.id = $1 AND j.company_id = $2 AND c.id = j.company_id AND j.status IN ('closed', 'expired') AND j.deleted_at IS NULL
-        RETURNING ${JOB_FIELDS.replaceAll('j.', '')}`, [jobId, companyId]);
+        RETURNING ${JOB_FIELDS}`, [jobId, companyId]);
       if (!result.rows[0]) throw new NotFoundException('NOT_FOUND');
       await client.query(`INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, changes) VALUES ($1, $2, 'job.archived', 'job', $3, $4::jsonb)`, [companyId, userId, jobId, JSON.stringify({ to: 'archived', reason: reason?.trim() ?? null })]);
       return result.rows[0];

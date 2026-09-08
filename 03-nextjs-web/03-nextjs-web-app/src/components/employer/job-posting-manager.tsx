@@ -1447,6 +1447,18 @@ export function JobPostingManager({
               <CardContent className="space-y-3 text-sm">
                 <p className="text-slate-600 dark:text-slate-300 line-clamp-2 text-xs">{job.description}</p>
 
+                {/* Rejection Reason Alert Banner */}
+                {job.status === 'draft' && job.rejection_reason && (
+                  <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300 text-xs space-y-1" data-testid={`rejection-reason-banner-${job.id}`}>
+                    <p className="font-bold flex items-center gap-1.5 text-red-800 dark:text-red-200">
+                      <span>❌ Approval Rejected by Owner/Admin</span>
+                    </p>
+                    <p className="text-slate-700 dark:text-slate-300 text-xs pl-2 border-l-2 border-red-400 dark:border-red-600 italic">
+                      &quot;{job.rejection_reason}&quot;
+                    </p>
+                  </div>
+                )}
+
                 {/* Render Job Skills & Custom Skills Pills on Job Card */}
                 {((job.skills && job.skills.length > 0) || (job.custom_skills && Array.isArray(job.custom_skills) && job.custom_skills.length > 0)) && (
                   <div className="flex flex-wrap gap-1.5 pt-1">

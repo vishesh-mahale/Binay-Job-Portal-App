@@ -92,6 +92,7 @@ export interface Job {
   is_confidential?: boolean;
   is_urgent?: boolean;
   is_featured?: boolean;
+  rejection_reason?: string | null;
 }
 
 export interface CreateJobDto {

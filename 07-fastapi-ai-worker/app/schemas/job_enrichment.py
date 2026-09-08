@@ -69,6 +69,16 @@ class JobAIProfileV1(BaseModel):
 # Job Canonical Aggregate (Database Read Representation)
 # ============================================================================
 
+class JobSkillRequirement(BaseModel):
+    """Internal representation of a skill requirement loaded from job_skills with metadata."""
+    model_config = ConfigDict(extra="ignore")
+
+    name: str
+    is_required: bool = True
+    min_years: Optional[float] = None
+    importance_score: int = 5
+
+
 class JobCanonicalAggregate(BaseModel):
     """Complete canonical data model loaded from database for a single job."""
     model_config = ConfigDict(from_attributes=True)
@@ -98,15 +108,18 @@ class JobCanonicalAggregate(BaseModel):
     preferred_qualifications: Optional[str] = None
     benefits: Optional[str] = None
     skills: List[str] = Field(default_factory=list, description="Associated skills from job_skills joined with skills")
+    skill_requirements: List[JobSkillRequirement] = Field(default_factory=list, description="Structured skill requirements with metadata")
     custom_skills: List[str] = Field(default_factory=list, description="Direct custom free-text skill tags")
     locations: List[str] = Field(default_factory=list, description="Formatted location strings from job_locations")
+    company_industry: Optional[str] = Field(default=None, description="Contextual industry of employer company")
+    screening_questions: List[str] = Field(default_factory=list, description="Contextual screening questions")
     updated_at: datetime = Field(..., description="Job updated_at for optimistic concurrency check")
 
     @model_validator(mode="after")
-    def sync_experience_aliases(self) -> JobCanonicalAggregate:
+    def sync_experience_and_skill_aliases(self) -> JobCanonicalAggregate:
         """
-        Synchronize experience_min/max (canonical DB fields) with experience_min/max_years (legacy alias).
-        Ensures 100% bidirectional backward compatibility while declaring experience_min/max as canonical.
+        Synchronize experience_min/max with experience_min/max_years,
+        and ensure bidirectional consistency between skill_requirements and skills.
         """
         if self.experience_min is not None and self.experience_min_years is None:
             self.experience_min_years = self.experience_min
@@ -117,6 +130,11 @@ class JobCanonicalAggregate(BaseModel):
             self.experience_max_years = self.experience_max
         elif self.experience_max_years is not None and self.experience_max is None:
             self.experience_max = self.experience_max_years
+
+        if self.skill_requirements and not self.skills:
+            self.skills = [sr.name for sr in self.skill_requirements if sr.name]
+        elif self.skills and not self.skill_requirements:
+            self.skill_requirements = [JobSkillRequirement(name=s, is_required=True) for s in self.skills if s]
 
         return self
 

@@ -62,6 +62,18 @@ JOB_AI_PROFILE_SCHEMA = {
 }
 
 
+def _normalize_skill_list(skills: List[str]) -> List[str]:
+    """Trim whitespace and deduplicate skill strings case-insensitively while preserving original casing and order."""
+    seen = set()
+    result: List[str] = []
+    for s in skills:
+        cleaned = str(s).strip()
+        if cleaned and cleaned.lower() not in seen:
+            seen.add(cleaned.lower())
+            result.append(cleaned)
+    return result
+
+
 class JobAIService:
     """Service for enriching job postings with AI candidate profile and semantic embeddings."""
 
@@ -78,39 +90,57 @@ class JobAIService:
     async def generate_job_ai_profile(self, job: JobCanonicalAggregate) -> JobAIProfileV1:
         """
         Generate structured Job AI Profile JSONB following contract v1.
-        Calls LLM provider with strict technical recruiter prompt and JSON schema.
+        Enforces structured employer precedence: structured DB value > LLM extracted > AI inference.
         """
         system_prompt = (
             "You are an expert technical recruiter.\n\n"
             "Your task is to enrich an existing job posting.\n"
-            "The database already stores the original job description.\n"
+            "The database already stores the original job description and structured employer fields.\n"
             "Do NOT duplicate the original job.\n"
             "Return ONLY additional AI-enriched information.\n\n"
             "Rules:\n"
             "1. Return valid JSON only.\n"
             "2. Follow the schema exactly.\n"
-            "3. extracted = explicit facts only.\n"
-            "4. inferred = high-confidence inference only.\n"
-            "5. Never invent mandatory technologies.\n"
-            "6. Never invent certifications.\n"
-            "7. Never invent years of experience.\n"
-            "8. If uncertain use null or [].\n"
-            "9. Do not add extra fields."
+            "3. Structured employer fields (Title, Category, Experience Level, Min/Max Experience, Education, Skills) are authoritative explicit facts.\n"
+            "4. extracted = explicit facts from structured employer fields and job prose.\n"
+            "5. inferred = high-confidence AI interpretation only.\n"
+            "6. Never invent mandatory technologies.\n"
+            "7. Never invent certifications.\n"
+            "8. Never invent years of experience.\n"
+            "9. If uncertain use null or [].\n"
+            "10. Do not add extra fields."
         )
+
+        skills_summary: List[str] = []
+        if job.skill_requirements:
+            for sr in job.skill_requirements:
+                req_tag = "Required" if sr.is_required else "Optional"
+                years_tag = f", {sr.min_years}y" if sr.min_years is not None else ""
+                skills_summary.append(f"{sr.name} ({req_tag}{years_tag})")
+        elif job.skills:
+            skills_summary = list(job.skills)
+
+        exp_min_val = job.experience_min if job.experience_min is not None else (job.experience_min_years if job.experience_min_years is not None else 0)
+        exp_max_val = job.experience_max if job.experience_max is not None else (job.experience_max_years if job.experience_max_years is not None else "+")
 
         user_input_parts = [
             f"Title: {job.title}",
             f"Category: {job.category or 'General'}",
             f"Employment Type: {job.employment_type} | Work Mode: {job.work_mode} | Work Shift: {job.work_shift or 'Not specified'}",
-            f"Experience Level: {job.experience_level or 'Not specified'} ({job.experience_min or job.experience_min_years or 0}-{job.experience_max or job.experience_max_years or '+'} years)",
+            f"Experience Level: {job.experience_level or 'Not specified'} ({exp_min_val}-{exp_max_val} years)",
             f"Education Required: {job.education_type or 'Any'} ({job.min_education_level or 'Not specified'})",
             f"Max Notice Period: {job.max_notice_period_days if job.max_notice_period_days is not None else 'Not specified'} days",
-            f"Skills: {', '.join(job.skills) if job.skills else 'None'}",
+            f"Skills: {', '.join(skills_summary) if skills_summary else 'None'}",
             f"Custom Skills: {', '.join(job.custom_skills) if job.custom_skills else 'None'}",
             f"Locations: {', '.join(job.locations) if job.locations else 'Not specified'}",
             "Description:",
             job.description,
         ]
+
+        if job.company_industry:
+            user_input_parts.append(f"Company Industry Context: {job.company_industry}")
+        if job.screening_questions:
+            user_input_parts.append(f"Screening Questions Context: {', '.join(job.screening_questions)}")
 
         if job.requirements:
             user_input_parts.extend(["Requirements:", job.requirements])
@@ -141,29 +171,128 @@ class JobAIService:
         extracted_data = raw_result.get("extracted") or {}
         inferred_data = raw_result.get("inferred") or {}
 
-        # Fallback / sanitize if skills were already present in job_skills but missed by LLM
-        if not extracted_data.get("must_have_skills") and (job.skills or job.custom_skills):
-            extracted_data["must_have_skills"] = list(job.skills) + list(job.custom_skills)
+        # ----------------------------------------------------------------------
+        # P0 Fix 1: Structured employer experience authoritative precedence
+        # ----------------------------------------------------------------------
+        if job.experience_min is not None:
+            min_exp_years: Optional[float] = float(job.experience_min)
+        elif job.experience_min_years is not None:
+            min_exp_years = float(job.experience_min_years)
+        else:
+            raw_exp = extracted_data.get("minimum_experience_years")
+            min_exp_years = float(raw_exp) if raw_exp is not None else None
+
+        # ----------------------------------------------------------------------
+        # P0 Fix 1: Structured employer education authoritative precedence
+        # ----------------------------------------------------------------------
+        UNSPECIFIED_EDUCATION = {"any", "none", "unspecified", "not specified", ""}
+        has_structured_edu = (
+            job.min_education_level is not None
+            and job.min_education_level.strip().lower() not in UNSPECIFIED_EDUCATION
+        )
+        if has_structured_edu:
+            edu_level = job.min_education_level.strip()
+            if job.education_type and job.education_type.strip().lower() not in UNSPECIFIED_EDUCATION:
+                preferred_education = [f"{edu_level} ({job.education_type.strip()})"]
+            else:
+                preferred_education = [edu_level]
+        else:
+            raw_edu = extracted_data.get("preferred_education") or []
+            preferred_education = [
+                e.strip() for e in raw_edu
+                if e and e.strip() and e.strip().lower() not in UNSPECIFIED_EDUCATION
+            ]
+
+        # ----------------------------------------------------------------------
+        # P0 Fix 2 & 5: Preserve skill metadata and normalize/deduplicate
+        # ----------------------------------------------------------------------
+        structured_required: List[str] = []
+        structured_optional: List[str] = []
+
+        if job.skill_requirements:
+            for sr in job.skill_requirements:
+                if sr.name and sr.name.strip():
+                    if sr.is_required:
+                        structured_required.append(sr.name.strip())
+                    else:
+                        structured_optional.append(sr.name.strip())
+        elif job.skills:
+            structured_required.extend([s.strip() for s in job.skills if s and s.strip()])
+
+        if job.custom_skills:
+            for cs in job.custom_skills:
+                if cs and cs.strip():
+                    structured_required.append(cs.strip())
+
+        llm_must_have = [s.strip() for s in (extracted_data.get("must_have_skills") or []) if s and s.strip()]
+        llm_nice_to_have = [s.strip() for s in (extracted_data.get("nice_to_have_skills") or []) if s and s.strip()]
+
+        # Authoritative required skills: DB required skills ALWAYS win and can never be moved to optional
+        must_have_combined = list(structured_required) + llm_must_have
+        must_have_skills = _normalize_skill_list(must_have_combined)
+
+        must_have_lookup = {s.lower() for s in must_have_skills}
+
+        # Non-required skills start with structured optional + LLM nice_to_have (excluding anything in must_have)
+        nice_to_have_combined = [
+            s for s in (structured_optional + llm_nice_to_have)
+            if s.lower() not in must_have_lookup
+        ]
+        nice_to_have_skills = _normalize_skill_list(nice_to_have_combined)
+
+        certifications = _normalize_skill_list(extracted_data.get("certifications") or [])
+        languages = _normalize_skill_list(extracted_data.get("languages") or [])
 
         extracted = JobExtractedProfile(
-            must_have_skills=extracted_data.get("must_have_skills") or [],
-            nice_to_have_skills=extracted_data.get("nice_to_have_skills") or [],
-            minimum_experience_years=extracted_data.get("minimum_experience_years"),
-            preferred_education=extracted_data.get("preferred_education") or [],
-            certifications=extracted_data.get("certifications") or [],
-            languages=extracted_data.get("languages") or [],
+            must_have_skills=must_have_skills,
+            nice_to_have_skills=nice_to_have_skills,
+            minimum_experience_years=min_exp_years,
+            preferred_education=preferred_education,
+            certifications=certifications,
+            languages=languages,
         )
 
+        # ----------------------------------------------------------------------
+        # P0 Fix 3: Remove incorrect hardcoded defaults (role_family, seniority)
+        # ----------------------------------------------------------------------
+        role_family = (inferred_data.get("role_family") or "").strip()
+        if not role_family and job.category:
+            role_family = job.category.strip()
+
+        seniority = (inferred_data.get("seniority") or "").strip()
+        if not seniority and job.experience_level:
+            seniority = job.experience_level.strip()
+
+        likely_career_level = (inferred_data.get("likely_career_level") or "").strip()
+        if not likely_career_level:
+            likely_career_level = seniority or (job.experience_level.strip() if job.experience_level else "")
+
+        # P0 Fix 1: Primary responsibilities fallback only when LLM returns none and DB text is non-empty
+        llm_resp = [r.strip() for r in (inferred_data.get("primary_responsibilities") or []) if r and r.strip()]
+        if llm_resp:
+            primary_responsibilities = llm_resp
+        elif job.responsibilities and job.responsibilities.strip():
+            primary_responsibilities = [job.responsibilities.strip()]
+        else:
+            primary_responsibilities = []
+
+        # P0 Fix 4: Preserve valid zero values and explicit confidence
+        raw_conf = inferred_data.get("confidence_score")
+        if raw_conf is not None:
+            confidence_score = float(raw_conf)
+        else:
+            confidence_score = 0.9
+
         inferred = JobInferredProfile(
-            role_family=inferred_data.get("role_family") or job.category or "Engineering",
-            seniority=inferred_data.get("seniority") or job.experience_level or "Mid-Level",
+            role_family=role_family,
+            seniority=seniority,
             technical_domains=inferred_data.get("technical_domains") or [],
             industry_domains=inferred_data.get("industry_domains") or [],
             soft_skills=inferred_data.get("soft_skills") or [],
-            primary_responsibilities=inferred_data.get("primary_responsibilities") or [],
-            likely_career_level=inferred_data.get("likely_career_level") or "",
+            primary_responsibilities=primary_responsibilities,
+            likely_career_level=likely_career_level,
             keywords=inferred_data.get("keywords") or [],
-            confidence_score=float(inferred_data.get("confidence_score") or 0.9),
+            confidence_score=confidence_score,
         )
 
         metadata = JobProfileMetadata(

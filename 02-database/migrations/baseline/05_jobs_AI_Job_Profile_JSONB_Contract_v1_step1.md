@@ -75,12 +75,15 @@ every search request.
 
 ### extracted
 
-Only facts explicitly present in the Job Description.
+Explicit employer and job facts derived from both structured form/database fields and job prose. Structured employer values are authoritative and take strict precedence over LLM prose extraction (`canonical structured job value > LLM extraction from prose > inference/default`). 
+Note on `preferred_education`: Stored in `extracted.preferred_education` as the v1 contract's explicit education requirement list; future versioned contracts may separate required vs preferred education if product requirements evolve.
 
 ### inferred
 
-High-confidence AI understanding. Never invent mandatory skills,
-certifications or experience.
+High-confidence AI interpretation. Never invent mandatory skills,
+certifications or experience. Fallback defaults must derive from structured category/seniority or remain empty strings rather than hardcoding domain-specific values.
+Note on `confidence_score`: Explicit scores returned by the provider (including valid `0.0`) are preserved; when omitted by the provider, a default baseline of `0.9` is recorded reflecting successful structural generation.
+Note on `custom_skills`: Employer custom skills entered in the posting are treated as required (`must_have_skills`) consistent with form input policy unless flagged otherwise.
 
 ### metadata
 

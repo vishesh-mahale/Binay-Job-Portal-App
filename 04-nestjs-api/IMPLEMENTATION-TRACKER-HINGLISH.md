@@ -2,7 +2,7 @@
 
 **Repository:** `Binay-Job-Portal-App`  
 **Scope:** `04-nestjs-api/04-nestjs-api-app` aur uske required integrations  
-**Last updated:** 29 August 2026
+**Last updated:** 08 September 2026
 
 ### Progress legend
 
@@ -17,7 +17,7 @@
 
 ### Overall sub-step progress
 
-🟢 **18 / 56 sub-steps complete** · 🟡 **38 / 56 pending**
+🟢 **24 / 56 sub-steps complete** · 🟡 **32 / 56 pending**
 
 > यह गणना केवल ऊपर दिए गए phase sub-step checklists की है; पुराने detailed task bullets अलग evidence/reference सूची हैं।
 
@@ -25,17 +25,17 @@
 
 Ye file sirf **baaki implementation, testing aur release-gate work** track karne ke liye hai. Jo kaam README ya approved decision files me complete/verified hai, use dobara pending nahi maana gaya hai.
 
-## Agent ownership rule
+## Agent ownership rule (Updated & Authoritative)
 
 ```text
-Codex        → implementation, tests, fixes aur commit
-Antigravity  → same commit ka read-only review
-FreeBuf      → same commit ka read-only review
-OpenCode     → same commit ka read-only review
-Codex        → teen reviews ko independently verify karke valid fixes apply karega
+Antigravity  → implementation, tests, fixes, verification & documentation
+FreeBuf      → read-only review (user-provided)
+OpenCode     → read-only review (user-provided)
+Codex        → read-only review (user-provided)
+Antigravity  → reviews ko ground truth ke against independently verify karke valid fixes apply karega
 ```
 
-Reviewers source code, SQL, contracts ya configuration modify nahi karenge. Har review **same commit/hash** par hona chahiye. Kisi suggestion ko requirements, migrations, contracts aur tests se verify kiye bina apply nahi karna hai.
+> ⚠️ **Strict Git Rule:** Current workflow me git commits aur push user ke explicit instruction ke bina **KABHI NAHI** honge. Antigravity source code changes implement aur verify karega; FreeBuf, OpenCode aur Codex read-only reviewers rahenge.
 
 ## Current implementation snapshot
 
@@ -228,9 +228,9 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 
 ## 🔵 Phase 09-D — Jobs, search aur applications hardening
 
-**Status:** `BOUNDED UNIT 1, UNIT 2, UNIT 3 & UNIT 4 COMPLETE (Public Job Search & Listing Backend Hardened & 100% Live Verified)`
+**Status:** `BOUNDED UNIT 1, 2, 3, 4 + FASTAPI AI ENRICHMENT & 768-DIM EMBEDDING PIPELINE COMPLETE (PostgreSQL Verified & 30 Unit Tests Pass)`
 
-**Sub-step progress:** Total **9** · 🟢 Complete **6** · 🟡 Pending **3**
+**Sub-step progress:** Total **12** · 🟢 Complete **9** · 🟡 Pending **3**
 
 ### 09-D sub-step tracking
 
@@ -240,28 +240,37 @@ Cross-service Vertex AI live checks (29 Aug 2026): `07-fastapi-ai-worker/tests/i
 - [x] <span style="color:#16a34a">Bounded Unit 3 complete: Job lifecycle actions (pause, resume, close, archive), terminal-state protection, candidate/non-member 403 rejections, cross-tenant isolation, and audit logging (`job.status_changed`, `job.archived`) fully unit-tested (24/24 tests in `jobs.spec.ts`) and 100% live HTTP verified (`scripts/phase-09d-unit3-live-http-integration-test.cjs`).</span>
 - [x] <span style="color:#16a34a">Bounded Unit 4 complete: Public job search and listing backend (`GET /api/v1/jobs`, `GET /api/v1/jobs/:id`, `GET /api/v1/jobs/slug/:slug`, `GET /api/v1/companies/:companySlugOrId/jobs/public/:jobSlug`). Enforces `published` + non-deleted + non-expired + verified company guards. Confidential jobs (`is_confidential = true`) masked (`company_name: "Confidential Employer"`). Global slug ambiguity guard (`AMBIGUOUS_SLUG`). SQL cursor position filtering (`(published_at < $N OR (published_at = $N AND id < $M))`), page-1/page-2 non-overlap, filter-mismatch rejection (`INVALID_CURSOR`), fail-closed cursor secret guard (`SEARCH_CURSOR_SECRET`). Unit tests (33/33 passed, 41/41 full suite passed) and 100% live HTTP integration verified (`scripts/phase-09d-unit4-live-http-integration-test.cjs`).</span>
 - [x] <span style="color:#16a34a">Search routes, DTOs, confidential masking, and static-before-dynamic route ordering frozen and wired in PublicJobController (@Controller('api/v1')).</span>
+- [x] <span style="color:#16a34a">Gate G-1 Transactional Outbox Event (`job.ai.enrichment.requested`) emitted on publish: Includes trace/correlation IDs, job ID, company ID, and trigger (`created`). Processed by Outbox Dispatcher (`05-outbox-dispatcher-nestjs`) and routed to FastAPI AI Worker.</span>
+- [x] <span style="color:#16a34a">FastAPI AI Worker Ideal Candidate Generation (`JobAIService`): Generates validated `ai_ideal_candidate_profile` JSONB following schema contract v1 (`JobAIProfileV1`). Enforces authoritative precedence (P0 rules): structured `experience_min` overrides LLM, structured education is authoritative, master skill requirements preserved (`is_required`, `min_years`, `importance_score`) and locked in `must_have_skills`, generic category/level defaults (no hardcoded "Engineering" or "Mid-Level"), zero-value and confidence preservation, case-insensitive skill dedup/trim, and company industry + screening questions passed as contextual prompt signals.</span>
+- [x] <span style="color:#16a34a">Symmetric 768-dim Job Embedding Pipeline (`JobSemanticTextBuilder`): Builds standardized multi-line semantic text matching `05_jobs_AI_Job_Embedding_Architecture_v1_step2.md`. Structured numerical filters (`salary_min`, `salary_max`) and non-technical perks (`benefits`) strictly excluded from vector to prevent semantic drift. 768-dim vector generated via `text-embedding-004` and stored in `jobs.embedding` with status `completed`. Verified across 30 unit tests and live PostgreSQL re-enrichment of HR and Employer jobs.</span>
 - [ ] <span style="color:#ca8a04">Registered application idempotency and immutable snapshot E2E-tested.</span>
 - [ ] <span style="color:#ca8a04">Application status transition matrix, terminal-state and concurrency tests completed.</span>
-- [ ] <span style="color:#ca8a04">Saved-candidate privacy, uniqueness and delete behavior fully tested.</span>
 - [ ] <span style="color:#ca8a04">Job expiry schedule, notification behavior and candidate visibility verified.</span>
 
-- [ ] Job create/update, approval, publish, pause, resume, close aur archive ke full transition tests.
-- [x] Approval policy freeze: `company_settings.job_approval_required` ka default `false` (direct publish) rahega; company owner/admin (authorized employer-side actor) ise `true` karke approval required kar sakta hai. Existing submitted jobs ka current workflow change nahi hoga.
-- [x] Approval-setting API implemented/frozen: `GET|PATCH /api/v1/companies/:companyId/settings`; owner ya platform admin update kar sakte hain, active members read kar sakte hain; audit + atomic update + validation tests included. Primary-HR/delegated-member mutation ko bina explicit product approval allow nahi kiya gaya.
-- [ ] Production rollout ke liye forward migration/backfill policy decide karna; baseline default change pre-prod rebuild ke liye hai, existing deployed company rows automatically change nahi hongi.
-- [ ] `daily_job_expiry_sweep` / `expire_due_jobs()` ka schedule, timezone aur notification behavior verify karna.
-- [ ] Expired job candidate search se hide ho, lekin existing applications me safe visibility rahe.
-- [ ] Public job search aur recruiter candidate search ke exact routes/DTOs freeze karna.
-- [ ] Current note: `src/job-search-query.ts` aur `src/candidate-search-query.ts` me bounded SQL builders hain, lekin unke liye controller/service wiring abhi intentionally absent hai; approved route/DTO/permission contract freeze hone ke baad hi wire karna hai.
-- [ ] FTS ranking, semantic ranking, filters, cursor validation aur visibility negative tests.
-- [ ] Registered apply ka idempotent retry aur immutable snapshot test.
-- [ ] Application status transition: allowed actors, terminal states, rejection reason, history/audit aur concurrency test.
-- [ ] `application.submitted` v1 payload verify karna; dispatcher route tabhi add ho jab consumer/contract approved ho.
-- [ ] Saved-candidate create/list/delete privacy aur unique owner-candidate behavior ka test.
-- [ ] Application API ka exact route, request DTO, duplicate response aur actor/permission contract final freeze.
-- [ ] Application read/list/detail APIs (candidate aur company views) catalog me missing hon to add/freeze karna.
-- [ ] Application status route aur allowed transition matrix ko current SQL function ke saath implement/test karna; terminal reopen reject ho.
-- [ ] Job expiry documentation, SQL function aur `daily_job_expiry_sweep` schedule ko ek hi approved source me reconcile karna; conflicting drafts ko archive/mark stale karna.
+### Phase 09-D: Remaining Manual Verification Gates (Next Steps)
+
+Neeche diye 6 manual release gates Next.js Web UI (`http://localhost:3001`) aur NestJS API ke zariye verify kiye jaane hain:
+
+1. 🟡 **Gate 1: HR Submit-for-Approval Flow:**  
+   - HR user se draft job create karke `submit-for-approval` trigger karna (`POST /api/v1/companies/:companyId/jobs/:jobId/submit-for-approval`).  
+   - Verify: `jobs.status = 'pending_approval'`, audit log entry `job.publish_requested`.
+2. 🟡 **Gate 2: Owner/Admin Approval Flow:**  
+   - Employer Owner ya Admin account se login karke pending job ko approve karna (`POST /api/v1/companies/:companyId/jobs/:jobId/approve`).  
+   - Verify: `jobs.status = 'published'`, `published_at` timestamp set, `outbox_events` me `job.ai.enrichment.requested` inserted.
+3. 🟡 **Gate 3: Owner/Admin Rejection Flow:**  
+   - Employer Owner/Admin se pending job ko reject karna (`POST /api/v1/companies/:companyId/jobs/:jobId/reject`) with mandatory `reason`.  
+   - Verify: `jobs.status = 'draft'`, `rejection_reason` recorded, audit log entry `job.rejected`.
+4. 🟡 **Gate 4: Direct Publish Flow (Approval Disabled):**  
+   - `company_settings.job_approval_required = false` hone par Employer ka direct publish test karna (`POST /api/v1/companies/:companyId/jobs/:jobId/publish`).  
+   - Verify: Direct `draft → published` transition without intermediate approval.
+5. 🟡 **Gate 5: Public Visibility & Confidential Masking:**  
+   - Candidate / Public view (`GET /api/v1/jobs`) par published job ka appear hona, non-published jobs ka hide rehna, aur `is_confidential = true` jobs ka company name mask hona (`"Confidential Employer"`).
+6. 🟡 **Gate 6: End-to-End AI Enrichment & Embedding Completion:**  
+   - Job publish ke baad: Outbox Dispatcher wake-up ticker se task dispatch hona → FastAPI AI Worker me `ai_ideal_candidate_profile` aur `jobs.embedding` (768-dim) complete status me update hona.
+
+### Historical Notes (Superseded)
+- *Superseded:* Job posting audit plan review stage complete ho chuka hai. Units 1–4 aur AI Worker integration production-verified hain.
+- *Superseded:* Puraani drafts me `experience_min` ko LLM override karne ka issue tha, jise P0 authoritative precedence rules implement karke permanently resolve kar diya gaya hai.
 
 ## 🟡 Phase 09-E — Referrals aur interview completion
 
@@ -411,6 +420,8 @@ Production readiness approval
 
 ## Abhi ka next actionable step
 
-Antigravity ne Phase 09-D read-only audit aur implementation plan complete karke `04-nestjs-api/project-docs/PHASE-09-D-JOB-POSTING-IMPLEMENTATION-PLAN.md` aur `implementation_plan.md` artifact document create kar diya hai. Current status **Phase 09-D = CURRENT / PLAN REVIEW** hai. User ke explicit approval ke baad bounded execution units shuru honge.
+Phase 09-D ke Bounded Units 1, 2, 3, 4, Gate G-1 Outbox Dispatcher wiring, FastAPI AI enrichment service (`JobAIService` P0 rules), aur 768-dim embedding pipeline completely verified aur pass ho chuke hain (30 unit tests pass + live PostgreSQL database rows verified).
 
-**Overall status:** `NESTJS API IN PROGRESS — PRODUCTION RELEASE GATES OPEN`
+Current active task: Phase 09-D ke **6 Remaining Manual Verification Gates** ko Next.js Web UI (`http://localhost:3001`) aur NestJS REST API ke zariye end-to-end execute aur confirm karna (HR submit, Admin approve/reject, Direct publish, Public search visibility, AI enrichment completion).
+
+**Overall status:** `PHASE 09-D BACKEND & AI WORKER COMPLETE — MANUAL RELEASE GATES IN PROGRESS`

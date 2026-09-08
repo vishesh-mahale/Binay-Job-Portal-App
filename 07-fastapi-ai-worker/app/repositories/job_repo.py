@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import DatabaseManager
 from app.core.logging import get_logger
-from app.schemas.job_enrichment import JobCanonicalAggregate, JobEnrichmentResult
+from app.schemas.job_enrichment import JobCanonicalAggregate, JobEnrichmentResult, JobSkillRequirement
 
 logger = get_logger(__name__)
 
@@ -46,6 +46,7 @@ class JobRepository:
                 j.min_education_level,
                 j.max_notice_period_days,
                 j.custom_skills,
+                j.screening_questions,
                 j.salary_min,
                 j.salary_max,
                 j.salary_currency::text AS salary_currency,
@@ -59,14 +60,20 @@ class JobRepository:
                 j.location_country,
                 j.location_remote,
                 j.updated_at,
-                jc.name AS category_name
+                jc.name AS category_name,
+                c.industry AS company_industry
             FROM jobs j
             LEFT JOIN job_categories jc ON j.category_id = jc.id
+            LEFT JOIN companies c ON j.company_id = c.id
             WHERE j.id = :job_id AND j.deleted_at IS NULL
         """)
 
         skills_query = text("""
-            SELECT s.name AS skill_name
+            SELECT 
+                s.name AS skill_name,
+                js.is_required,
+                js.min_years,
+                js.importance_score
             FROM job_skills js
             JOIN skills s ON js.skill_id = s.id
             WHERE js.job_id = :job_id
@@ -88,7 +95,19 @@ class JobRepository:
 
             skills_res = await session.execute(skills_query, {"job_id": job_id})
             skill_rows = skills_res.mappings().all()
-            skills_list = [r["skill_name"] for r in skill_rows if r.get("skill_name")]
+            skill_requirements: List[JobSkillRequirement] = []
+            for r in skill_rows:
+                s_name = r.get("skill_name")
+                if s_name and str(s_name).strip():
+                    skill_requirements.append(
+                        JobSkillRequirement(
+                            name=str(s_name).strip(),
+                            is_required=bool(r.get("is_required", True)),
+                            min_years=float(r["min_years"]) if r.get("min_years") is not None else None,
+                            importance_score=int(r.get("importance_score") or 5),
+                        )
+                    )
+            skills_list = [sr.name for sr in skill_requirements]
 
             locs_res = await session.execute(locations_query, {"job_id": job_id})
             loc_rows = locs_res.mappings().all()
@@ -122,6 +141,26 @@ class JobRepository:
                 except Exception:
                     pass
 
+            raw_screening = job_row.get("screening_questions")
+            screening_questions_list: List[str] = []
+            if isinstance(raw_screening, list):
+                for item in raw_screening:
+                    if isinstance(item, dict) and item.get("question"):
+                        screening_questions_list.append(str(item["question"]).strip())
+                    elif isinstance(item, str) and item.strip():
+                        screening_questions_list.append(item.strip())
+            elif isinstance(raw_screening, str):
+                try:
+                    parsed_sq = json.loads(raw_screening)
+                    if isinstance(parsed_sq, list):
+                        for item in parsed_sq:
+                            if isinstance(item, dict) and item.get("question"):
+                                screening_questions_list.append(str(item["question"]).strip())
+                            elif isinstance(item, str) and item.strip():
+                                screening_questions_list.append(item.strip())
+                except Exception:
+                    pass
+
             return JobCanonicalAggregate(
                 job_id=str(job_row["id"]),
                 title=job_row["title"] or "",
@@ -148,8 +187,11 @@ class JobRepository:
                 preferred_qualifications=job_row.get("preferred_qualifications"),
                 benefits=job_row.get("benefits"),
                 skills=skills_list,
+                skill_requirements=skill_requirements,
                 custom_skills=custom_skills_list,
                 locations=formatted_locs,
+                company_industry=job_row.get("company_industry"),
+                screening_questions=screening_questions_list,
                 updated_at=job_row["updated_at"],
             )
 
