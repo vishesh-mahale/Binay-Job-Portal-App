@@ -1,0 +1,25 @@
+
+> binay-job-portal-web@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.24
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 74s
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/18) ...
+   Generating static pages (4/18) 
+   Generating static pages (8/18) 
+   Generating static pages (13/18) 
+ ✓ Generating static pages (18/18)
+   Finalizing page optimization ...
+   Collecting build traces ...
+[Error: ENOENT: no such file or directory, open 'C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App\03-nextjs-web\03-nextjs-web-app\.next\server\app\_not-found\page.js.nft.json'] {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\ADMIN\\Desktop\\Vishesh\\Binay-Job-Portal-App\\03-nextjs-web\\03-nextjs-web-app\\.next\\server\\app\\_not-found\\page.js.nft.json'
+}

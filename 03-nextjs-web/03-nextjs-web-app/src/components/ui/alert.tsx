@@ -1,13 +1,14 @@
-﻿import React from 'react';
+import React from 'react';
 import { cn } from '../../lib/utils';
 import { AlertCircle, CheckCircle2, Info, XCircle } from 'lucide-react';
 
 export interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'info' | 'success' | 'warning' | 'error';
+  variant?: 'info' | 'success' | 'warning' | 'error' | 'destructive';
   title?: string;
 }
 
 export function Alert({ variant = 'info', title, className, children, ...props }: AlertProps) {
+  const normalizedVariant = variant === 'destructive' ? 'error' : variant;
   const variants = {
     info: 'bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800',
     success: 'bg-emerald-50 text-emerald-900 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800',
@@ -25,14 +26,30 @@ export function Alert({ variant = 'info', title, className, children, ...props }
   return (
     <div
       role="alert"
-      className={cn('flex items-start gap-3 rounded-lg border p-4 text-sm', variants[variant], className)}
+      className={cn('flex items-start gap-3 rounded-lg border p-4 text-sm', variants[normalizedVariant], className)}
       {...props}
     >
-      {icons[variant]}
+      {icons[normalizedVariant]}
       <div className="flex-1 space-y-1">
         {title && <h5 className="font-semibold leading-none tracking-tight">{title}</h5>}
         <div className="text-xs leading-relaxed opacity-90">{children}</div>
       </div>
+    </div>
+  );
+}
+
+export function AlertTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h5 className={cn('font-semibold leading-none tracking-tight mb-1', className)} {...props}>
+      {children}
+    </h5>
+  );
+}
+
+export function AlertDescription({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <div className={cn('text-xs leading-relaxed opacity-90', className)} {...props}>
+      {children}
     </div>
   );
 }

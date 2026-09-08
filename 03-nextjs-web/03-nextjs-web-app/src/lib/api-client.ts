@@ -7,7 +7,15 @@ import type {
   UserSessionInfo,
   UserSummary,
 } from '../types/auth';
-import type { CompanySettings, CreateJobDto, Job, UpdateJobDto } from '../types/jobs';
+import type {
+  CompanySettings,
+  CreateJobDto,
+  Job,
+  PublicJobItem,
+  PublicJobSearchFilters,
+  PublicJobSearchResponse,
+  UpdateJobDto,
+} from '../types/jobs';
 
 export interface RequestOptions extends RequestInit {
   timeoutMs?: number;
@@ -75,7 +83,7 @@ export class ApiClient {
           }
         }
 
-        if (response.status === 401) {
+        if (response.status === 401 && !skipAuthRefresh) {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('auth:unauthorized'));
           }
@@ -151,6 +159,7 @@ export class ApiClient {
   public async getMe(): Promise<UserSummary> {
     return this.request<UserSummary>('/api/v1/auth/me', {
       method: 'GET',
+      skipAuthRefresh: true,
     });
   }
 
@@ -434,6 +443,40 @@ export class ApiClient {
   public async listCities(): Promise<any[]> {
     return this.request<any[]>(`/api/v1/cities`, {
       method: 'GET',
+    });
+  }
+
+  // --- Public Job Search & Discovery Endpoints ---
+
+  public async searchPublicJobs(filters?: PublicJobSearchFilters): Promise<PublicJobSearchResponse> {
+    const params = new URLSearchParams();
+    if (filters?.q?.trim()) params.set('q', filters.q.trim());
+    if (filters?.employment_type?.trim()) params.set('employment_type', filters.employment_type.trim());
+    if (filters?.work_mode?.trim()) params.set('work_mode', filters.work_mode.trim());
+    if (filters?.location_country?.trim()) params.set('location_country', filters.location_country.trim());
+    if (filters?.category_id?.trim()) params.set('category_id', filters.category_id.trim());
+    if (filters?.limit) params.set('limit', filters.limit.toString());
+    if (filters?.cursor?.trim()) params.set('cursor', filters.cursor.trim());
+
+    const qs = params.toString();
+    const endpoint = `/api/v1/jobs${qs ? `?${qs}` : ''}`;
+    return this.request<PublicJobSearchResponse>(endpoint, {
+      method: 'GET',
+      skipAuthRefresh: true,
+    });
+  }
+
+  public async getPublicJobBySlug(slug: string): Promise<PublicJobItem> {
+    return this.request<PublicJobItem>(`/api/v1/jobs/slug/${encodeURIComponent(slug)}`, {
+      method: 'GET',
+      skipAuthRefresh: true,
+    });
+  }
+
+  public async getPublicJobById(id: string): Promise<PublicJobItem> {
+    return this.request<PublicJobItem>(`/api/v1/jobs/${encodeURIComponent(id)}`, {
+      method: 'GET',
+      skipAuthRefresh: true,
     });
   }
 }

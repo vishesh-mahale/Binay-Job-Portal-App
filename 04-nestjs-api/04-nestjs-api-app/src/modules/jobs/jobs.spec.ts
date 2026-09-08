@@ -1006,4 +1006,90 @@ describe('JobService — Bounded Unit 4 — Public Job Search & Listing Backend'
     expect(res.experience_max).toBe(6);
     expect(res.custom_skills).toEqual(['Mojo', 'LangGraph']);
   });
+
+  // 47. getPublicJobById & getPublicJobBySlug include work_shift, education_type, min_education_level, max_notice_period_days, custom_skills
+  it('47. getPublicJobById and getPublicJobBySlug return new fields, skills, and custom_skills', async () => {
+    const mockDbRow = {
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      title: 'Principal Architect',
+      slug: 'principal-architect',
+      work_shift: 'day_shift',
+      education_type: 'technical',
+      min_education_level: 'masters',
+      max_notice_period_days: 15,
+      custom_skills: ['Distributed Systems', 'Rust'],
+      is_confidential: false,
+      company_name: 'Acme Corp',
+      company_slug: 'acme-corp',
+    };
+
+    const system = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [mockDbRow] })
+        .mockResolvedValueOnce({ rows: [{ city: 'Mumbai', country: 'India', is_primary: true }] })
+        .mockResolvedValueOnce({ rows: [{ skill_name: 'Rust', is_required: true }] })
+        .mockResolvedValueOnce({ rows: [mockDbRow] })
+        .mockResolvedValueOnce({ rows: [{ city: 'Mumbai', country: 'India', is_primary: true }] })
+        .mockResolvedValueOnce({ rows: [{ skill_name: 'Rust', is_required: true }] }),
+    } as any;
+
+    const service = new JobService(system);
+
+    const byId = await service.getPublicJobById('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
+    expect(byId.work_shift).toBe('day_shift');
+    expect(byId.education_type).toBe('technical');
+    expect(byId.min_education_level).toBe('masters');
+    expect(byId.max_notice_period_days).toBe(15);
+    expect(byId.custom_skills).toEqual(['Distributed Systems', 'Rust']);
+    expect(byId.company_name).toBe('Acme Corp');
+
+    const bySlug = await service.getPublicJobBySlug('principal-architect');
+    expect(bySlug.work_shift).toBe('day_shift');
+    expect(bySlug.education_type).toBe('technical');
+    expect(bySlug.min_education_level).toBe('masters');
+    expect(bySlug.max_notice_period_days).toBe(15);
+    expect(bySlug.custom_skills).toEqual(['Distributed Systems', 'Rust']);
+  });
+
+  // 48. getPublicJobById & getPublicJobBySlug enforce confidential masking
+  it('48. getPublicJobById and getPublicJobBySlug apply confidential employer masking when is_confidential is true', async () => {
+    const mockConfidentialRow = {
+      id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+      title: 'Stealth AI Lead',
+      slug: 'stealth-ai-lead',
+      is_confidential: true,
+      company_name: 'Secret Real Company Inc',
+      company_slug: 'secret-real-company',
+      company_id: 'real-comp-id-123',
+      company_logo_path: '/logos/secret.png',
+      custom_skills: ['PyTorch', 'Transformers'],
+    };
+
+    const system = {
+      query: jest.fn()
+        .mockResolvedValueOnce({ rows: [mockConfidentialRow] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }),
+    } as any;
+
+    const service = new JobService(system);
+    const result = await service.getPublicJobById('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22');
+
+    expect(result.company_name).toBe('Confidential Employer');
+    expect(result.company_slug).toBeNull();
+    expect(result.company_id).toBeNull();
+    expect(result.company_logo_path).toBeNull();
+    expect(result.custom_skills).toEqual(['PyTorch', 'Transformers']);
+  });
+
+  // 49. getPublicJobById throws NotFoundException for unpublished or expired jobs
+  it('49. getPublicJobById throws NotFoundException when job is not published or expired', async () => {
+    const system = {
+      query: jest.fn().mockResolvedValueOnce({ rows: [] }),
+    } as any;
+
+    const service = new JobService(system);
+    await expect(service.getPublicJobById('c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33'))
+      .rejects.toBeInstanceOf(NotFoundException);
+  });
 });

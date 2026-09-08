@@ -1129,11 +1129,12 @@ export class JobService {
     }
     const result = await this.system.query(
       `SELECT j.id, j.title, j.slug, j.company_id, j.branch_id, j.department_id, j.team_id,
-              j.reference_code, j.employment_type, j.work_mode, j.experience_level, j.category,
+              j.reference_code, j.employment_type, j.work_mode, j.work_shift, j.education_type,
+              j.min_education_level, j.max_notice_period_days, j.experience_level, j.category,
               j.location_city, j.location_state, j.location_country, j.location_remote,
               j.salary_min, j.salary_max, j.salary_currency, j.salary_period, j.salary_visible,
               j.description, j.responsibilities, j.requirements, j.preferred_qualifications,
-              j.benefits, j.vacancies, j.screening_questions, j.screening_questions_enabled, j.status, j.published_at, j.expires_at, j.is_featured,
+              j.benefits, j.vacancies, j.custom_skills, j.screening_questions, j.screening_questions_enabled, j.status, j.published_at, j.expires_at, j.is_featured,
               j.is_urgent, j.is_confidential,
               c.name AS company_name, c.logo_path AS company_logo_path, c.slug AS company_slug
        FROM public.jobs j
@@ -1167,11 +1168,12 @@ export class JobService {
     if (!trimmed) throw new BadRequestException('VALIDATION_ERROR');
     const result = await this.system.query(
       `SELECT j.id, j.title, j.slug, j.company_id, j.branch_id, j.department_id, j.team_id,
-              j.reference_code, j.employment_type, j.work_mode, j.experience_level, j.category,
+              j.reference_code, j.employment_type, j.work_mode, j.work_shift, j.education_type,
+              j.min_education_level, j.max_notice_period_days, j.experience_level, j.category,
               j.location_city, j.location_state, j.location_country, j.location_remote,
               j.salary_min, j.salary_max, j.salary_currency, j.salary_period, j.salary_visible,
               j.description, j.responsibilities, j.requirements, j.preferred_qualifications,
-              j.benefits, j.vacancies, j.screening_questions, j.screening_questions_enabled, j.status, j.published_at, j.expires_at, j.is_featured,
+              j.benefits, j.vacancies, j.custom_skills, j.screening_questions, j.screening_questions_enabled, j.status, j.published_at, j.expires_at, j.is_featured,
               j.is_urgent, j.is_confidential,
               c.name AS company_name, c.logo_path AS company_logo_path, c.slug AS company_slug
        FROM public.jobs j
@@ -1208,11 +1210,12 @@ export class JobService {
     if (!companyKey || !slugKey) throw new BadRequestException('VALIDATION_ERROR');
     const result = await this.system.query(
       `SELECT j.id, j.title, j.slug, j.company_id, j.branch_id, j.department_id, j.team_id,
-              j.reference_code, j.employment_type, j.work_mode, j.experience_level, j.category,
+              j.reference_code, j.employment_type, j.work_mode, j.work_shift, j.education_type,
+              j.min_education_level, j.max_notice_period_days, j.experience_level, j.category,
               j.location_city, j.location_state, j.location_country, j.location_remote,
               j.salary_min, j.salary_max, j.salary_currency, j.salary_period, j.salary_visible,
               j.description, j.responsibilities, j.requirements, j.preferred_qualifications,
-              j.benefits, j.vacancies, j.screening_questions, j.screening_questions_enabled, j.status, j.published_at, j.expires_at, j.is_featured,
+              j.benefits, j.vacancies, j.custom_skills, j.screening_questions, j.screening_questions_enabled, j.status, j.published_at, j.expires_at, j.is_featured,
               j.is_urgent, j.is_confidential,
               c.name AS company_name, c.logo_path AS company_logo_path, c.slug AS company_slug
        FROM public.jobs j

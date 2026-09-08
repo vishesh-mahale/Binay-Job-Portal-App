@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleSignoutSync = useCallback(() => {
     setUser(null);
     setError(null);
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup') && !window.location.pathname.startsWith('/invite')) {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')) {
       window.location.href = '/login?message=Session+expired.+Please+sign+in+again.';
     }
   }, []);

@@ -6,6 +6,7 @@ import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck, Sparkles, Users, Briefcase, LayoutDashboard } from 'lucide-react';
+import { PublicJobList } from '@/components/jobs/public-job-list';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -63,11 +64,12 @@ export default function HomePage() {
   }
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
+    <main className="flex-1 flex flex-col items-center w-full px-6 md:px-10 py-10 md:py-14">
+      {/* Hero — centered, narrow */}
       <div className="max-w-4xl w-full text-center space-y-8">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>AI-Powered Recruitment & Verification</span>
+          <span>AI-Powered Recruitment &amp; Verification</span>
         </div>
 
         <div className="space-y-4">
@@ -97,32 +99,46 @@ export default function HomePage() {
             </>
           )}
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 text-left">
-          <Card>
-            <CardHeader>
-              <Users className="w-8 h-8 text-indigo-600 mb-2" />
-              <CardTitle>Candidates</CardTitle>
-              <CardDescription>Verified profile, AI resume parsing, and private applications.</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <Briefcase className="w-8 h-8 text-indigo-600 mb-2" />
-              <CardTitle>Employers & HR</CardTitle>
-              <CardDescription>Multi-tenant organization, job enrichment, and candidate matching.</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <ShieldCheck className="w-8 h-8 text-indigo-600 mb-2" />
-              <CardTitle>Zero-Trust Security</CardTitle>
-              <CardDescription>Strict RLS isolation, auditable actions, and fail-closed auth.</CardDescription>
-            </CardHeader>
-          </Card>
+      {/* Jobs Section — full width */}
+      <section className="w-full mt-12 mb-6 text-left space-y-4">
+        <div className="flex flex-col space-y-1">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Explore Opportunities
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Browse published positions, filter by work mode, or search by role and keyword.
+          </p>
         </div>
+        <PublicJobList />
+      </section>
+
+      {/* Feature cards — centered */}
+      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 text-left">
+        <Card>
+          <CardHeader>
+            <Users className="w-8 h-8 text-indigo-600 mb-2" />
+            <CardTitle>Candidates</CardTitle>
+            <CardDescription>Verified profile, AI resume parsing, and private applications.</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <Briefcase className="w-8 h-8 text-indigo-600 mb-2" />
+            <CardTitle>Employers &amp; HR</CardTitle>
+            <CardDescription>Multi-tenant organization, job enrichment, and candidate matching.</CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <ShieldCheck className="w-8 h-8 text-indigo-600 mb-2" />
+            <CardTitle>Zero-Trust Security</CardTitle>
+            <CardDescription>Strict RLS isolation, auditable actions, and fail-closed auth.</CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     </main>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +71,8 @@ export function JobPostingManager({
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const [customSkills, setCustomSkills] = useState<string[]>([]);
   const [customSkillInput, setCustomSkillInput] = useState<string>('');
+  const [skillNotice, setSkillNotice] = useState<{ message: string; kind: 'warning' | 'success' } | null>(null);
+  const skillNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [vacancies, setVacancies] = useState<number>(1);
   const [isConfidential, setIsConfidential] = useState<boolean>(false);
   const [isUrgent, setIsUrgent] = useState<boolean>(false);
@@ -82,13 +84,49 @@ export function JobPostingManager({
     );
   };
 
+  const normalizeSkillName = (value: string) => value.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+
   const handleAddCustomSkill = () => {
-    const trimmed = customSkillInput.trim();
-    if (trimmed && !customSkills.includes(trimmed)) {
-      setCustomSkills((prev) => [...prev, trimmed]);
-      setCustomSkillInput('');
+    const enteredSkills = Array.from(new Map(customSkillInput
+      .split(',')
+      .map((skill) => skill.trim())
+      .filter(Boolean)
+      .map((skill) => [normalizeSkillName(skill), skill] as const)).values());
+    if (enteredSkills.length === 0) return;
+
+    const masterMatches = enteredSkills
+      .map((entered) => dbSkills.find((master) => normalizeSkillName(master.name || '') === normalizeSkillName(entered)))
+      .filter(Boolean);
+    const masterIds = masterMatches.map((master) => master.id);
+    const existingCustom = new Set(customSkills.map(normalizeSkillName));
+    const masterNames = new Set(dbSkills.map((master) => normalizeSkillName(master.name || '')));
+    const newCustomSkills = enteredSkills.filter(
+      (skill) => !masterNames.has(normalizeSkillName(skill)) && !existingCustom.has(normalizeSkillName(skill)),
+    );
+
+    if (newCustomSkills.length > 0) {
+      setCustomSkills((prev) => [...prev, ...newCustomSkills]);
+    }
+    setCustomSkillInput('');
+
+    if (skillNoticeTimer.current) clearTimeout(skillNoticeTimer.current);
+    if (masterIds.length > 0) {
+      const matchedNames = masterMatches.map((master) => master.name).join(', ');
+      setSelectedSkillIds((prev) => Array.from(new Set([...prev, ...masterIds])));
+      setSkillNotice({
+        message: `Skill ${matchedNames} already exists in Master Skills. Auto-selecting Master skills: ${matchedNames}.`,
+        kind: 'warning',
+      });
+      skillNoticeTimer.current = setTimeout(() => setSkillNotice(null), 10000);
+    } else if (newCustomSkills.length > 0) {
+      setSkillNotice({ message: `${newCustomSkills.length} custom skill${newCustomSkills.length > 1 ? 's' : ''} added.`, kind: 'success' });
+      skillNoticeTimer.current = setTimeout(() => setSkillNotice(null), 5000);
     }
   };
+
+  useEffect(() => () => {
+    if (skillNoticeTimer.current) clearTimeout(skillNoticeTimer.current);
+  }, []);
 
   const handleRemoveCustomSkill = (skillName: string) => {
     setCustomSkills((prev) => prev.filter((s) => s !== skillName));
@@ -1244,7 +1282,7 @@ export function JobPostingManager({
                               : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-indigo-400'
                           }`}
                         >
-                          {isSelected ? `✓ ${sk.name}` : `+ ${sk.name}`}
+                          {isSelected ? `✓ ${sk.name}` : sk.name}
                         </button>
                       );
                     })}
@@ -1260,7 +1298,7 @@ export function JobPostingManager({
                           key={cSk}
                           className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-600 text-white font-medium shadow-sm"
                         >
-                          ✓ {cSk} (Custom)
+                          ✓ {cSk}
                           <button
                             type="button"
                             onClick={() => handleRemoveCustomSkill(cSk)}
@@ -1276,6 +1314,15 @@ export function JobPostingManager({
                 )}
 
                 {/* Add Custom Skill Input */}
+                {skillNotice && (
+                  <div
+                    role="status"
+                    data-testid="custom-skill-notice"
+                    className={`text-xs font-medium ${skillNotice.kind === 'warning' ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'}`}
+                  >
+                    {skillNotice.message}
+                  </div>
+                )}
                 <div className="flex gap-2 items-center pt-1">
                   <input
                     type="text"

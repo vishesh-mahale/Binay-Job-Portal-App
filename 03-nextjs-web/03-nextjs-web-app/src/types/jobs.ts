@@ -178,3 +178,64 @@ export interface CompanySettings {
   ai_matching_enabled?: boolean;
   updated_at?: string;
 }
+
+export interface PublicJobItem {
+  id: string;
+  title: string;
+  slug: string;
+  company_id?: string | null;
+  company_name?: string | null;
+  company_logo_path?: string | null;
+  company_slug?: string | null;
+  category?: string | null;
+  employment_type?: string | null;
+  work_mode?: string | null;
+  work_shift?: string | null;
+  education_type?: string | null;
+  experience_level?: string | null;
+  min_education_level?: string | null;
+  max_notice_period_days?: number | null;
+  location_city?: string | null;
+  location_state?: string | null;
+  location_country?: string | null;
+  location_remote?: boolean;
+  salary_min?: string | number | null;
+  salary_max?: string | number | null;
+  salary_currency?: string | null;
+  salary_period?: string | null;
+  salary_visible?: boolean;
+  description?: string | null;
+  responsibilities?: string | null;
+  requirements?: string | null;
+  preferred_qualifications?: string | null;
+  benefits?: string | null;
+  vacancies?: number | null;
+  screening_questions_enabled?: boolean;
+  screening_questions?: unknown[];
+  status: JobStatus;
+  published_at?: string | null;
+  expires_at?: string | null;
+  is_featured?: boolean;
+  is_urgent?: boolean;
+  is_confidential?: boolean;
+  custom_skills?: string[];
+  skills?: JobSkillItem[];
+  locations?: JobLocationItem[];
+  score?: number;
+}
+
+export interface PublicJobSearchFilters {
+  q?: string;
+  employment_type?: string;
+  work_mode?: string;
+  location_country?: string;
+  category_id?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface PublicJobSearchResponse {
+  items: PublicJobItem[];
+  next_cursor: string | null;
+}
+
