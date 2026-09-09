@@ -1,31 +1,64 @@
-Ran command: `node -e "const http=require('http'); Promise.all([ new Promise(r => http.get('http://localhost:3000/api/v1/jobs', res => r('NestJS API: ' + res.statusCode))), new Promise(r => http.get('http://localhost:3001/', res => r('Next.js Web: ' + res.statusCode))) ]).then(console.log);"`
+# Public Job Search — Verification Status
 
-Checking dev server ports 3000 and 3001...
+**Status:** IMPLEMENTED AND VERIFIED (frontend + NestJS public API)
 
-Aap ab browser me UI se testing kar sakte hain! Frontend aur Backend dono dev servers live container me ready hain:
+## Implemented routes
 
-🌐 **Application URL**: [http://localhost:3001](http://localhost:3001)
+- `/` — landing page with the reusable `PublicJobList` section.
+- `/jobs` — dedicated public jobs listing using the same `PublicJobList` component.
+- `/jobs/[slug]` — standalone public job detail route.
 
----
+## Component hierarchy
 
-### 🧪 UI Testing Checklist (Step-by-step):
+```text
+PublicJobList
+├── PublicJobFilters
+├── PublicJobCard (one per result)
+└── PublicJobDetailPane (desktop split view)
+```
 
-1. **Home Page Listing (`http://localhost:3001`)**:
-   - Page open karke niche scroll karein — **"Explore Opportunities"** section me published jobs ke cards dikhenge.
-   - **Confidential Employer Masking Check**: Verify karein ki confidential job par real company name/logo nahi hai, balki **"Confidential Employer"** (with Shield icon 🛡️) display ho raha hai.
+The listing uses the centralized `apiClient`; it does not query Supabase directly.
 
-2. **Search & Filters Test**:
-   - **Search Input**: `"HR"` type karke **Search** button click karein — filter hoke HR position dikhegi.
-   - **Work Mode Dropdown**: `"Remote"`, `"Hybrid"`, ya `"Onsite"` select karke filter behavior check karein.
-   - **Clear Filters**: **"Clear Filters"** click karne par search reset hoke saare published jobs wapas aayenge.
+## Public API behavior verified
 
-3. **Public Job Detail Page (`http://localhost:3001/jobs/hr-resource`)**:
-   - Kisi bhi job card ke title par click karein ya direct URL `/jobs/hr-resource` open karein.
-   - **New Fields Verification**: Side panel / specs card me:
-     - **Work Shift**: e.g., `night`
-     - **Min Education**: e.g., `masters`
-     - **Skills Breakdown**: Must Have / Nice to Have / Additional Skills (e.g., `communication skills`, `polite`)
-   - **CTA Behavior**:
-     - Binay Login (Guest Visitor): **"Sign in to Apply"** button dikhega jo `/login?redirect=/jobs/hr-resource` par le jayega.
-     - Candidate Logged In: **"Apply Now"** button dikhega.
-     - **Share Button**: Click karne par link clipboard me copy ho jayega ("Link Copied!").
+- `GET /api/v1/jobs`
+- `GET /api/v1/jobs/slug/:slug`
+- `GET /api/v1/jobs/:id`
+- Published, non-deleted, non-expired jobs from verified companies are returned.
+- Draft, pending approval, paused, closed, archived and expired jobs are hidden by the backend.
+- Confidential employers are returned as `Confidential Employer`; company ID, slug and logo are masked.
+- Cursor pagination and supported filters (`q`, category, employment type, work mode and country) are wired.
+
+## UI behavior verified
+
+- Unauthenticated visitors can browse jobs.
+- Home listing and `/jobs` share the same reusable component.
+- Master-detail split view selects the first job automatically and updates the right pane when a card is clicked.
+- “Open in New Tab” opens `/jobs/[slug]` with `target="_blank"`.
+- Salary is shown only when `salary_visible` permits it.
+- Work shift, education, notice period, openings, skills and custom skills are shown when present in the approved public DTO.
+- Guest users see “Sign in to Apply”; authenticated candidates see “Apply Now”.
+- Public pages do not redirect guests to login when `/auth/me` returns 401; dashboard session expiry still redirects to login.
+
+## Custom skill input behavior
+
+- Comma-separated custom skills are supported.
+- Whitespace and case-insensitive duplicates are removed.
+- A custom value matching a Master Skill is not added as custom; the Master Skill is auto-selected and a temporary notice is shown.
+- Custom-skill success notice is shown for 5 seconds; duplicate Master Skill notice is shown for 10 seconds.
+
+## Verification evidence
+
+- Public jobs UI suite: 12 tests passed.
+- NestJS jobs/public-search tests and frontend typecheck were run during the implementation.
+- Next.js production build was previously verified after the public jobs route integration; rerun it before release if dev-server processes were active during the last attempt.
+- No git commit or push was performed.
+
+## Remaining work
+
+All four job publish workflow gates (HR submit, owner/admin approve, owner/admin reject and direct publish with approval disabled) have also been manually verified. The next Phase 09-D priority is not another public-listing rewrite. Remaining work is:
+
+1. Complete registered application idempotency and immutable snapshot E2E tests.
+2. Complete application status transition, terminal-state and concurrency tests.
+3. Verify job expiry scheduling, notifications and candidate visibility.
+4. Keep Phase 09-A CSRF production gate and Phase 09-C resume/ClamAV gates pending until separately evidenced.

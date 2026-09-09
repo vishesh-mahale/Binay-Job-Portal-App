@@ -2,7 +2,7 @@
 
 **Author:** Antigravity Engineering  
 **Date:** 2026-09-08  
-**Status:** `BACKEND & AI WORKER COMPLETE — MANUAL RELEASE GATES OPEN`  
+**Status:** `BACKEND, AI WORKER, PUBLIC JOBS UI & ALL 6 MANUAL GATES COMPLETE — APPLICATION HARDENING OPEN`  
 **Canonical Handoff Path:** `04-nestjs-api/Agent_review/phase-09d/PHASE-09D-HANDOFF.md`  
 
 ---
@@ -36,6 +36,9 @@ Next.js Frontend → NestJS API → PostgreSQL (jobs, job_skills, job_locations)
   `GET /api/v1/jobs`, `GET /api/v1/jobs/:id`, `GET /api/v1/jobs/slug/:slug`, `GET .../jobs/public/:jobSlug`. Opaque signed cursor pagination, FTS keyword search via `search_vector` GIN index, confidential employer masking (`is_confidential = true`), and fail-closed cursor security.
 - **Gate G-1 Outbox Event:**  
   On job publish, an atomic `job.ai.enrichment.requested` event is inserted into `public.outbox_events` within the publish transaction containing trace ID, job ID, and company ID.
+
+- **Public Jobs UI:**  
+  Landing page (`/`) and dedicated listing (`/jobs`) use the shared `PublicJobList` with filters, cursor pagination and desktop master-detail split view. Public detail, confidential masking, guest/authenticated CTAs and public-route 401 handling are implemented and verified. See `03-Antigravity-main-instruction/prompt-for-antigravity/job-search.md`.
 
 ### B. FastAPI AI Enrichment Worker (`07-fastapi-ai-worker`)
 - **Authoritative Precedence & Integrity (P0 Consolidated Review Decision):**
@@ -94,16 +97,16 @@ Both existing published jobs in PostgreSQL were successfully enriched using Vert
 
 ## 4. Remaining Manual Verification Gates
 
-The following 6 manual release gates remain to be verified via the Next.js Web UI (`http://localhost:3001`) and NestJS API (`http://localhost:3000`):
+All six manual release gates have been verified via the Next.js Web UI/NestJS API. Gates 5 and 6 also have public UI/API and live AI enrichment evidence:
 
 | Gate # | Scope | Test Action | Expected Result |
 |---|---|---|---|
-| **Gate 1** | HR Submit Flow | HR creates draft job and clicks `Submit for Approval` | `jobs.status = 'pending_approval'`, audit log `job.publish_requested` |
-| **Gate 2** | Owner Approval Flow | Owner/Admin clicks `Approve` on pending job | `jobs.status = 'published'`, `published_at` set, `outbox_events` row inserted |
-| **Gate 3** | Owner Rejection Flow | Owner/Admin clicks `Reject` with mandatory reason | `jobs.status = 'draft'`, `rejection_reason` saved, audit log `job.rejected` |
-| **Gate 4** | Direct Publish Flow | Direct publish with `job_approval_required = false` | Direct `draft → published` transition without intermediate approval |
-| **Gate 5** | Public Visibility | Candidate views public job search (`/api/v1/jobs`) | Published jobs visible, draft/pending hidden, confidential jobs masked |
-| **Gate 6** | E2E AI Completion | Full loop from Publish button to Vector in DB | Outbox Dispatcher dispatches event → FastAPI worker updates `ai_ideal_candidate_profile` & `embedding` |
+| **Gate 1** | ✅ HR Submit Flow | HR creates draft job and clicks `Submit for Approval` | `jobs.status = 'pending_approval'`, audit log `job.publish_requested` |
+| **Gate 2** | ✅ Owner Approval Flow | Owner/Admin clicks `Approve` on pending job | `jobs.status = 'published'`, `published_at` set, `outbox_events` row inserted |
+| **Gate 3** | ✅ Owner Rejection Flow | Owner/Admin clicks `Reject` with mandatory reason | `jobs.status = 'draft'`, `rejection_reason` saved, audit log `job.rejected` |
+| **Gate 4** | ✅ Direct Publish Flow | Direct publish with `job_approval_required = false` | Direct `draft → published` transition without intermediate approval |
+| **Gate 5** | ✅ Public Visibility | Candidate/public views `/` and `/api/v1/jobs` | Published jobs visible, non-published/expired hidden, confidential jobs masked |
+| **Gate 6** | ✅ E2E AI Completion | Full loop from Publish button to Vector in DB | Outbox Dispatcher dispatches event → FastAPI worker updates `ai_ideal_candidate_profile` & `embedding` |
 
 ---
 

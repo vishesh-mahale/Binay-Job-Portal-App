@@ -94,33 +94,89 @@ export function JobPostingManager({
       .map((skill) => [normalizeSkillName(skill), skill] as const)).values());
     if (enteredSkills.length === 0) return;
 
-    const masterMatches = enteredSkills
-      .map((entered) => dbSkills.find((master) => normalizeSkillName(master.name || '') === normalizeSkillName(entered)))
-      .filter(Boolean);
-    const masterIds = masterMatches.map((master) => master.id);
-    const existingCustom = new Set(customSkills.map(normalizeSkillName));
-    const masterNames = new Set(dbSkills.map((master) => normalizeSkillName(master.name || '')));
-    const newCustomSkills = enteredSkills.filter(
-      (skill) => !masterNames.has(normalizeSkillName(skill)) && !existingCustom.has(normalizeSkillName(skill)),
-    );
+    // Build normalized master list once
+    const normalizedMasters = dbSkills.map((master) => ({
+      id: master.id,
+      name: master.name || '',
+      norm: normalizeSkillName(master.name || ''),
+    }));
 
+    // For each entered skill: check exact OR partial overlap with any master skill
+    const findMasterMatch = (entered: string) => {
+      const normEntered = normalizeSkillName(entered);
+      return normalizedMasters.find(
+        (m) =>
+          m.norm === normEntered ||           // exact match
+          m.norm.includes(normEntered) ||     // master contains custom  (e.g. "html5/css3" contains "html")
+          normEntered.includes(m.norm)        // custom contains master  (e.g. "nodejs" contains "node")
+      ) ?? null;
+    };
+
+    const existingCustomNorms = new Set(customSkills.map(normalizeSkillName));
+
+    const masterAutoSelect: typeof normalizedMasters = [];
+    const alreadySelectedMasters: typeof normalizedMasters = [];
+    const alreadyInCustom: string[] = [];
+    const newCustomSkills: string[] = [];
+
+    for (const skill of enteredSkills) {
+      const normSkill = normalizeSkillName(skill);
+
+      // Already in custom list?
+      if (existingCustomNorms.has(normSkill)) {
+        alreadyInCustom.push(skill);
+        continue;
+      }
+
+      // Matches a master skill?
+      const masterMatch = findMasterMatch(skill);
+      if (masterMatch) {
+        if (selectedSkillIds.includes(masterMatch.id)) {
+          alreadySelectedMasters.push(masterMatch);
+        } else {
+          masterAutoSelect.push(masterMatch);
+        }
+        continue;
+      }
+
+      // Pure new custom skill
+      newCustomSkills.push(skill);
+    }
+
+    // Apply state changes
     if (newCustomSkills.length > 0) {
       setCustomSkills((prev) => [...prev, ...newCustomSkills]);
     }
+    if (masterAutoSelect.length > 0) {
+      setSelectedSkillIds((prev) => Array.from(new Set([...prev, ...masterAutoSelect.map((m) => m.id)])));
+    }
     setCustomSkillInput('');
 
+    // Build notice message
     if (skillNoticeTimer.current) clearTimeout(skillNoticeTimer.current);
-    if (masterIds.length > 0) {
-      const matchedNames = masterMatches.map((master) => master.name).join(', ');
-      setSelectedSkillIds((prev) => Array.from(new Set([...prev, ...masterIds])));
-      setSkillNotice({
-        message: `Skill ${matchedNames} already exists in Master Skills. Auto-selecting Master skills: ${matchedNames}.`,
-        kind: 'warning',
-      });
+
+    const parts: string[] = [];
+    if (masterAutoSelect.length > 0) {
+      parts.push(
+        `"${masterAutoSelect.map((m) => m.name).join('", "')}" already exist in Master Skills — auto-selected there instead.`
+      );
+    }
+    if (alreadySelectedMasters.length > 0) {
+      parts.push(
+        `"${alreadySelectedMasters.map((m) => m.name).join('", "')}" already selected in Master Skills.`
+      );
+    }
+    if (alreadyInCustom.length > 0) {
+      parts.push(`"${alreadyInCustom.join('", "')}" already in Custom Skills.`);
+    }
+    if (newCustomSkills.length > 0) {
+      parts.push(`${newCustomSkills.length} custom skill${newCustomSkills.length > 1 ? 's' : ''} added.`);
+    }
+
+    if (parts.length > 0) {
+      const hasWarning = masterAutoSelect.length > 0 || alreadySelectedMasters.length > 0 || alreadyInCustom.length > 0;
+      setSkillNotice({ message: parts.join(' '), kind: hasWarning ? 'warning' : 'success' });
       skillNoticeTimer.current = setTimeout(() => setSkillNotice(null), 10000);
-    } else if (newCustomSkills.length > 0) {
-      setSkillNotice({ message: `${newCustomSkills.length} custom skill${newCustomSkills.length > 1 ? 's' : ''} added.`, kind: 'success' });
-      skillNoticeTimer.current = setTimeout(() => setSkillNotice(null), 5000);
     }
   };
 
