@@ -1,63 +1,49 @@
-# FastAPI + ClamAV deployment
+# FastAPI + ClamAV Deployment
 
-यह worker security scan के लिए Python `clamd` client इस्तेमाल करता है।
-`clamd` खुद antivirus engine नहीं है; actual ClamAV daemon अलग container में
-चलना जरूरी है। इसलिए production Cloud Run deployment में FastAPI ingress
-container के साथ `clamav` sidecar चलेगा:
+## Architecture
+
+FastAPI worker resume bytes bhejta hai ClamAV Cloud Run service ko HTTP se scan ke liye.
 
 ```text
 Cloud Tasks (OIDC)
         |
         v
-FastAPI worker :8080  ---- localhost:3310 ---->  ClamAV sidecar (clamd)
+FastAPI worker :8080  ---- HTTPS ---->  ClamAV Cloud Run (asia-south1)
         |
         +--> Supabase status/result transaction
 ```
 
-## Cloud Run
+## Key Files
 
-`cloud-run-sidecar.yaml` एक template है। इसमें ये placeholders deployment से
-पहले replace करें:
+| File | Description |
+|------|-------------|
+| `app/services/security_scanner.py` | HTTP client — calls Cloud Run `/scan` endpoint |
+| `../08-clamav-cloudrun/` | ClamAV Cloud Run service (Dockerfile, deploy script, runbook) |
 
-- `SERVICE_NAME`
-- `WORKER_RUNTIME_SERVICE_ACCOUNT`
-- `WORKER_IMAGE` (prefer immutable Artifact Registry digest)
+## Configuration (.env)
 
-फिर:
-
-```powershell
-gcloud run services replace deployment/cloud-run-sidecar.yaml `
-  --region <REGION> `
-  --project <PROJECT_ID>
+```bash
+CLAMAV_HOST=https://clamav-scanner-xxxx.a.run.app   # Cloud Run URL
+CLAMAV_PORT=443
+CLAMAV_TIMEOUT_SECONDS=120
 ```
 
-Production में अलग से verify करें:
+## How It Works
 
-1. `fastapi-worker` ही एकमात्र ingress container और port `8080` है।
-2. `clamav` sidecar port `3310` पर local network में उपलब्ध है; इसे public port
-   के रूप में expose नहीं किया गया है।
-3. Worker service private है और केवल approved Cloud Tasks service account को
-   `roles/run.invoker` मिला है।
-4. `DATABASE_URL`, OIDC settings और provider secrets Secret Manager bindings
-   से आते हैं; YAML या git में नहीं।
-5. ClamAV image को production में digest से pin किया गया है और signature
-   database update/startup तथा scan latency को load test में verify किया गया है।
+1. Resume upload hota hai
+2. Cloud Task create hota hai `security_scan` type ka
+3. FastAPI worker task receive karta hai
+4. `security_scanner.py` resume bytes Cloud Run service ko HTTP se bhejta hai
+5. Cloud Run pe ClamAV daemon scan karta hai (INSTREAM protocol)
+6. Result wapas aata hai — `{"verdict":"clean"}` ya `{"verdict":"infected","reason":"..."}`
+7. Worker DB mein status update karta hai (`clean` / `infected` / `quarantined`)
+8. Agar clean hai → resume parsing ka Cloud Task emit hota hai
 
-यह file deploy नहीं करती और live GCP state नहीं बदलती। पहले `gcloud run
-services replace ... --dry-run`/staging revision से validate करें, फिर approved
-deployment करें।
+## Deploy
 
-## Local development
-
-Docker उपलब्ध होने पर repository worker directory से:
-
-```powershell
-docker compose -f docker-compose.security-scan.yml up --build
+```bash
+cd ../08-clamav-cloudrun
+./deploy.sh
 ```
 
-Compose file में `CLAMAV_HOST=clamav` service-DNS के लिए पहले से set है। Cloud Run sidecar
-में दोनों containers का shared network namespace होने के कारण `127.0.0.1`
-सही रहेगा।
-
-Windows machine पर Docker/ClamAV daemon installed न हो तो security scan
-runtime test **BLOCKED** रहेगा; उसे fake `clean` result से pass mark नहीं करना है।
+Full runbook: [08-clamav-cloudrun/DEPLOY-RUNBOOK.md](../08-clamav-cloudrun/DEPLOY-RUNBOOK.md)

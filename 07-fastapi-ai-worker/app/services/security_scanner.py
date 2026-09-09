@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime, timezone
 import io
+import shutil
+import subprocess
 import time
 from dataclasses import dataclass
 from typing import Any
+
+import httpx
+from google.oauth2 import id_token
+from google.auth.transport.requests import Request
 
 from app.core.config import Settings, get_settings
 
@@ -30,8 +35,19 @@ class ScannerUnavailable(Exception):
     """Scanner could not be reached; caller must retry and fail closed."""
 
 
+def _get_identity_token(audience: str) -> str:
+    """Get Google OIDC identity token. Production uses ADC, local falls back to gcloud CLI."""
+    try:
+        return id_token.fetch_id_token(Request(), audience)
+    except Exception:
+        gcloud = shutil.which("gcloud")
+        if not gcloud:
+            raise RuntimeError("gcloud CLI not found — set GOOGLE_APPLICATION_CREDENTIALS or install gcloud")
+        return subprocess.check_output([gcloud, "auth", "print-identity-token"], text=True, timeout=30).strip()
+
+
 class ClamAVScannerProvider:
-    """Scan bytes through a private clamd TCP endpoint."""
+    """Scan bytes through ClamAV Cloud Run service via HTTP."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         cfg = settings or get_settings()
@@ -41,13 +57,7 @@ class ClamAVScannerProvider:
 
     async def scan(self, content: bytes, checksum_sha256: str) -> ScanResult:
         started = time.monotonic()
-        try:
-            raw = await asyncio.wait_for(
-                asyncio.to_thread(self._scan_sync, content), timeout=self.timeout
-            )
-        except Exception as exc:
-            raise ScannerUnavailable(str(exc)) from exc
-
+        raw = await self._scan_http(content)
         duration_ms = int((time.monotonic() - started) * 1000)
         scanned_at = datetime.now(timezone.utc).isoformat()
         verdict = "clean" if raw.get("status") == "OK" else "infected"
@@ -64,20 +74,24 @@ class ClamAVScannerProvider:
             threats=threats,
         )
 
-    def _scan_sync(self, content: bytes) -> dict[str, Any]:
-        import clamd
-
-        client = clamd.ClamdNetworkSocket(host=self.host, port=self.port)
-        client.socket.settimeout(self.timeout)
-        response = client.instream(io.BytesIO(content))
-        result = response.get("stream") if isinstance(response, dict) else response
-        if not isinstance(result, tuple) or len(result) < 2:
-            raise ScannerUnavailable("invalid clamd response")
-        status, signature = result[0], result[1]
-        version = str(client.version())
-        return {
-            "status": status,
-            "signature": signature,
-            "engine_version": version,
-            "signature_version": version,
-        }
+    async def _scan_http(self, content: bytes) -> dict[str, Any]:
+        url = f"{self.host}:{self.port}/scan" if self.port not in (443, 80) else f"{self.host}/scan"
+        token = _get_identity_token(self.host)
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    files={"file": ("scan.bin", io.BytesIO(content), "application/octet-stream")},
+                )
+                response.raise_for_status()
+                data = response.json()
+                return {
+                    "status": "OK" if data.get("verdict") == "clean" else "FOUND",
+                    "signature": data.get("reason", ""),
+                    "engine_version": "cloud-run",
+                    "signature_version": "cloud-run",
+                }
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            raise ScannerUnavailable(str(exc)) from exc

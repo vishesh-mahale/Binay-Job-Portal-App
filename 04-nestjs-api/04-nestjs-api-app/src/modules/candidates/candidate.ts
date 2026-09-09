@@ -34,6 +34,36 @@ export class ArchiveCandidateFactDto {
 export class CandidateService {
   constructor(private readonly userClient: UserContextClient, private readonly system: SystemClient) {}
 
+  async listOwnResumes(request: AuthenticatedRequest) {
+    const result = await this.system.query(`
+      SELECT d.id AS document_id, cpd.document_role, cpd.version_number, cpd.is_current,
+             d.created_at AS uploaded_at, d.updated_at,
+             d.security_scan_status, d.processing_status
+      FROM public.candidate_profile_documents cpd
+      JOIN public.candidate_profiles cp ON cp.id = cpd.candidate_id
+      JOIN public.uploaded_documents d ON d.id = cpd.document_id
+      WHERE cp.user_id = $1 AND cp.deleted_at IS NULL
+        AND cpd.document_role = 'resume' AND cpd.unlinked_at IS NULL
+        AND d.deleted_at IS NULL
+      ORDER BY cpd.is_current DESC, cpd.version_number DESC, d.created_at DESC
+    `, [request.user?.sub]);
+    return result.rows.map((row) => {
+      const scan = String(row.security_scan_status);
+      const processing = row.processing_status ? String(row.processing_status) : null;
+      let stage: string;
+      let retryable = false;
+      if (scan === 'pending' || scan === 'scanning') stage = scan === 'scanning' ? 'SECURITY_SCANNING' : 'UPLOADED';
+      else if (scan === 'infected' || scan === 'quarantined') stage = 'SECURITY_REJECTED';
+      else if (scan === 'failed') { stage = 'SECURITY_RETRYABLE_FAILURE'; retryable = true; }
+      else if (!processing || processing === 'uploaded' || processing === 'queued') stage = processing === 'queued' ? 'PARSING_QUEUED' : 'UPLOADED';
+      else if (processing === 'processing') stage = 'PARSING_IN_PROGRESS';
+      else if (processing === 'partial') stage = 'REVIEW_READY_PARTIAL';
+      else if (processing === 'completed') stage = 'REVIEW_READY';
+      else { stage = 'PARSING_FAILED'; retryable = processing !== 'cancelled'; }
+      return { ...row, stage, retryable };
+    });
+  }
+
   async getOwnProfile(request: AuthenticatedRequest) {
     const token = request.rawAccessToken ?? '';
     const result = await this.userClient.queryAsUser(token, `
@@ -212,6 +242,11 @@ export class CandidateController {
 @UseGuards(AuthGuard)
 export class ResumeStatusController {
   constructor(private readonly candidate: CandidateService) {}
+  @Get()
+  async list(@Req() request: AuthenticatedRequest) {
+    return this.candidate.listOwnResumes(request);
+  }
+
   @Get(':id/status')
   async status(@Req() request: AuthenticatedRequest, @Param('id') documentId: string) {
     return this.candidate.getResumeStatus(request, documentId);

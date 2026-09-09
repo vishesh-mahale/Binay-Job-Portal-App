@@ -99,3 +99,80 @@ Treat these as reported evidence and rerun only when needed. Do not inflate numb
 ## Expected handoff style
 
 Report concrete file/line evidence, commands actually run, and exact pass/fail output. Separate confirmed facts, reported evidence, and recommendations. If a blocker remains, explain the smallest safe next fix instead of changing unrelated files.
+
+## Current continuation update — 2026-09-09
+
+This section supersedes any older “remaining 3%” wording above.
+
+### Candidate dashboard and resume flow
+
+- Candidate dashboard route: `/dashboard/candidate`.
+- Public job detail sends an authenticated candidate to `/dashboard/candidate?apply=<jobId>`.
+- Candidate sections are Overview, Profile, Resumes and Applications.
+- First-time onboarding is resume-first: when no resume exists, the dashboard opens Resumes automatically and Profile remains disabled. Tooltip: `Upload a resume to enable your profile`.
+- Resume flow is: upload → security scan → clean-only parsing → parsed-data review/edit → explicit confirmation → canonical profile/facts update → projection event.
+- Profile editing is available after at least one resume exists; resume confirmation is the first-time canonical-data path and does not silently overwrite later profile edits.
+- Resume upload uses `FormData`; do not force `Content-Type: application/json` for multipart requests.
+- NestJS owns validation, private storage upload, document registration and `security.scan.requested` outbox creation.
+- Dispatcher routes `security.scan.requested` to `/internal/tasks/security/scan` and `resume.parse.requested` to `/internal/tasks/resume/parse`.
+- FastAPI security task downloads the private object, calls ClamAV through `clamd`, persists clean/infected/failed result metadata, and creates a parsing job only for a clean verdict.
+- FastAPI parser independently re-checks `security_scan_status = 'clean'` before extraction and LLM parsing.
+- Candidate confirmation goes through NestJS `POST /api/v1/resumes/:id/confirm`, uses `expected_profile_revision`, updates canonical profile/facts transactionally, and emits `candidate.profile.changed`.
+- Application submission requires an owned current resume, clean scan, review-ready parse state, consent, and valid screening answers. Application snapshots are immutable.
+
+### Resume security ownership — final decision
+
+```text
+Next.js upload UI
+  → NestJS validate + store + register document
+  → security.scan.requested
+  → Outbox Dispatcher
+  → FastAPI security task
+  → ClamAV/clamd verdict
+  → clean only: resume.parse.requested
+  → Outbox Dispatcher
+  → FastAPI parsing task
+  → candidate review/confirmation in NestJS
+```
+
+NestJS performs validation/storage/confirmation. FastAPI executes the security task and parser; ClamAV/clamd is the antivirus engine. The chained `resume.parse.requested` outbox hop is intentionally retained for transactional delivery, retry, idempotency, audit and worker decoupling. Do not remove it merely because both handlers run in FastAPI.
+
+Local ClamAV prerequisite:
+
+- `start-all-services.bat` starts FastAPI, NestJS, dispatcher, Next.js and the wake loop, but not ClamAV.
+- A ClamAV/clamd daemon must listen on `127.0.0.1:3310` locally.
+- If unavailable, `503 SCANNER_UNAVAILABLE` and a retryable failed scan state are expected fail-closed behavior.
+- Production uses a private ClamAV sidecar/container, not a public scanner endpoint.
+
+### Canonical security references
+
+Read these before changing the resume security pipeline:
+
+1. `03-Antigravity-main-instruction/prompt-for-antigravity/CALMAV.md`
+2. `03-Antigravity-main-instruction/prompt-for-antigravity/CLAMAV-FUTURE-HARDENING.md`
+3. `04-nestjs-api/04-nestjs-api-app/src/modules/candidates/resume.ts`
+4. `07-fastapi-ai-worker/app/api/v1/task_handlers.py`
+5. `07-fastapi-ai-worker/app/services/security_scanner.py`
+6. `05-outbox-dispatcher-nestjs/src/routing/event-route.registry.ts`
+
+### Confirmed latest verification
+
+- Candidate dashboard focused tests: 4 passed.
+- Frontend regression: 38 tests passed; typecheck and production build passed.
+- NestJS candidate/application targeted tests: 23 passed; NestJS build passed.
+- Real upload reached `SECURITY_SCANNING`; the 503 was traced to ClamAV not listening on `127.0.0.1:3310`, not to the upload/API contract.
+
+### Next safe work
+
+1. Start local ClamAV and rerun real resume upload → scan → parse → review → confirm.
+2. Verify clean fixture, infected EICAR fixture, scanner unavailable, storage download failure and retry behavior.
+3. Verify duplicate scan idempotency and parser bypass rejection for non-clean documents.
+4. Verify application replay, immutable snapshot after profile edits and cross-candidate access denial.
+5. Apply only deferred items in `CLAMAV-FUTURE-HARDENING.md` after targeted design approval.
+6. Run final regression suites and inspect `git status`.
+
+### Non-negotiable continuation rules
+
+- Never bypass ClamAV or mark a document `clean` manually.
+- Do not treat a local scanner-unavailable 503 as an application bug without code evidence.
+- No commit, push, migration, destructive reset/checkout or unrelated redesign unless the user explicitly asks.

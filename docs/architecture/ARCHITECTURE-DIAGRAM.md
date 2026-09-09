@@ -30,8 +30,8 @@ flowchart TD
     end
 
     subgraph AI_Worker_Layer["5. AI & Heavy Processing Worker (FastAPI / Python)"]
-        FastAPI_Worker["FastAPI AI Worker (Cloud Run ingress)\n- Document Extraction (PyPDF / Tesseract OCR)\n- Security scan via local ClamAV sidecar\n- Idempotency via processed_events\n- Resume Parser & Job Enricher\n- Candidate Projection Rebuilder"]
-        ClamAV_Sidecar["ClamAV clamd sidecar\nlocalhost:3310\nprivate, no public port"]
+        FastAPI_Worker["FastAPI AI Worker (Cloud Run ingress)\n- Document Extraction (PyPDF / Tesseract OCR)\n- Security scan via private ClamAV sidecar/service\n- Idempotency via processed_events\n- Resume Parser & Job Enricher\n- Candidate Projection Rebuilder"]
+        ClamAV_Sidecar["ClamAV Scanner (Cloud Run)\nasia-south1\n--no-allow-unauthenticated\nHTTPS with OIDC ID token"]
     end
 
     subgraph Google_AI_Layer["6. Foundation AI Infrastructure (Google Vertex AI)"]
@@ -51,7 +51,7 @@ flowchart TD
     Postgres_DB -->|1. Outbox Event Insert Webhook / Claim| Outbox_Dispatcher
     Outbox_Dispatcher -->|2. Push Task with Payload| Cloud_Tasks
     Cloud_Tasks -->|3. POST /internal/tasks/* with OIDC| FastAPI_Worker
-    FastAPI_Worker -->|security scan over localhost:3310| ClamAV_Sidecar
+    FastAPI_Worker -->|security scan via HTTPS + OIDC token| ClamAV_Sidecar
 
     FastAPI_Worker -->|Download Resume PDF| Supabase_Storage
     FastAPI_Worker -->|LLM Structured Extraction| Gemini_Flash
@@ -95,6 +95,7 @@ flowchart TD
 ### 5. AI Worker Layer (`07-fastapi-ai-worker`)
 * **Framework:** FastAPI (Python 3.12) + SQLAlchemy 2.0 Async + Pydantic v2.
 * **Idempotency:** Strictly verifies incoming task IDs against `processed_events` table.
+* **Private security scanner:** The resume security flow uses a dedicated ClamAV Cloud Run service (`08-clamav-cloudrun`). FastAPI sends resume bytes via HTTPS with an OIDC ID token for authentication. The service auto-scales to zero (₹0 when idle).
 * **Capabilities:**
   - PDF / DOCX native parsing and OCR fallback (Tesseract).
   - Resume structured fact extraction (PD-001).

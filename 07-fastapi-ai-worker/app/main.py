@@ -6,6 +6,8 @@ Production-grade initialization and startup/shutdown hooks.
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 import logging
+import shutil
+import subprocess
 
 from fastapi import FastAPI, Request, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -55,6 +57,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         
         # Initialize AI providers
         logger.info("AI providers initialized")
+
+        # Check gcloud auth for ClamAV scanner (local dev only)
+        if not settings.OIDC_AUTH_ENABLED:
+            gcloud = shutil.which("gcloud")
+            if gcloud:
+                try:
+                    account = subprocess.check_output(
+                        [gcloud, "auth", "list", "--filter=status:ACTIVE", "--format=value(account)"],
+                        text=True, timeout=10,
+                    ).strip()
+                    if account:
+                        logger.info("gcloud authenticated", account=account)
+                    else:
+                        logger.warning("gcloud NOT logged in — ClamAV scan will fail. Run: gcloud auth login")
+                except Exception:
+                    logger.warning("Could not verify gcloud auth — ClamAV scan may fail")
+            else:
+                logger.warning("gcloud CLI not found — ClamAV scan will fail. Install gcloud SDK")
         
         # Log environment summary
         logger.info(

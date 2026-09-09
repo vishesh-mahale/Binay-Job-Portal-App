@@ -16,7 +16,7 @@ Security-scan deployment artifacts: [`deployment/README.md`](deployment/README.m
 1. **Resume Parsing (PD-001)**: Extracts unstructured text, performs OCR fallback, runs structured candidate data extraction via LLM, and persists immutable parsing results and artifacts.
 2. **Candidate Search Projection (PD-002)**: Rebuilds search profiles by merging canonical profile facts with active resume data, generating symmetric semantic text, and producing 768-dimensional vector embeddings stored in `candidate_search_profiles`.
 3. **Job AI Enrichment (JD-001)**: Enriches job descriptions into structured `ai_ideal_candidate_profile` JSONB (contract v1) and generates 768-dimensional semantic embeddings stored directly in `jobs`.
-4. **Resume Security Scan**: Calls the private ClamAV daemon through the `clamd` client before parsing is queued. The daemon is supplied by the Cloud Run `clamav` sidecar; the Python image alone is not a scanner.
+4. **Resume Security Scan**: Sends resume bytes to ClamAV Cloud Run service via HTTP for virus scanning before parsing is queued.
 
 ---
 
@@ -56,10 +56,10 @@ Security-scan deployment artifacts: [`deployment/README.md`](deployment/README.m
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Security-scan deployment topology (Cloud Run multi-container service):
+Security-scan deployment topology (Cloud Run managed service):
 
 ```text
-Cloud Tasks (OIDC) -> FastAPI ingress :8080 -> clamd sidecar :3310 (localhost)
+Cloud Tasks (OIDC) -> FastAPI ingress :8080 -> ClamAV Cloud Run (HTTPS)
                                              -> scan result + status transaction
 ```
 

@@ -52,7 +52,8 @@ export class ApplicationService {
       const profile = candidate.rows[0];
 
       const job = await client.query(`
-        SELECT j.id, j.company_id, j.status, j.expires_at, j.deleted_at
+        SELECT j.id, j.company_id, j.status, j.expires_at, j.deleted_at,
+               j.screening_questions, j.screening_questions_enabled
         FROM public.jobs j
         WHERE j.id = $1
         FOR UPDATE
@@ -62,12 +63,41 @@ export class ApplicationService {
         throw new NotFoundException('NOT_FOUND');
       }
 
+      const screeningQuestions = Array.isArray(jobRow.screening_questions) ? jobRow.screening_questions : [];
+      const answersById = new Map<string, any>();
+      for (const answer of answers) {
+        const questionId = String((answer as Record<string, unknown>).question_id);
+        const match = /^q_(\d+)$/.exec(questionId);
+        if (!match || Number(match[1]) >= screeningQuestions.length || answersById.has(questionId)) {
+          throw new BadRequestException('INVALID_SCREENING_ANSWERS');
+        }
+        const value = (answer as Record<string, unknown>).answer;
+        if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
+          throw new BadRequestException('INVALID_SCREENING_ANSWERS');
+        }
+        answersById.set(questionId, answer);
+      }
+      screeningQuestions.forEach((question: any, index: number) => {
+        if (question?.required && !answersById.has(`q_${index}`)) {
+          throw new BadRequestException('MISSING_REQUIRED_SCREENING_ANSWER');
+        }
+      });
+
       const document = await client.query(`
-        SELECT id, document_type, document_role, security_scan_status, deleted_at
-        FROM public.uploaded_documents
-        WHERE id = $1 AND uploaded_by_user_id = $2 AND deleted_at IS NULL
-          AND security_scan_status = 'clean'
-      `, [dto.document_id, userId]);
+        SELECT d.id, d.document_type, d.document_role, d.security_scan_status,
+               d.processing_status, d.deleted_at
+        FROM public.uploaded_documents d
+        JOIN public.candidate_profiles cp
+          ON cp.user_id = $2 AND cp.id = $3 AND cp.deleted_at IS NULL
+        JOIN public.candidate_profile_documents cpd
+          ON cpd.candidate_id = cp.id AND cpd.document_id = d.id
+         AND cpd.document_role = 'resume' AND cpd.is_current = TRUE
+         AND cpd.unlinked_at IS NULL
+        WHERE d.id = $1 AND d.uploaded_by_user_id = $2 AND d.deleted_at IS NULL
+          AND d.document_type = 'resume'
+          AND d.security_scan_status = 'clean'
+          AND d.processing_status IN ('partial', 'completed')
+      `, [dto.document_id, userId, profile.id]);
       if (!document.rows[0]) throw new BadRequestException('DOCUMENT_NOT_ELIGIBLE');
 
       let application: any;
@@ -97,7 +127,7 @@ export class ApplicationService {
         throw error;
       }
       const app = application.rows[0];
-      const snapshotData = { profile: { id: profile.id, headline: profile.headline ?? null, summary: profile.summary ?? null, location_city: profile.location_city ?? null, location_state: profile.location_state ?? null, location_country: profile.location_country ?? null, preferred_work_mode: profile.preferred_work_mode ?? null, experience_years: profile.experience_years ?? null, education_level: profile.education_level ?? null, profile_revision: profile.profile_revision ?? null }, resume_document_id: dto.document_id, consent: true, screening_answers: answers };
+      const snapshotData = { profile: { id: profile.id, professional_title: profile.professional_title ?? null, summary: profile.summary ?? null, current_location: profile.current_location ?? null, city: profile.city ?? null, state: profile.state ?? null, country: profile.country ?? null, preferred_work_mode: profile.preferred_work_mode ?? null, notice_period_days: profile.notice_period_days ?? null, expected_salary_min: profile.expected_salary_min ?? null, expected_salary_max: profile.expected_salary_max ?? null, salary_currency: profile.salary_currency ?? null, profile_revision: profile.profile_revision ?? null }, resume_document_id: dto.document_id, consent: true, screening_answers: answers };
       const snapshot = await client.query(`
         INSERT INTO public.application_profile_snapshots
           (application_id, snapshot_type, snapshot_version, schema_version, source_profile_revision,

@@ -69,6 +69,16 @@ supabase/.temp/
 # Local OpenCode configuration
 opencode.json
 
+# Scratch / ad-hoc testing directories
+scratch/
+
+# Internal handoff / status docs (not for repo)
+CLAMAV-STATUS-HANDOFF.md
+
+# Sensitive financial documents
+*.pdf
+!docs/**/*.pdf
+
 # Test and tool caches
 .cache/
 .turbo/

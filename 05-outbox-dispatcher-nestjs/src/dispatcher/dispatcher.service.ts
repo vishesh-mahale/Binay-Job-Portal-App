@@ -106,14 +106,9 @@ export class DispatcherService {
       } while (this.wakePending && this.nowMs() - startedAt < this.config.drainRequestBudgetMs);
 
       total.budget_exhausted = this.wakePending;
-      this.logger.info('wake drained', {
-        claimed: total.claimed,
-        published: total.published,
-        failed: total.failed,
-        iterations: total.iterations,
-        duration_ms: this.nowMs() - startedAt,
-        budget_exhausted: total.budget_exhausted,
-      });
+      const ts = new Date().toISOString().slice(11, 19);
+      const dur = this.nowMs() - startedAt;
+      this.logger.info(`${ts} wake: ${total.claimed} claimed, ${total.published} ok, ${total.failed} fail, ${dur}ms`);
       return total;
     } finally {
       this.dispatchRunning = false;

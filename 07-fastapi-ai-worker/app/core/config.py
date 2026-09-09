@@ -186,6 +186,26 @@ class Settings(BaseSettings):
             raise ValueError("At least one service account required")
         return accounts
 
+    @field_validator("CLAMAV_HOST")
+    @classmethod
+    def validate_clamav_host(cls, v: str) -> str:
+        """Require a real ClamAV endpoint; do not allow placeholder values."""
+        normalized = v.strip()
+        placeholder_values = {
+            "your-cloud-clamav-host-or-private-endpoint",
+            "your-clamav-host",
+            "replace-me",
+            "todo",
+            "changeme",
+        }
+        if not normalized:
+            raise ValueError("CLAMAV_HOST must be set to the real deployed ClamAV endpoint")
+        if normalized.lower() in {p.lower() for p in placeholder_values}:
+            raise ValueError(
+                "CLAMAV_HOST is still a placeholder. No separate Google Cloud ClamAV service exists in the authenticated project yet; configure the actual deployed ClamAV host first."
+            )
+        return normalized
+
     def get_allowed_service_accounts(self) -> list[str]:
         """Get list of allowed service account emails."""
         if isinstance(self.GOOGLE_OIDC_ALLOWED_SERVICE_ACCOUNTS, str):

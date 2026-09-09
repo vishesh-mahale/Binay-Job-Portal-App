@@ -147,4 +147,37 @@ describe('ApiClient', () => {
     await expect(client.getMe()).rejects.toThrow(AppApiError);
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it('uploads a resume as multipart without forcing an application/json content type', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ document_id: 'doc-1', reused: false }),
+    });
+
+    const file = new File(['resume'], 'resume.pdf', { type: 'application/pdf' });
+    await client.uploadResume(file, true);
+    const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(options.body).toBeInstanceOf(FormData);
+    expect(options.headers['Content-Type']).toBeUndefined();
+    expect(options.headers.Accept).toBe('application/json');
+  });
+
+  it('uses the authenticated candidate routes for profile, resume and applications', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ data: [] }),
+    });
+
+    await client.getCandidateProfile();
+    await client.listCandidateResumes();
+    await client.getMyApplications();
+
+    expect((global.fetch as jest.Mock).mock.calls.map((call) => call[0])).toEqual([
+      'http://localhost:3000/api/v1/candidates/me',
+      'http://localhost:3000/api/v1/resumes',
+      'http://localhost:3000/api/v1/me/applications',
+    ]);
+  });
 });

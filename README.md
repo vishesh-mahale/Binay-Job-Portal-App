@@ -33,6 +33,7 @@
 - [⚡ 05-outbox-dispatcher-nestjs/](05-outbox-dispatcher-nestjs/README.md) — Outbox Dispatcher service
 - [📦 06-google-cloud-tasks-queue/](06-google-cloud-tasks-queue/README.md) — GCP Cloud Tasks Queue & IaC configs
 - [🤖 07-fastapi-ai-worker/](07-fastapi-ai-worker/README.md) — AI Worker service
+- [🛡️ 08-clamav-cloudrun/](08-clamav-cloudrun/DEPLOY-RUNBOOK.md) — ClamAV antivirus scanner (Cloud Run)
 - [📚 docs/](docs/) — Architecture, research & ADRs
 - [📝 contracts/](contracts/README.md) — API/Event/Task contracts
 - [🔍 Agent_review/](Agent_review/MERGED_COMPREHENSIVE_AUDIT.md) — Comprehensive audit
@@ -137,6 +138,15 @@ Binay-Job-Portal-App/
 ├── 🤖 07-fastapi-ai-worker/
 │   ├── README.md
 │   └── pyproject.toml
+│
+├── 🛡️ 08-clamav-cloudrun/
+│   ├── DEPLOY-RUNBOOK.md      ← Production deployment guide + gotchas
+│   ├── deploy.sh              ← One-click deploy script
+│   ├── Dockerfile             ← ClamAV + Python wrapper container
+│   ├── app.py                 ← HTTP wrapper (INSTREAM over socket)
+│   ├── start.sh               ← freshclam → clamd → Python entrypoint
+│   ├── requirements.txt       ← Python dependencies
+│   └── test-clamav.py         ← Health + EICAR test script
 │
 ├── 📚 docs/
 │   ├── adr/
@@ -293,6 +303,11 @@ Binay-Job-Portal-App/
 🤖 **FASTAPI AI WORKER (07-fastapi-ai-worker)**
 - [Worker README](07-fastapi-ai-worker/README.md)
 
+🛡️ **CLAMAV SCANNER (08-clamav-cloudrun)**
+- [Deployment Runbook](08-clamav-cloudrun/DEPLOY-RUNBOOK.md) — Full deployment guide, gotchas & prod checklist
+- [Deploy Script](08-clamav-cloudrun/deploy.sh) — One-click deploy (Artifact Registry + Cloud Run)
+- [Test Script](08-clamav-cloudrun/test-clamav.py) — Health + EICAR functional test
+
 📚 **ARCHITECTURE & DOCS**
 - System Overview
   - [System Architecture Diagram & Blueprint](docs/architecture/ARCHITECTURE-DIAGRAM.md)
@@ -344,12 +359,14 @@ Binay-Job-Portal-App/
 5. [Outbox Dispatcher NestJS](05-outbox-dispatcher-nestjs/README.md) — outbox publisher/dispatcher service
 6. `06-google-cloud-tasks/` — managed queue configuration, IAM और retry policy
 7. [FastAPI AI Worker](07-fastapi-ai-worker/README.md) — resume parsing, AI और embeddings
+8. [ClamAV Scanner](08-clamav-cloudrun/DEPLOY-RUNBOOK.md) — antivirus scanning service (Cloud Run, ₹0 free tier)
 
 Cross-cutting areas:
 
 - `docs/adr/` — approved architecture decisions और उनका reasoning
 - `docs/architecture/` — cross-service diagrams और system views
 - `contracts/` — APIs, events और Cloud Task payload contracts
+- `08-clamav-cloudrun/` — ClamAV antivirus scanner (Cloud Run service, deploy script, runbook)
 
 ## Navigation standard
 

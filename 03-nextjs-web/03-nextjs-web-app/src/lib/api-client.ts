@@ -16,6 +16,20 @@ import type {
   PublicJobSearchResponse,
   UpdateJobDto,
 } from '../types/jobs';
+import type {
+  CandidateProfileResponse,
+  CandidateProfileUpdate,
+  CandidateResume,
+  ParsedResumeResponse,
+  ResumeConfirmationResponse,
+  ResumeStatusResponse,
+} from '../types/candidate';
+import type {
+  ApplicationDetail,
+  ApplicationHistoryItem,
+  ApplicationListItem,
+  SubmitApplicationRequest,
+} from '../types/applications';
 
 export interface RequestOptions extends RequestInit {
   timeoutMs?: number;
@@ -43,13 +57,16 @@ export class ApiClient {
     const requestId = this.generateId();
     const traceId = this.generateId();
 
+    const isFormDataBody = typeof FormData !== 'undefined' && rest.body instanceof FormData;
     const requestHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
       'x-request-id': requestId,
       'x-trace-id': traceId,
       ...(headers as Record<string, string>),
     };
+    if (!isFormDataBody && !Object.keys(requestHeaders).some((key) => key.toLowerCase() === 'content-type')) {
+      requestHeaders['Content-Type'] = 'application/json';
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -159,7 +176,6 @@ export class ApiClient {
   public async getMe(): Promise<UserSummary> {
     return this.request<UserSummary>('/api/v1/auth/me', {
       method: 'GET',
-      skipAuthRefresh: true,
     });
   }
 
@@ -478,6 +494,61 @@ export class ApiClient {
       method: 'GET',
       skipAuthRefresh: true,
     });
+  }
+
+  // --- Candidate profile, resume and application endpoints ---
+
+  public async getCandidateProfile(): Promise<CandidateProfileResponse> {
+    return this.request<CandidateProfileResponse>('/api/v1/candidates/me');
+  }
+
+  public async updateCandidateProfile(data: CandidateProfileUpdate): Promise<{ candidate_id: string; profile_revision: number; projection_queued: boolean }> {
+    return this.request('/api/v1/candidates/me', { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  public async listCandidateResumes(): Promise<CandidateResume[]> {
+    return this.request<CandidateResume[]>('/api/v1/resumes');
+  }
+
+  public async uploadResume(file: File, useAsActive = false): Promise<CandidateResume & { reused: boolean }> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('use_as_active_profile_resume', String(useAsActive));
+    return this.request('/api/v1/resumes/upload', { method: 'POST', body: form });
+  }
+
+  public async getResumeStatus(documentId: string): Promise<ResumeStatusResponse> {
+    return this.request<ResumeStatusResponse>(`/api/v1/resumes/${encodeURIComponent(documentId)}/status`);
+  }
+
+  public async getParsedResume(documentId: string): Promise<ParsedResumeResponse> {
+    return this.request<ParsedResumeResponse>(`/api/v1/resumes/${encodeURIComponent(documentId)}/parsed-data`);
+  }
+
+  public async confirmResume(documentId: string, data: Record<string, unknown>): Promise<ResumeConfirmationResponse> {
+    return this.request<ResumeConfirmationResponse>(`/api/v1/resumes/${encodeURIComponent(documentId)}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async applyToJob(jobId: string, data: SubmitApplicationRequest): Promise<ApplicationDetail> {
+    return this.request<ApplicationDetail>(`/api/v1/jobs/${encodeURIComponent(jobId)}/apply`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getMyApplications(): Promise<ApplicationListItem[]> {
+    return this.request<ApplicationListItem[]>('/api/v1/me/applications');
+  }
+
+  public async getMyApplication(applicationId: string): Promise<ApplicationDetail> {
+    return this.request<ApplicationDetail>(`/api/v1/me/applications/${encodeURIComponent(applicationId)}`);
+  }
+
+  public async getMyApplicationHistory(applicationId: string): Promise<ApplicationHistoryItem[]> {
+    return this.request<ApplicationHistoryItem[]>(`/api/v1/me/applications/${encodeURIComponent(applicationId)}/history`);
   }
 }
 
