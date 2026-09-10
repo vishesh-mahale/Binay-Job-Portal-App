@@ -525,6 +525,10 @@ export class ApiClient {
     return this.request<ParsedResumeResponse>(`/api/v1/resumes/${encodeURIComponent(documentId)}/parsed-data`);
   }
 
+  public async deleteResume(documentId: string): Promise<{ deleted: boolean; document_id: string }> {
+    return this.request(`/api/v1/resumes/${encodeURIComponent(documentId)}`, { method: 'DELETE' });
+  }
+
   public async confirmResume(documentId: string, data: Record<string, unknown>): Promise<ResumeConfirmationResponse> {
     return this.request<ResumeConfirmationResponse>(`/api/v1/resumes/${encodeURIComponent(documentId)}/confirm`, {
       method: 'POST',

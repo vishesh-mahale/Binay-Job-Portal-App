@@ -56,20 +56,51 @@ Har uploaded file ki registry.
 | `id` | Document UUID | Database |
 | `uploaded_by_user_id` | Candidate user UUID | Registered upload mein NestJS |
 | `guest_upload_session_id` | Guest session UUID | Guest upload mein NestJS |
-| `document_type` | `resume` | Validated request |
-| `original_file_name` | `Rahul_Resume.pdf` | Original display name |
+| `checksum_sha256` | `b8a3c195...` (64 hex chars) | NestJS; `createHash('sha256').update(file.buffer).digest('hex')` — same user + same checksum → `reused: true` |
+| `processing_status` | `queued` | **DB Trigger only** (trg_sync_processing_status). Worker kabhi directly update nahi karta. See lifecycle below |
+| `security_scan_status` | `clean` | **FastAPI Worker** updates. ClamAV scan stages. See lifecycle below |
+| `security_scan_result` | `{"verdict":"clean",...}` | **FastAPI Worker** — full scan JSON result |
+| `document_type` | `resume` | Validated request — resume, cover_letter, certificate, other |
+| `original_file_name` | `Rahul_Resume.pdf` | Original display name as uploaded by user |
 | `file_extension` | `pdf` | Server-derived/validated |
-| `file_size_bytes` | `245760` | Uploaded stream |
+| `file_size_bytes` | `245760` | Uploaded stream; max 10MB (`MAX_DOCUMENT_SIZE_BYTES`) |
 | `mime_type` | `application/pdf` | Server validation |
-| `storage_bucket` | Private bucket | Server config |
-| `storage_path` | Generated object path | NestJS, client nahi |
-| `checksum_sha256` | 64-char lowercase hash | Required; NestJS streaming upload |
-| `security_scan_status` | `pending → clean` | Security worker |
-| `security_scan_result` | Scanner JSON | Security worker |
-| `processing_status` | `uploaded → processing...` | Processing orchestration |
-| `metadata` | Upload-source JSON | NestJS |
-| `updated_at` | Last mutable-state timestamp | Database trigger on scan/processing update |
-| `deleted_at` | NULL/timestamp | Soft-delete/retention flow |
+| `storage_bucket` | `job-portal-uploads` | Server config — GCS bucket name |
+| `storage_path` | `candidates/{id}/resumes/{id}.pdf` | NestJS-generated GCS object path |
+| `created_at` | `2026-09-09 07:26:20` | Database default `NOW()` |
+| `updated_at` | `2026-09-10 04:27:40` | Trigger on scan/processing update |
+| `deleted_at` | `NULL` / timestamp | Soft-delete/retention flow |
+| `metadata` | `{}` | Currently not in use; reserved for future (extracted text, tags, etc.) |
+
+#### `processing_status` lifecycle (DB Trigger only)
+
+```text
+resume_parsing_jobs.status   →   processing_status
+-----------------------------------
+queued                       →   'queued'
+processing                   →   'processing'
+completed                    →   'completed'
+partial                      →   'partial'
+failed                       →   'failed'
+cancelled                    →   'failed'
+```
+
+Worker sirf `resume_parsing_jobs.status` update karta hai.
+DB trigger `trg_sync_processing_status` usse `uploaded_documents.processing_status` mein copy karta hai.
+
+#### `security_scan_status` lifecycle (FastAPI Worker)
+
+```text
+Stage           Updated By                     Value Change                  Kab
+--------------- ------------------------------ ---------------------------- -------------------------
+Upload          NestJS INSERT (default)        → 'pending'                   File upload pe
+Scan start      Worker (task_handlers.py)      'pending'/'failed' → 'scanning'  ClamAV scan shuru
+Scan clean      Worker (task_handlers.py)      'scanning' → 'clean'         File safe hai
+Scan infected   Worker (task_handlers.py)      'scanning' → 'infected'      Virus/malware mila
+Scan error      Worker (task_handlers.py)      'scanning' → 'failed'        ClamAV unavailable
+```
+
+**Note:** `quarantined` enum mein exist karta hai but koi code kabhi set nahi karta.
 
 Ownership XOR rule:
 
@@ -98,13 +129,18 @@ Example row:
   "id": "doc-101",
   "uploaded_by_user_id": "user-rahul",
   "guest_upload_session_id": null,
+  "checksum_sha256": "b8a3c195ccb5102f1537c6a59172dbe8c6d9a13fb8de81721f2a056499a4b46b",
+  "processing_status": "uploaded",
+  "security_scan_status": "pending",
+  "security_scan_result": null,
   "document_type": "resume",
   "original_file_name": "Rahul_Resume.pdf",
+  "file_extension": "pdf",
   "file_size_bytes": 245760,
   "mime_type": "application/pdf",
-  "checksum_sha256": "a4f916...",
-  "security_scan_status": "pending",
-  "processing_status": "uploaded"
+  "storage_bucket": "job-portal-uploads",
+  "storage_path": "candidates/user-rahul/resumes/doc-101.pdf",
+  "metadata": {}
 }
 ```
 
@@ -121,25 +157,32 @@ Guest opens published Job A
 Guest later registers ho to original document owner rewrite nahi hoga. Application
 and profile junctions relation establish karengi; upload provenance historical hai.
 
-## 5. Duplicate file
+## 5. Duplicate file & `.doc` rejection
 
 Unique checksum indexes owner/session scope mein duplicate active file rokti hain.
 
 ```text
-Same user + same checksum → existing document reuse
-Same guest session + same checksum → existing document reuse
+Same user + same checksum → existing document reuse (reused: true)
+Same guest session + same checksum → existing document reuse (reused: true)
 Different users + same checksum → separate private ownership allowed
 ```
 
 NestJS unique error expose nahi karega; concurrent conflict par existing row load
 karke idempotent response dega.
 
+**`.doc` files:** Upload allowed hai (`.doc` in `allowed_extensions`), but parsing
+mein `document_extractor.py` reject karta hai — error: "Legacy .doc format is not
+supported. Please convert to .docx and re-upload."
+
 ## 6. Security scan
 
 ```text
 pending → scanning → clean
-                   └→ infected/quarantined/failed
+                    └→ infected
+                    └→ failed
 ```
+
+**Note:** `quarantined` enum mein hai but code mein set nahi hota.
 
 Only `clean` resume ko `07_resume_processing.sql` parsing queue mein bhejna chahiye.
 Scanner fail/infected ho to candidate ko safe message mile, internal details nahi.
@@ -155,7 +198,7 @@ uploaded_documents + security.scan.requested outbox
 ```
 
 Parsing task file ko tabhi download/process karegi jab document active ho aur scan
-status `clean` ho. Failed/infected/quarantined file se parsing job start nahi hogi.
+status `clean` ho. Failed/infected file se parsing job start nahi hogi.
 
 ## 7. Delete behavior
 

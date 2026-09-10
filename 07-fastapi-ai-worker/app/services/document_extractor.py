@@ -41,6 +41,8 @@ class DocumentExtractor:
         elif name.endswith(".docx"):
             if not content.startswith(b"PK"):
                 raise ValueError("Invalid DOCX file: magic bytes do not match ZIP archive")
+        elif name.endswith(".doc"):
+            raise ValueError("Legacy .doc format is not supported. Please convert to .docx and re-upload.")
         elif name.endswith(".txt"):
             return
 

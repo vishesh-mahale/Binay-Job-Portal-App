@@ -24,6 +24,10 @@ export class UpdateCandidateProfileDto {
   @Allow() @IsOptional() @IsBoolean() visa_sponsorship_needed?: boolean;
   @Allow() @IsOptional() @IsBoolean() is_open_to_work?: boolean;
   @Allow() @IsOptional() @IsString() available_from?: string | null;
+  @Allow() @IsOptional() @IsString() date_of_birth?: string | null;
+  @Allow() @IsOptional() @IsString() gender?: string | null;
+  @Allow() @IsOptional() @IsString() nationality?: string | null;
+  @Allow() @IsOptional() @IsString() salary_currency?: string | null;
 }
 
 export class ArchiveCandidateFactDto {
@@ -36,14 +40,14 @@ export class CandidateService {
 
   async listOwnResumes(request: AuthenticatedRequest) {
     const result = await this.system.query(`
-      SELECT d.id AS document_id, cpd.document_role, cpd.version_number, cpd.is_current,
+      SELECT d.id AS document_id, cpd.document_role, cpd.version_number, cpd.is_current, cpd.unlinked_at,
              d.created_at AS uploaded_at, d.updated_at,
              d.security_scan_status, d.processing_status
       FROM public.candidate_profile_documents cpd
       JOIN public.candidate_profiles cp ON cp.id = cpd.candidate_id
       JOIN public.uploaded_documents d ON d.id = cpd.document_id
       WHERE cp.user_id = $1 AND cp.deleted_at IS NULL
-        AND cpd.document_role = 'resume' AND cpd.unlinked_at IS NULL
+        AND cpd.document_role = 'resume'
         AND d.deleted_at IS NULL
       ORDER BY cpd.is_current DESC, cpd.version_number DESC, d.created_at DESC
     `, [request.user?.sub]);
@@ -139,7 +143,18 @@ export class CandidateService {
     const row = result.rows[0];
     if (!row) throw new NotFoundException('NOT_FOUND');
     if (String(row.security_scan_status) !== 'clean') throw new NotFoundException('NOT_FOUND');
-    const source = row.normalized_output && typeof row.normalized_output === 'object' ? row.normalized_output : {};
+    const raw = row.normalized_output && typeof row.normalized_output === 'object' ? row.normalized_output : {};
+    let source: Record<string, unknown> = raw;
+    if (raw.ai && typeof raw.ai === 'object') {
+      const ai = raw.ai as Record<string, unknown>;
+      source = {
+        contact_info: { name: ai.name, email: ai.email, phone: ai.phone },
+        professional_title: ai.current_title,
+        skills: ai.skills ?? [],
+        experiences: ai.experience_years ? [{ years_total: ai.experience_years }] : [],
+        educations: Array.isArray(ai.education) ? ai.education.map((e: string) => ({ raw: e })) : [],
+      };
+    }
     const allowed = ['contact_info', 'professional_title', 'summary', 'skills', 'experiences', 'educations', 'certifications', 'languages'];
     const normalized_output = Object.fromEntries(allowed.filter((key) => Object.prototype.hasOwnProperty.call(source, key)).map((key) => [key, source[key]]));
     return {
@@ -167,7 +182,8 @@ export class CandidateService {
       notice_period_days: 'notice_period_days', expected_salary_min: 'expected_salary_min',
       expected_salary_max: 'expected_salary_max', work_authorization: 'work_authorization',
       visa_sponsorship_needed: 'visa_sponsorship_needed', is_open_to_work: 'is_open_to_work',
-      available_from: 'available_from',
+      available_from: 'available_from', date_of_birth: 'date_of_birth',
+      gender: 'gender', nationality: 'nationality', salary_currency: 'salary_currency',
     };
     const fields = Object.keys(allowed).filter((key) => Object.prototype.hasOwnProperty.call(body, key));
     if (fields.length === 0) throw new BadRequestException('VALIDATION_ERROR');
@@ -188,6 +204,21 @@ export class CandidateService {
       const eventId = randomUUID();
       await client.query(`INSERT INTO public.outbox_events (id, aggregate_type, aggregate_id, event_type, schema_version, payload, correlation_id, causation_id) VALUES ($1,'candidate',$2,'candidate.profile.changed',1,$3::jsonb,$1,$1)`, [eventId, profile.id, JSON.stringify({ schema_version: 1, event_id: eventId, aggregate_id: profile.id, trace_id: eventId, change_type: 'profile_updated' })]);
       return { candidate_id: profile.id, profile_revision: newRevision, projection_queued: true };
+    });
+  }
+
+  async deleteResume(request: AuthenticatedRequest, documentId: string) {
+    if (!/^[0-9a-f-]{36}$/i.test(documentId)) throw new NotFoundException('NOT_FOUND');
+    return this.system.transaction(async (client) => {
+      const candidate = await client.query(`SELECT cp.id FROM public.candidate_profiles cp WHERE cp.user_id = $1 AND cp.deleted_at IS NULL`, [request.user?.sub]);
+      if (!candidate.rows[0]) throw new NotFoundException('NOT_FOUND');
+      const candidateId = candidate.rows[0].id;
+      const link = await client.query(`SELECT cpd.is_current FROM public.candidate_profile_documents cpd WHERE cpd.candidate_id = $1 AND cpd.document_id = $2 AND cpd.document_role = 'resume' AND cpd.unlinked_at IS NULL`, [candidateId, documentId]);
+      if (!link.rows[0]) throw new NotFoundException('NOT_FOUND');
+      if (link.rows[0].is_current) throw new BadRequestException('CANNOT_DELETE_ACTIVE_RESUME');
+      await client.query(`UPDATE public.candidate_profile_documents SET unlinked_at = NOW() WHERE candidate_id = $1 AND document_id = $2 AND document_role = 'resume'`, [candidateId, documentId]);
+      await client.query(`UPDATE public.uploaded_documents SET deleted_at = NOW() WHERE id = $1 AND uploaded_by_user_id = $2`, [documentId, request.user?.sub]);
+      return { deleted: true, document_id: documentId };
     });
   }
 
@@ -255,5 +286,10 @@ export class ResumeStatusController {
   @Get(':id/parsed-data')
   async parsedData(@Req() request: AuthenticatedRequest, @Param('id') documentId: string) {
     return this.candidate.getParsedData(request, documentId);
+  }
+
+  @Delete(':id')
+  async deleteResume(@Req() request: AuthenticatedRequest, @Param('id') documentId: string) {
+    return this.candidate.deleteResume(request, documentId);
   }
 }

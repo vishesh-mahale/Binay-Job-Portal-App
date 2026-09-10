@@ -111,11 +111,11 @@ $$;
 CREATE TABLE candidate_profile_documents (
     candidate_id        UUID NOT NULL REFERENCES candidate_profiles(id) ON DELETE CASCADE,
     document_id         UUID NOT NULL REFERENCES uploaded_documents(id) ON DELETE RESTRICT,
-    document_role       document_role NOT NULL,
-    version_number      INTEGER NOT NULL CHECK (version_number > 0),
-    is_current          BOOLEAN NOT NULL DEFAULT FALSE,
+    document_role       document_role NOT NULL,   -- e.g., 'resume', 'cover_letter', 'certificate', 'portfolio' , 'other'
+    version_number      INTEGER NOT NULL CHECK (version_number > 0),     1,2,3,4,5,6
+    is_current          BOOLEAN NOT NULL DEFAULT FALSE,               --  only one can be true based on the active checkbox status while uploading the document.
     linked_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    unlinked_at         TIMESTAMPTZ,
+    unlinked_at         TIMESTAMPTZ,                                  --  this will get initialized when resume gets deleted.
     PRIMARY KEY (candidate_id, document_id, document_role),
     CONSTRAINT candidate_profile_document_active_check CHECK (
         unlinked_at IS NULL OR is_current = FALSE

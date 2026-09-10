@@ -1,5 +1,7 @@
 # 08 Candidates — Detailed Hinglish Explanation
 
+[Signup, role aur `candidate_profiles` row ka exact flow](#15-signup-role-aur-candidate_profiles-row-ka-exact-flow)
+
 ## 1. Is file ka kaam
 
 `08_candidates.sql` candidate ki current editable professional identity rakhti
@@ -314,3 +316,115 @@ Search worker केवल active rows (`deleted_at IS NULL`) लेगा.
 
 > `08` में candidate की current editable truth सुरक्षित रहती है; recruiter search projection
 > confirmed canonical facts और latest active profile resume के clearly-labelled parsed facts से बनती है।
+
+## 15. Signup, role aur `candidate_profiles` row ka exact flow
+
+### 15.1 Signup ke baad database flow
+
+Candidate signup ke baad `candidate_profiles` row NestJS manually create nahi karta.
+Supabase Auth aur database triggers ye flow complete karte hain:
+
+```text
+Next.js
+  -> NestJS signup API
+  -> Supabase Auth: auth.users INSERT
+  -> DB trigger: public.handle_new_user()
+  -> public.users INSERT
+  -> DB trigger: create_candidate_profile_on_user_signup
+  -> candidate_profiles INSERT (sirf role = candidate ke liye)
+```
+
+`handle_new_user()` trusted server-side `application_role` ko `candidate`, `employer`,
+`hr` ya `admin` mein resolve karta hai. Missing ya invalid role safely `candidate`
+ban jata hai. Uske baad `create_empty_candidate_profile()` sirf tab ye row insert
+karta hai jab `NEW.role = 'candidate'` ho:
+
+```sql
+INSERT INTO public.candidate_profiles (user_id)
+VALUES (NEW.id)
+ON CONFLICT (user_id) DO NOTHING;
+```
+
+Authoritative implementation:
+
+- [`handle_new_user()`](./03_users_auth.sql)
+- [`create_empty_candidate_profile()`](./08_candidates.sql)
+- [`create_candidate_profile_on_user_signup`](./08_candidates.sql)
+
+### 15.2 Initial `candidate_profiles` row mein kya hota hai?
+
+Trigger sirf `user_id` explicitly set karta hai. Baaki values schema defaults ya
+`NULL` se aati hain:
+
+| Field | Initial value |
+|---|---|
+| `id` | `gen_random_uuid()` |
+| `user_id` | `public.users.id` |
+| `profile_revision` | `1` |
+| `is_open_to_work` | `TRUE` |
+| `willing_to_relocate` | `FALSE` |
+| `willing_to_travel` | `FALSE` |
+| `remote_experience` | `FALSE` |
+| `salary_currency` | `INR` |
+| Profile/location fields | `NULL` |
+| `profile_completed_at` | `NULL` |
+
+Is row ka purpose empty onboarding profile ready rakhna hai. Resume upload ke time
+new candidate profile row nahi banti; existing row ke saath document link hota hai.
+
+### 15.3 Role ke hisaab se profile row
+
+Current schema mein `users.role` single application role hai:
+
+```text
+candidate | employer | hr | admin
+```
+
+| Signup ya role situation | `candidate_profiles` row |
+|---|---|
+| Direct `candidate` signup | Automatically create hoti hai |
+| Direct `employer` signup | Automatically create nahi hoti |
+| Direct `hr` signup | Automatically create nahi hoti |
+| Direct `admin` signup | Automatically create nahi hoti |
+| Candidate signup ke baad role `employer`/`hr` hota hai | Existing row automatically delete nahi hoti |
+
+Trigger `AFTER INSERT ON public.users` hai; role update par ye dobara nahi chalta.
+`candidate_profiles.user_id` unique hone ki wajah se same user ke liye duplicate
+profile row bhi nahi banti.
+
+Important: current code ye assume nahi karta ki har employer ya HR pehle candidate
+ke roop mein register karega. Dono flows possible hain:
+
+```text
+Direct employer/HR signup
+  -> users row
+  -> candidate_profiles row nahi
+
+Candidate signup -> later role change
+  -> users.role update
+  -> existing candidate_profiles row remain
+```
+
+Employer/HR ke company access ke liye `users`, `companies` aur `company_members`
+tables use hote hain. Current active schema mein `user_roles` multi-role table nahi hai.
+
+### 15.4 Resume upload aur profile confirmation ka relation
+
+```text
+Signup
+  -> candidate_profiles row create
+
+Resume upload
+  -> uploaded_documents row
+  -> candidate_profile_documents mein link
+
+Candidate confirm
+  -> existing candidate_profiles UPDATE
+  -> canonical fact tables mein writes
+  -> profile_revision bump
+  -> candidate.profile.changed outbox event
+```
+
+Isliye `candidate_profiles` creation aur resume processing alag lifecycle steps hain:
+profile row signup par create hoti hai, jabki resume upload/confirm us existing row ko
+use aur update karta hai.

@@ -151,63 +151,102 @@ Registered candidate होने के कारण `guest_upload_session_id` 
 इस row का अर्थ है: `document-301` Rahul का current/active profile resume है।
 Actual PDF इस table में नहीं, private storage में है।
 
-### Step 5: Security scan complete होता है ([06_documents.sql](06_documents.sql))
+### Step 5: Security scan — Worker karta hai ([06_documents.sql](06_documents.sql))
 
-Security worker file scan करता है। Clean मिलने पर उसी `uploaded_documents` row
-के columns **UPDATE** होते हैं:
+FastAPI Worker Cloud Tasks se trigger hota hai aur file scan karta hai.
+
+**Step 5a: Document claim (scan start)**
+
+Worker `uploaded_documents` row **UPDATE** karta hai:
 
 ```text
-security_scan_status: pending → clean
-security_scan_result: NULL → {"engine":"...","threats":[]}
+security_scan_status: pending → scanning
 ```
 
-Unsafe file होने पर parsing शुरू नहीं होगी। Clean होने पर resume-processing
-event enqueue होगा।
+**Step 5b: ClamAV scan**
 
-### Step 6: Parsing job create होती है ([07_resume_processing.sql](07_resume_processing.sql))
+Worker GCS se file download karta hai aur ClamAV Cloud Run ko bhejta hai.
 
-NestJS या trusted security-scan completion handler, file को `clean` mark करने वाली
-उसी transaction में `resume_parsing_jobs` की **नई row INSERT** करता है और
-`resume.parse.requested` outbox event भी लिखता है:
+**Step 5c: Scan result (same transaction)**
+
+Clean milne pe:
+
+```text
+security_scan_status: scanning → clean
+security_scan_result: NULL → {"verdict":"clean", "threats":[], ...}
+```
+
+Unsafe file hone pe:
+
+```text
+security_scan_status: scanning → infected
+```
+
+**Step 5d: Agar clean hai — Worker parsing job create karta hai**
+
+Worker hi (NestJS nahi) usi transaction mein `resume_parsing_jobs` ki **INSERT** karta hai:
 
 | Column | Value |
 |---|---|
 | `id` | `parsing-job-401` |
 | `document_id` | `document-301` |
 | `parser_provider` | `internal_fastapi` |
-| `parser_model` | configured resume model |
 | `status` | `queued` |
-| `priority` | `normal` |
-| `requested_by_user_id` | `user-101` |
-| `idempotency_key` | unique stable request key |
-| `attempt_number` | `1` |
-| `max_attempts` | `3` |
+| `idempotency_key` | `security_scan:{event_id}` |
 
-`resume_parsing_job_events` में `queued` event भी **INSERT** होगा।
+Aur `resume.parse.requested` outbox event bhi **INSERT** karta hai.
 
-### Step 7: Worker job process करता है ([07_resume_processing.sql](07_resume_processing.sql))
+**Step 5e: processed_events**
 
-Worker job claim करता है और `resume_parsing_jobs` row **UPDATE** करता है:
+Idempotency ke liye `processed_events` mein **INSERT** hota hai:
+
+```text
+consumer_name: 'security_scanner'
+event_id: {outbox_event_id}
+```
+
+**Important:** Agar infected hai to Steps 5d-5e skip hote hain. Koi parsing job
+create nahi hoti.
+
+**DB Trigger:** `resume_parsing_jobs` mein INSERT hone pe `trg_sync_processing_status`
+automatically fire hota hai:
+
+```text
+uploaded_documents.processing_status: uploaded → queued
+```
+
+### Step 7: Worker job claim karta hai ([07_resume_processing.sql](07_resume_processing.sql))
+
+Worker (FastAPI) job claim karta hai aur `resume_parsing_jobs` row **UPDATE** karta hai:
 
 ```text
 status: queued → processing
-locked_by: NULL → resume-worker-3
+locked_by: NULL → fastapi-worker
 locked_at: NULL → 10:01
 started_at: NULL → 10:01
+attempt_number: 1 → 2
 ```
 
-फिर private FastAPI worker:
+**DB Trigger:** `trg_sync_processing_status` fire hota hai:
 
 ```text
-Private storage से document-301 पढ़ता है
-→ OCR/parser/LLM चलाता है
-→ structured response लेता है
-→ output validate करता है
+uploaded_documents.processing_status: queued → processing
 ```
 
-### Step 8: Parsed result save होता है ([07_resume_processing.sql](07_resume_processing.sql))
+### Step 8: Parsed result save hota hai ([07_resume_processing.sql](07_resume_processing.sql))
 
-मान लेते हैं resume से निकला:
+Worker file download karta hai, text extract karta hai, AI call karta hai, aur phir
+**single atomic transaction** mein sab kuch commit karta hai:
+
+```text
+Private storage se document-301 download
+→ Text extraction (PDF/DOCX parsing)
+→ AI structured extraction (LLM call)
+→ Validate output
+→ Atomic commit (sab kuch ek transaction mein)
+```
+
+Maan lete hain resume se nikla:
 
 ```text
 Title: Frontend Developer
@@ -216,52 +255,74 @@ Experience: 3 years
 Education: B.Tech
 ```
 
-`resume_parsed_data` में **नई immutable row INSERT** होगी:
+**Atomic transaction mein (sab ek saath commit hota hai):**
 
-| Column | Value |
-|---|---|
-| `id` | `parsed-result-501` |
-| `parsing_job_id` | `parsing-job-401` |
-| `document_id` | `document-301` |
-| `extracted_text` | resume का plain text |
-| `raw_ai_output` | model का original JSON |
-| `normalized_output` | validated skills/experience/education JSON |
-| `overall_confidence` | `91.50` |
-| `schema_version` | `resume-schema-v1` |
+| # | Table | Operation | Values |
+|---|---|---|---|
+| 1 | `resume_parsing_job_events` | INSERT | `event_type='started'` |
+| 2 | `resume_parsing_artifacts` | INSERT | `artifact_type='extracted_text', inline_data={text: "..."}` |
+| 3 | `resume_parsed_data` | INSERT | `normalized_output={contact_info, skills, experiences, ...}` |
+| 4 | `resume_parsing_job_events` | INSERT | `event_type='completed'` |
+| 5 | `processed_events` | INSERT | `consumer_name='resume_parser'` (idempotency) |
+| 6 | `outbox_events` | INSERT | `event_type='candidate.resume.parsed'` (**projection trigger**) |
+| 7 | `analytics_events` | INSERT | `event_name='resume_parsed'` |
+| 8 | `resume_parsing_jobs` | UPDATE | `status: processing → completed, completed_at=NOW()` |
 
-Supporting output `resume_parsing_artifacts` में और timeline events
-`resume_parsing_job_events` में INSERT होंगे। अंत में job row **UPDATE** होगी:
+**DB Trigger:** `trg_sync_processing_status` fire hota hai:
 
 ```text
-status: processing → completed
-completed_at: NULL → 10:05
+uploaded_documents.processing_status: processing → completed
 ```
 
-Document की processing state भी orchestration service completed/parsed state में
-UPDATE करेगी।
+**`candidate.resume.parsed` event** kyun important hai?
+Ye event chain ka crucial link hai. Ye outbox event projection worker ko batata hai
+ki resume parse ho gaya hai aur ab `candidate_search_profiles` rebuild karna hai.
 
 ### Step 9: First-time profile setup ([08_candidates.sql](08_candidates.sql))
 
-क्योंकि यह Rahul का first profile setup है, UI parsed information दिखाकर उसे
-एक बार confirm/correct करने दे सकती है। Rahul save करता है तो transaction में:
+Kyonki yah Rahul ka first profile setup hai, UI parsed information dikhakar use
+ek baar confirm/correct karne deti hai. Rahul save karta hai to **NestJS transaction**
+mein:
+
+| # | Table | Operation | Values |
+|---|---|---|---|
+| 1 | `candidate_profiles` | UPDATE | `professional_title, city, state, ...` + `profile_completed_at=NOW()` |
+| 2 | `candidate_skills` | INSERT (0..n) | `{skill_name, proficiency_level, years_of_experience}` |
+| 3 | `candidate_experiences` | INSERT (0..n) | `{company_name, job_title, start_date, ...}` |
+| 4 | `candidate_educations` | INSERT (0..n) | `{institution_name, degree, field_of_study}` |
+| 5 | `candidate_certifications` | INSERT (0..n) | `{name, issuer, credential_id}` |
+| 6 | `candidate_projects` | INSERT (0..n) | `{title, description, technologies}` |
+| 7 | `candidate_languages` | INSERT (0..n) | `{language_name, proficiency}` |
+| 8 | `candidate_profiles` | UPDATE | `profile_revision: 1 → 2` (via `bump_candidate_profile_revision()`) |
+| 9 | `profile_change_history` | INSERT | `entity_type='resume_confirmation', operation='confirm'` |
+| 10 | `outbox_events` | INSERT | `event_type='candidate.profile.changed'` (**projection trigger**) |
+
+Ek Save action mein kitne bhi skills/experiences insert hon, `profile_revision` 
+kewal ek baar badhti hai.
+
+**`candidate.profile.changed` event** kyun important hai?
+Ye event projection worker ko batata hai ki candidate ka canonical profile badla
+hai aur `candidate_search_profiles` rebuild karna hai.
+
+### Step 10: Rahul recruiter search ke liye searchable banta hai (`08`) — **Asynchronous**
+
+**Important:** Yeh step **immediately nahi** hota — background worker karta hai!
+
+**Dono projection triggers:**
 
 ```text
-candidate_profiles       → title/summary/location UPDATE
-candidate_skills         → Angular, React, Java rows INSERT
-candidate_experiences    → experience rows INSERT
-candidate_educations     → education rows INSERT
-profile_change_history   → change records INSERT
-candidate_profiles.profile_revision: 1 → 2
-candidate_profiles.profile_completed_at: NULL → current time
-outbox event             → projection rebuild request INSERT
+Trigger 1: candidate.resume.parsed (parsing complete hone pe)
+           ↓
+           Projection Worker
+
+Trigger 2: candidate.profile.changed (user confirm karne pe)
+           ↓
+           Projection Worker
 ```
 
-एक Save action में तीन skills insert हुईं, फिर भी `profile_revision` केवल एक बार
-बढ़ेगी।
-
-### Step 10: Rahul recruiter search के लिए searchable बनता है (`08`) — **Asynchronous** ⏱️
-
-**Important:** यह step **immediately नहीं** होता — background worker करता है!
+Pehla resume hone ke karan dono events fire honge:
+1. `candidate.resume.parsed` — Worker parsing complete hone pe emit karta hai
+2. `candidate.profile.changed` — User confirm karne pe NestJS emit karta hai
 
 #### Timeline:
 ```
@@ -435,27 +496,58 @@ Final state:
 
 ```text
 Supabase auth.users
-        ↓
+        ↓ (trigger)
 03 users (user-101)
-        ↓
+        ↓ (trigger)
 08 candidate_profiles (candidate-201, incomplete)
         ↓
-06 uploaded_documents (document-301, scan pending)
+  ┌─── PHASE 1: UPLOAD (NestJS) ───┐
+  │ 06 uploaded_documents           │ INSERT (scan=pending, processing=uploaded)
+  │ 08 candidate_profile_documents  │ INSERT (is_current=TRUE)
+  │ 15 outbox_events                │ INSERT (security.scan.requested)
+  └─────────────────────────────────┘
         ↓
-08 candidate_profile_documents (active resume link)
+  ┌─── PHASE 2: SECURITY SCAN (Worker) ───┐
+  │ 06 uploaded_documents           │ UPDATE (pending → scanning → clean)
+  │ 07 resume_parsing_jobs          │ INSERT (status=queued)
+  │ 15 outbox_events                │ INSERT (resume.parse.requested)
+  │ 15 processed_events             │ INSERT (security_scanner)
+  └─────────────────────────────────────────┘
+        ↓ (DB trigger: processing_status → queued)
+  ┌─── PHASE 3: PARSE (Worker) ────┐
+  │ 07 resume_parsing_jobs          │ UPDATE (queued → processing → completed)
+  │ 07 resume_parsing_job_events    │ INSERT (started, completed)
+  │ 07 resume_parsing_artifacts     │ INSERT (extracted_text)
+  │ 07 resume_parsed_data           │ INSERT (normalized_output)
+  │ 15 processed_events             │ INSERT (resume_parser)
+  │ 15 outbox_events                │ INSERT (candidate.resume.parsed)
+  │ 13 analytics_events             │ INSERT (resume_parsed)
+  └─────────────────────────────────┘
+        ↓ (DB trigger: processing_status → completed)
+  ┌─── PHASE 4: CONFIRM (NestJS) ──┐
+  │ 08 candidate_profiles           │ UPDATE (facts + profile_revision bump)
+  │ 08 candidate_skills             │ INSERT (0..n)
+  │ 08 candidate_experiences        │ INSERT (0..n)
+  │ 08 candidate_educations         │ INSERT (0..n)
+  │ 08 candidate_certifications     │ INSERT (0..n)
+  │ 08 candidate_projects           │ INSERT (0..n)
+  │ 08 candidate_languages          │ INSERT (0..n)
+  │ 08 profile_change_history       │ INSERT (audit)
+  │ 15 outbox_events                │ INSERT (candidate.profile.changed)
+  └─────────────────────────────────┘
         ↓
-06 uploaded_documents (scan clean)
-        ↓
-07 resume_parsing_jobs (parsing-job-401)
-        ↓
-07 artifacts + events + resume_parsed_data (parsed-result-501)
-        ↓
-08 canonical facts + profile revision 2
-        ↓
-08 candidate_search_profiles
+  ┌─── PHASE 5: PROJECT (Worker) ──┐
+  │ event_processing_leases         │ INSERT + DELETE (concurrency guard)
+  │ 08 candidate_search_profiles    │ UPSERT (embedding, search_vector)
+  │ 15 processed_events             │ INSERT (candidate_projection)
+  │ 15 outbox_events                │ INSERT (candidate.projection.rebuilt)
+  │ 13 analytics_events             │ INSERT (projection_rebuilt)
+  └─────────────────────────────────┘
         ↓
 Rahul recruiter search mein available
 ```
+
+**Total: 19 tables, ~35 DB writes**
 
 ## 3. `resume_parsing_jobs`
 
@@ -464,7 +556,7 @@ ho to new job row banegi.
 
 | Column | Example | Kab/kaun likhega |
 |---|---|---|
-| `document_id` | `doc-101` | NestJS/worker after clean scan |
+| `document_id` | `doc-101` | Worker after clean scan |
 | `parser_provider` | `internal_fastapi` | Processing config |
 | `parser_model` | `gemini-resume-parser` | Processing config |
 | `parser_version` | `2.1.0` | Version tracking |
@@ -512,10 +604,16 @@ Example normalized output:
 
 ```json
 {
-  "fullName": "Rahul Sharma",
-  "skills": ["Java", "Spring Boot", "Docker"],
-  "experience": [{"company": "ABC", "title": "Backend Developer"}],
-  "education": [{"degree": "B.Tech", "field": "Computer Science"}]
+  "source_file": "rahul-resume.pdf",
+  "contact_info": {
+    "name": "Rahul Sharma",
+    "email": "rahul@gmail.com",
+    "phone": "+91-9876543210"
+  },
+  "professional_title": "Frontend Developer",
+  "skills": ["Angular", "React", "Java"],
+  "experiences": [{"years_total": 3}],
+  "educations": [{"raw": "B.Tech Computer Science"}]
 }
 ```
 
@@ -632,24 +730,72 @@ Events audit/debug/monitoring ke liye hain; current status job row se मिल�
 ## 7. Complete successful call flow
 
 ```text
-Security worker marks document clean
-→ NestJS/trusted scan-completion transaction creates queued parse job + outbox event
-→ Supabase async webhook wakes Outbox Dispatcher
-→ Dispatcher claims the outbox event and creates a Google Cloud Task
-→ Google Cloud Tasks calls private Cloud Run FastAPI
-→ FastAPI atomically claims the parsing job using its DB lease fields
-→ FastAPI marks processing + inserts started event
-→ FastAPI reads the private file and runs parser/OCR/AI
-→ FastAPI validates the extracted/normalized result
-→ FastAPI inserts artifacts + final result + events
-→ FastAPI marks job completed + records processed_events
-→ If needed, FastAPI inserts profile-suggestions-ready outbox event
+PHASE 1 — UPLOAD (NestJS)
+  NestJS validates auth/file/signature/size
+  → NestJS calculates checksum
+  → NestJS uploads to private storage
+  → INSERT uploaded_documents (scan_status='pending', processing_status='uploaded')
+  → INSERT candidate_profile_documents (is_current=TRUE)
+  → INSERT outbox_events (event_type='security.scan.requested')
+  → COMMIT
+
+PHASE 2 — SECURITY SCAN (Worker)
+  Worker receives Cloud Task
+  → UPDATE uploaded_documents (scan_status: pending → scanning)
+  → Download file from GCS
+  → ClamAV scan
+  → UPDATE uploaded_documents (scan_status: scanning → clean)
+  → IF clean:
+      → INSERT resume_parsing_jobs (status='queued')
+      → INSERT outbox_events (event_type='resume.parse.requested')
+  → INSERT processed_events
+  → COMMIT
+  → DB Trigger: trg_sync_processing_status → processing_status='queued'
+
+PHASE 3 — PARSE (Worker)
+  Worker receives Cloud Task
+  → UPDATE resume_parsing_jobs (status: queued → processing, locked_by=worker)
+  → Download file from GCS
+  → Extract text (PDF/DOCX parsing)
+  → AI structured extraction (LLM call)
+  → Atomic commit:
+      → INSERT resume_parsing_job_events (started)
+      → INSERT resume_parsing_artifacts (extracted_text)
+      → INSERT resume_parsed_data (normalized_output)
+      → INSERT resume_parsing_job_events (completed)
+      → INSERT processed_events
+      → INSERT outbox_events (candidate.resume.parsed)
+      → INSERT analytics_events
+      → UPDATE resume_parsing_jobs (status: processing → completed)
+  → COMMIT
+  → DB Trigger: trg_sync_processing_status → processing_status='completed'
+
+PHASE 4 — CONFIRM (NestJS — user action)
+  User reviews parsed data and confirms
+  → UPDATE candidate_profiles (facts fill + profile_completed_at)
+  → INSERT candidate_skills/experiences/educations/certifications/projects/languages
+  → UPDATE candidate_profiles (profile_revision bump)
+  → INSERT profile_change_history
+  → INSERT outbox_events (event_type='candidate.profile.changed')
+  → COMMIT
+
+PHASE 5 — PROJECT (Worker)
+  Worker receives Cloud Task (from either trigger)
+  → INSERT event_processing_leases (concurrency guard)
+  → Read canonical aggregate + active resume parsed data
+  → Generate searchable_text, search_vector, embedding
+  → UPSERT candidate_search_profiles
+  → INSERT processed_events
+  → INSERT outbox_events (candidate.projection.rebuilt)
+  → INSERT analytics_events
+  → DELETE event_processing_leases
+  → COMMIT
 ```
 
-FastAPI browser-facing writer नहीं है। वही हमारा trusted private background worker
-है और restricted worker DB role/service credential से केवल worker-owned tables में
-लिखती है। Candidate की editable canonical profile को वह बिना approved merge policy
-के overwrite नहीं करेगी।
+FastAPI browser-facing writer nahi hai. Wohi hamara trusted private background worker
+hai aur restricted worker DB role/service credential se kewal worker-owned tables mein
+likhti hai. Candidate ki editable canonical profile ko woh bina approved merge policy
+ke overwrite nahi karegi.
 
 ```text
 FastAPI DB में क्या लिख सकती है?
@@ -703,13 +849,15 @@ search में additional resume-derived evidence बन सकते है�
 
 | Caller | Target | Purpose |
 |---|---|---|
+| NestJS | PostgreSQL | Upload: document + profile_document + outbox (security.scan.requested) |
 | Supabase webhook | NestJS Dispatcher | Pending outbox work wake-up |
 | NestJS Dispatcher | Google Cloud Tasks | Deterministic managed task create |
 | Google Cloud Tasks | Cloud Run FastAPI | Private worker invocation |
-| FastAPI | PostgreSQL | Atomically claim/update parsing job |
-| FastAPI | Private storage | Authorized resume read |
-| FastAPI | PostgreSQL | Result/artifact/event and processed-event persist |
-| Outbox/projection worker | `08` flow | Purpose के अनुसार suggestion/search/application enrichment |
+| FastAPI (security scan) | PostgreSQL | Scan status + parsing job + outbox (resume.parse.requested) |
+| FastAPI (parse) | Private storage | Authorized resume read |
+| FastAPI (parse) | PostgreSQL | Result/artifact/event + outbox (candidate.resume.parsed) |
+| FastAPI (projection) | PostgreSQL | UPSERT candidate_search_profiles |
+| NestJS (confirm) | PostgreSQL | Canonical facts + outbox (candidate.profile.changed) |
 
 ## 11. Common confusions
 
@@ -739,5 +887,6 @@ tables silently overwrite नहीं करेगा।
 
 ## 12. One-line memory rule
 
-> Job row current processing state hai; parsed result AI ka immutable answer hai;
-> artifacts supporting output hain; events complete timeline hain.
+> NestJS upload karta hai; Worker scan+parse orchestrate karta hai; user confirm
+> karta hai; Worker projection banata hai. Har phase ka outbox event agla phase
+> trigger karta hai.

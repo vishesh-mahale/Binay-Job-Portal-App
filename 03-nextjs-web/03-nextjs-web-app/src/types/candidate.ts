@@ -21,6 +21,9 @@ export interface CandidateProfile {
   visa_sponsorship_needed: boolean;
   is_open_to_work: boolean;
   available_from: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  nationality: string | null;
   profile_revision: number;
   profile_completed_at: string | null;
 }
@@ -46,6 +49,7 @@ export interface CandidateResume {
   document_role: string;
   version_number: number;
   is_current: boolean;
+  unlinked_at: string | null;
   uploaded_at: string;
   updated_at: string;
   security_scan_status: string;

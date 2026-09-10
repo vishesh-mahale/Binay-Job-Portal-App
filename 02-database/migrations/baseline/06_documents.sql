@@ -71,23 +71,70 @@ CREATE TABLE guest_upload_sessions (
 
 CREATE TABLE uploaded_documents (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   
     uploaded_by_user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
     guest_upload_session_id UUID REFERENCES guest_upload_sessions(id) ON DELETE SET NULL,
-    document_type           document_type NOT NULL,
-    original_file_name      VARCHAR(255) NOT NULL,
-    file_extension          VARCHAR(20),
-    file_size_bytes         BIGINT NOT NULL CHECK (file_size_bytes > 0),
-    mime_type               VARCHAR(150) NOT NULL,
-    storage_bucket          VARCHAR(100) NOT NULL,
-    storage_path            TEXT NOT NULL,
-    checksum_sha256         VARCHAR(64) NOT NULL,
-    security_scan_status    security_scan_status NOT NULL DEFAULT 'pending',
-    security_scan_result    JSONB,
-    processing_status       resume_processing_status NOT NULL DEFAULT 'uploaded',
-    metadata                JSONB NOT NULL DEFAULT '{}'::JSONB,
-    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at              TIMESTAMPTZ,
+
+    checksum_sha256         VARCHAR(64) NOT NULL,     -- b8ad8de5ccf0d438db05a9815a137546300a5f06021a02412a8bca18b6c0bb0d       -- checksumSha256: createHash('sha256').update(file.buffer).digest('hex')  -- if duplicate then return { document_id: existing.rows[0].document_id, reused: true }
+
+    processing_status       resume_processing_status NOT NULL DEFAULT 'uploaded',   -- 'uploaded', 'queued', 'processing', 'completed', 'partial', 'failed'
+
+                                                                                    -- processing_status — Sirf DB Trigger update karta hai
+                                                                                    -- Worker kabhi directly processing_status update nahi karta. Sirf resume_parsing_jobs.status update hota hai, aur DB trigger (trg_sync_processing_status) usse uploaded_documents.processing_status mein copy karta hai:
+
+                                                                                    -- resume_parsing_jobs.status	→ processing_status
+                                                                                    -- ---------------------------------------------------
+                                                                                    -- queued	    → 'queued'
+                                                                                    -- processing	→ 'processing'
+                                                                                    -- completed	→ 'completed'
+                                                                                    -- partial   	→ 'partial'
+                                                                                    -- failed   	→ 'failed'
+                                                                                    -- cancelled	→ 'failed'
+
+
+    security_scan_status    security_scan_status NOT NULL DEFAULT 'pending',  -- 'pending', 'scanning', 'clean', 'infected', 'failed', 'quarantined'
+
+                                                                                -- security_scan_status: FASTAPI WORKER update karta hai (ClamAV Cloud Run)
+                                                                                -- file Upload     → 'pending'        (NestJS INSERT default)   File upload hota hai, scan shuru nahi hua
+                                                                                -- Scan start      → 'scanning'       (pending/failed → scanning)    [FastAPI Worker]
+                                                                                -- Scan clean      → 'clean'          (scanning → clean)             [FastAPI Worker]
+                                                                                -- Scan infected   → 'infected'       (scanning → infected)          [FastAPI Worker]
+                                                                                -- Scan error      → 'failed'         (scanning → failed)            [FastAPI Worker]
+                                                                                --  ===================================================================================
+
+    security_scan_result    JSONB,                       -- {
+                                                         --  "error":null,
+                                                         --  "scanner": { 
+                                                         --               "provider":"clamav",
+                                                         --               "engine_version":"cloud-run",
+                                                         --               "signature_version":"cloud-run"
+                                                         --              },
+                                                         -- "threats":[],
+                                                         -- "verdict":"clean",
+                                                         -- "scanned_at":"2026-09-09T19:12:58.301725+00:00",
+                                                         -- "duration_ms":17155,
+                                                         -- "schema_version":1,
+                                                         -- "checksum_sha256":"b8a3c195ccb5102f1537c6a59172dbe8c6d9a13fb8de81721f2a056499a4b46b",
+                                                         -- "file_size_bytes":79255
+                                                         -- }
+                                                         --  =========================================================================
+
+ 
+    document_type           document_type NOT NULL,       -- resume, cover_letter, certificate, other
+    original_file_name      VARCHAR(255) NOT NULL,        -- Gopal Choudhary.pdf
+    file_extension          VARCHAR(20),                  -- pdf , docx, doc      
+    file_size_bytes         BIGINT NOT NULL CHECK (file_size_bytes > 0),   -- 79255          -- max_document_size_bytes is 10,485,760 (10 MB) → reject
+    mime_type               VARCHAR(150) NOT NULL,    -- application/pdf , application/vnd.openxmlformats-officedocument.wordprocessingml.document
+    storage_bucket          VARCHAR(100) NOT NULL,    -- job-portal-uploads
+    storage_path            TEXT NOT NULL,            -- candidates/b15d064e-080b-4e79-97bb-5517cae382f5/resumes/5d92059c-8ea0-43e1-9aa3-f8ad1a35ec9d.pdf
+
+
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),   -- 2026-09-09 07:26:20.736204+00
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),   -- 2026-09-10 04:27:40.437957+00
+    deleted_at              TIMESTAMPTZ,   
+   
+    metadata                JSONB NOT NULL DEFAULT '{}'::JSONB, -- {}  curently not in use, but can be used to store additional metadata about the document (e.g., extracted text, tags, etc.)   
+    
     CONSTRAINT uploaded_document_owner_check CHECK (
         (uploaded_by_user_id IS NOT NULL AND guest_upload_session_id IS NULL)
         OR

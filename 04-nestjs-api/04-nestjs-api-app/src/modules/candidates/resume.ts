@@ -63,6 +63,8 @@ export class ResumeService {
     const candidate = await this.system.query(`SELECT id FROM public.candidate_profiles WHERE user_id = $1 AND deleted_at IS NULL`, [request.user?.sub]);
     if (!candidate.rows[0]) throw new BadRequestException('NOT_FOUND');
     const candidateId = candidate.rows[0].id;
+    const totalResumes = await this.system.query(`SELECT COUNT(*)::int AS count FROM public.candidate_profile_documents cpd JOIN public.uploaded_documents d ON d.id = cpd.document_id WHERE cpd.candidate_id = $1 AND cpd.document_role = 'resume' AND d.deleted_at IS NULL`, [candidateId]);
+    if (Number(totalResumes.rows[0]?.count ?? 0) >= 5) throw new BadRequestException('MAX_RESUMES_REACHED');
     const current = await this.system.query(`SELECT COUNT(*)::int AS count FROM public.candidate_profile_documents WHERE candidate_id = $1 AND document_role = 'resume' AND is_current = TRUE AND unlinked_at IS NULL`, [candidateId]);
     const first = Number(current.rows[0]?.count ?? 0) === 0;
     const active = first || useAsActive;
@@ -72,7 +74,7 @@ export class ResumeService {
     try {
       return await this.system.transaction(async (client) => {
         const inserted = await client.query(`INSERT INTO public.uploaded_documents (id, uploaded_by_user_id, document_type, original_file_name, file_extension, file_size_bytes, mime_type, storage_bucket, storage_path, checksum_sha256) VALUES ($1,$2,'resume',$3,$4,$5,$6,$7,$8,$9) RETURNING id, security_scan_status, processing_status`, [documentId, request.user?.sub, validated.fileName, validated.extension, validated.sizeBytes, validated.mimeType, bucket, storagePath, validated.checksumSha256]);
-        if (active) await client.query(`UPDATE public.candidate_profile_documents SET is_current = FALSE, unlinked_at = COALESCE(unlinked_at, NOW()) WHERE candidate_id = $1 AND document_role = 'resume' AND is_current = TRUE AND unlinked_at IS NULL`, [candidateId]);
+        if (active) await client.query(`UPDATE public.candidate_profile_documents SET is_current = FALSE WHERE candidate_id = $1 AND document_role = 'resume' AND is_current = TRUE`, [candidateId]);
         const version = await client.query(`SELECT COALESCE(MAX(version_number),0)+1 AS version FROM public.candidate_profile_documents WHERE candidate_id = $1 AND document_role = 'resume'`, [candidateId]);
         await client.query(`INSERT INTO public.candidate_profile_documents (candidate_id, document_id, document_role, version_number, is_current) VALUES ($1,$2,'resume',$3,$4)`, [candidateId, documentId, version.rows[0].version, active]);
         const eventId = randomUUID();
@@ -114,7 +116,7 @@ export class ResumeService {
       });
       values.push(row.candidate_id);
       const updated = await client.query(`UPDATE public.candidate_profiles SET ${sets.join(', ')}, profile_completed_at = COALESCE(profile_completed_at, NOW()) WHERE id = $${values.length} AND deleted_at IS NULL RETURNING *`, values);
-      const facts = profileInput.facts && typeof profileInput.facts === 'object' ? profileInput.facts : {};
+      const facts = body.facts && typeof body.facts === 'object' ? body.facts : {};
       await this.insertConfirmedFacts(client, row.candidate_id, documentId, parsed.rows[0].id, facts);
       const revision = await client.query(`SELECT public.bump_candidate_profile_revision($1) AS revision`, [row.candidate_id]);
       const newRevision = Number(revision.rows[0].revision);
