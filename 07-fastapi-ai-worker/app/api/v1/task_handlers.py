@@ -308,6 +308,18 @@ async def handle_resume_parse_task(
         # Step 6: Extract text
         extracted = await asyncio.to_thread(extractor.extract_from_bytes, document_name, document_bytes)
 
+            # Sample extracted output for reference (not used in code):
+            # extracted = ResumeExtractedSchema(
+            #     extracted_text = "John Doe\nSoftware Engineer\nSkills: Python, React\n...",  ← Actual text from PDF
+            #     raw_ai_output = {"source_file": "resume.pdf", "bytes": 12345},
+            #     normalized_output = {"source_file": "resume.pdf"},
+            #     confidence_details = {"file_type": ".pdf", "bytes": 12345},
+            #     validation_result = {"valid": True, "source": "document_extractor"},
+            #     overall_confidence = 100.0,
+            #     schema_version = "1.0"
+            # )
+
+
         # Step 7: AI structured extraction
         ai_output: Dict[str, Any] = {}
         try:

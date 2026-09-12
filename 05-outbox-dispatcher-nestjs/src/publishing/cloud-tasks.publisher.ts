@@ -70,7 +70,7 @@ export class CloudTasksPublisher implements TaskPublisher {
     }
 
     try {
-      await this.client.createTask({
+      await this.client.createTask({             // Actual Cloud Tasks API call
         parent,
         task: {
           name: fullTaskName,

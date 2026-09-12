@@ -20,6 +20,24 @@
 --   for non-resume pipelines (candidate projection, job enrichment, match analysis).
 -- ============================================================================
 
+
+-- SAMPLE
+-- {
+-- 	"payload": {
+-- 		"trace_id": "d8884be3-aeb0-4934-8f01-fbf315234c10",
+-- 		"document_id": "75b3f32c-4f0a-4263-bbb4-48b231ad0076",
+-- 		"uploaded_by_user_id": "6ca0bf5c-cd8c-4dd7-a66a-9451d8fe3b99",
+-- 		"guest_upload_session_id": null
+-- 	},
+-- 	"event_id": "d8884be3-aeb0-4934-8f01-fbf315234c10",
+-- 	"event_type": "security.scan.requested",
+-- 	"occurred_at": "2026-09-11T04:51:44.662Z",
+-- 	"aggregate_id": "75b3f32c-4f0a-4263-bbb4-48b231ad0076",
+-- 	"aggregate_type": "uploaded_document",
+-- 	"schema_version": 1
+-- }
+
+
 CREATE TABLE outbox_events (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 

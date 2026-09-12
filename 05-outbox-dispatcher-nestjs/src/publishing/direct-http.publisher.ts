@@ -38,7 +38,7 @@ export class DirectHttpPublisher implements TaskPublisher {
 
     const url = `${this.baseUrl}${request.urlPath}`;
     try {
-      const response = await fetch(url, {
+      const response = await fetch(url, {                 // Direct HTTP call to FastAPI Worker
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(request.payload),
