@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Controller, Delete, Get, Inject
 import { randomUUID } from 'crypto';
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth';
 import { UserContextClient, SystemClient } from '../../infrastructure/database/clients';
-import { Allow, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { Allow, IsArray, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsString, Min } from 'class-validator';
 import { clampText, toEnumValue, toSmallInt, toDecimal41, toIsoDate, normalizeLinkUrl, toJsonArray, textOrNull, EMPLOYMENT_TYPES } from './resume';
 
 export class UpdateCandidateProfileDto {
@@ -37,14 +37,14 @@ export class ArchiveCandidateFactDto {
 
 export class UpdateCandidateFactsDto {
   @Allow() @IsInt() @Min(1) expected_profile_revision!: number;
-  @Allow() @IsOptional() @IsObject() skills?: any[];
-  @Allow() @IsOptional() @IsObject() experiences?: any[];
-  @Allow() @IsOptional() @IsObject() educations?: any[];
-  @Allow() @IsOptional() @IsObject() certifications?: any[];
-  @Allow() @IsOptional() @IsObject() projects?: any[];
-  @Allow() @IsOptional() @IsObject() languages?: any[];
-  @Allow() @IsOptional() @IsObject() awards?: any[];
-  @Allow() @IsOptional() @IsObject() links?: any[];
+  @Allow() @IsOptional() @IsArray() skills?: any[];
+  @Allow() @IsOptional() @IsArray() experiences?: any[];
+  @Allow() @IsOptional() @IsArray() educations?: any[];
+  @Allow() @IsOptional() @IsArray() certifications?: any[];
+  @Allow() @IsOptional() @IsArray() projects?: any[];
+  @Allow() @IsOptional() @IsArray() languages?: any[];
+  @Allow() @IsOptional() @IsArray() awards?: any[];
+  @Allow() @IsOptional() @IsArray() links?: any[];
   [key: string]: unknown;
 }
 
@@ -159,7 +159,7 @@ export class CandidateService {
     if (String(row.security_scan_status) !== 'clean') throw new NotFoundException('NOT_FOUND');
     const raw = row.normalized_output && typeof row.normalized_output === 'object' ? row.normalized_output : {};
     const source: Record<string, unknown> = raw;
-    const allowed = ['contact_info', 'professional_title', 'summary', 'skills', 'experiences', 'educations', 'certifications', 'projects', 'languages', 'awards', 'links'];
+    const allowed = ['contact_info', 'professional_title', 'summary', 'skills', 'experiences', 'educations', 'certifications', 'projects', 'languages', 'awards', 'links', 'experience_years', 'date_of_birth', 'gender'];
     const normalized_output = Object.fromEntries(allowed.filter((key) => Object.prototype.hasOwnProperty.call(source, key)).map((key) => [key, source[key]]));
     return {
       document_id: row.document_id,
@@ -291,7 +291,7 @@ export class CandidateService {
           if (!companyName || !jobTitle || !startDate) continue;
           const endDate = toIsoDate(item?.end_date);
           const isCurrent = endDate === null && (item.is_current ?? true);
-          await client.query(`INSERT INTO public.candidate_experiences (candidate_id, company_name, job_title, employment_type, location, start_date, end_date, is_current, description, responsibilities, achievements, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,'candidate_confirmed',NOW())`, [candidateId, companyName, jobTitle, toEnumValue(item.employment_type, EMPLOYMENT_TYPES), clampText(item.location, 255), startDate, endDate, isCurrent, textOrNull(item.description), toJsonArray(item.responsibilities), toJsonArray(item.achievements), source]);
+          await client.query(`INSERT INTO public.candidate_experiences (candidate_id, company_name, job_title, employment_type, location, start_date, end_date, is_current, description, responsibilities, achievements, skills, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13,'candidate_confirmed',NOW())`, [candidateId, companyName, jobTitle, toEnumValue(item.employment_type, EMPLOYMENT_TYPES), clampText(item.location, 255), startDate, endDate, isCurrent, textOrNull(item.description), toJsonArray(item.responsibilities), toJsonArray(item.achievements), toJsonArray(item.skills), source]);
         }
       }
       if (Array.isArray(body.educations)) {

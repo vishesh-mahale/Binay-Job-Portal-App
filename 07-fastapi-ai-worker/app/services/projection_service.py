@@ -92,7 +92,10 @@ class CandidateProjectionService:
         extracted_skill_list = ai_data.get("skills") or []
         if isinstance(extracted_skill_list, list):
             for raw_s in extracted_skill_list:
-                s_name = str(raw_s).strip()
+                if isinstance(raw_s, dict):
+                    s_name = (raw_s.get("name") or "").strip()
+                else:
+                    s_name = str(raw_s).strip()
                 if s_name:
                     norm_key = s_name.lower()
                     if norm_key not in skill_name_set:
@@ -134,15 +137,7 @@ class CandidateProjectionService:
 
         # 4. Total Experience Years Calculation
         total_exp_years = self._calculate_experience_years(aggregate.experiences)
-        if total_exp_years is None and ai_data.get("experiences"):
-            try:
-                exp_list = ai_data["experiences"]
-                if isinstance(exp_list, list) and exp_list:
-                    total_exp_years = float(exp_list[0].get("years_total")) if exp_list[0].get("years_total") is not None else None
-                    fact_sources["experiences"]["total_years"] = "resume_ai"
-            except (ValueError, TypeError, IndexError):
-                total_exp_years = None
-        elif total_exp_years is None and ai_data.get("experience_years") is not None:
+        if total_exp_years is None and ai_data.get("experience_years") is not None:
             try:
                 total_exp_years = float(ai_data["experience_years"])
                 fact_sources["experiences"]["total_years"] = "resume_ai"

@@ -132,11 +132,46 @@ class DocumentExtractor:
             raise ValueError(f"Failed to extract PDF text: {exc}") from exc
 
     def _extract_docx_text(self, content: bytes) -> str:
+        """Extract text from DOCX including paragraphs, nested tables, and headers/footers."""
         try:
             stream = io.BytesIO(content)
             document = DocxDocument(stream)
-            paragraphs = [p.text for p in document.paragraphs if p.text.strip()]
-            return "\n".join(paragraphs).strip()
+            parts = []
+
+            for section in document.sections:
+                for header_footer in [section.header, section.footer]:
+                    if header_footer is not None:
+                        for para in header_footer.paragraphs:
+                            if para.text.strip():
+                                parts.append(para.text)
+
+            for para in document.paragraphs:
+                if para.text.strip():
+                    parts.append(para.text)
+
+            def _extract_table(table) -> list[str]:
+                lines = []
+                for row in table.rows:
+                    row_cells = []
+                    for cell in row.cells:
+                        if cell.tables:
+                            nested = []
+                            for nt in cell.tables:
+                                nested.extend(_extract_table(nt))
+                            if nested:
+                                row_cells.append("\n".join(nested))
+                        else:
+                            txt = cell.text.strip()
+                            if txt:
+                                row_cells.append(txt)
+                    if row_cells:
+                        lines.append(" | ".join(row_cells))
+                return lines
+
+            for table in document.tables:
+                parts.extend(_extract_table(table))
+
+            return "\n".join(parts).strip()
         except Exception as exc:  # pragma: no cover - fallback path
             raise ValueError(f"Failed to extract DOCX text: {exc}") from exc
 

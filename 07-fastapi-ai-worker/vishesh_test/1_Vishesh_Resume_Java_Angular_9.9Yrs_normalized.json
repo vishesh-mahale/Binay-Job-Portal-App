@@ -1,0 +1,454 @@
+{
+  "name": "Vishesh Mahale",
+  "email": "visheshmahale.tech@gmail.com",
+  "phone": "+91-8262977141",
+  "address": null,
+  "city": null,
+  "state": null,
+  "country": "India",
+  "postal_code": null,
+  "date_of_birth": null,
+  "gender": null,
+  "summary": "Full Stack Developer with 9.9 years of experience in designing and developing scalable Web Applications using Java development, Spring Boot, Microservices, ReactJS, TypeScript, and JavaScript, requirement gatherings . Skilled in REST/GraphQL APIs, PostgreSQL, Oracle, and NoSQL databases . Strong expertise in Object-Oriented Programming, architecture design, and technical standards . Proﬁcient in deploying cloud-native applications on AWS (EC2, S3, RDS, EKS, CloudFront, SQS) . Experienced in code reviews, mentoring, and collaborating with cross-functional teams to deliver high-performance, reliable, and maintainable solutions. Familier with Elastic Search and Go. Excellent communication, leadership skills, mentoring, problem solving skills.",
+  "experience_years": 8.58,
+  "current_title": "Technical Specialist",
+  "skills": [
+    {
+      "name": "Java",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Spring Boot",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Microservices",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "ReactJS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "TypeScript",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "JavaScript",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "REST APIs",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "GraphQL APIs",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "PostgreSQL",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Oracle",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "NoSQL",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Object-Oriented Programming",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "AWS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "EC2",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "S3",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "RDS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "EKS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "CloudFront",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "SQS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Elastic Search",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Go",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "NGRX",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "RXJS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "HTML5",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "ECMA",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "CSS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "JSP",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Spring",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "MVC",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Hibernate",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "JPA",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "RabbitMQ",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Kafka",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Node.JS",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Lambda",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "ALB",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "ElasticCache",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Redis",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Memcached",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "CI/CD",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Jenkins",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Docker",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Argo CD",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Ingress",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Sonar",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Kubernetes",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "JUnit",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Mockito",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "GitHub",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Git",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Maven",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "MySQL",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Angular 8",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "MongoDB",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Angular 12",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Devops",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Dynatrace",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Design Patterns",
+      "proficiency_level": null,
+      "years_of_experience": null
+    }
+  ],
+  "experiences": [
+    {
+      "company_name": "L&T Infotech",
+      "job_title": "Technical Specialist",
+      "employment_type": "full_time",
+      "location": "India",
+      "start_date": "2020-03-01",
+      "end_date": null,
+      "is_current": true,
+      "description": null,
+      "responsibilities": [
+        "Developed REST APIs/services for complex business problems using SpringBoot, Hibernate and Microservices.",
+        "Implemented CI/CD pipeline on AWS cloud, which reduced deployment time by 50% and increased team productivity by 25%.",
+        "Knowledge of micro-service logging, monitoring, debugging and testing using Dynatrace.",
+        "Integrated GraphQL APIs with ReactJS frontend for eﬃcient data exchange with backend services.",
+        "Led architectural decisions, ensuring alignment with business goals and technical standards."
+      ],
+      "achievements": [],
+      "skills": [
+        "SpringBoot",
+        "Hibernate",
+        "Microservices",
+        "AWS",
+        "CI/CD",
+        "Dynatrace",
+        "GraphQL APIs",
+        "ReactJS"
+      ]
+    },
+    {
+      "company_name": "Tata Technologies",
+      "job_title": "Solution Developer",
+      "employment_type": "full_time",
+      "location": "India/Germany",
+      "start_date": "2016-07-01",
+      "end_date": "2020-03-01",
+      "is_current": false,
+      "description": null,
+      "responsibilities": [
+        "Drove architectural decisions, enforced coding standards and best practices across projects.",
+        "Designed the architecture for 6 applications and was appreciated for delivering 3 Apps in a short period.",
+        "Strong expertise in Object-Oriented Programming (OOP), design patterns, and enterprise application development."
+      ],
+      "achievements": [
+        "Designed the architecture for 6 applications and was appreciated for delivering 3 Apps in a short period."
+      ],
+      "skills": [
+        "Object-Oriented Programming",
+        "Design Patterns"
+      ]
+    },
+    {
+      "company_name": "Rofr Marketing Pvt. Ltd.",
+      "job_title": "Web Developer",
+      "employment_type": "full_time",
+      "location": "India",
+      "start_date": "2015-11-01",
+      "end_date": "2016-07-01",
+      "is_current": false,
+      "description": null,
+      "responsibilities": [
+        "Developed reusable components and libraries for future use.",
+        "Integrated GraphQL APIs for eﬃcient data querying between frontend and backend.",
+        "Developed responsive frontends with React & TypeScript; integrated with backend via GraphQL & REST APIs."
+      ],
+      "achievements": [],
+      "skills": [
+        "GraphQL APIs",
+        "React",
+        "TypeScript",
+        "REST APIs"
+      ]
+    }
+  ],
+  "educations": [
+    {
+      "institution_name": "RGPV-SBITM Betul",
+      "degree": "Bachelor of Engineering",
+      "field_of_study": "Computer Science and Engineering",
+      "start_date": "2011-05-01",
+      "end_date": "2015-05-01",
+      "is_current": false,
+      "grade": "8.3 CGPA",
+      "description": null
+    }
+  ],
+  "links": [
+    {
+      "link_type": "linkedin",
+      "label": "linkedin.com/in/visheshmahale",
+      "url": "https://linkedin.com/in/visheshmahale"
+    },
+    {
+      "link_type": "github",
+      "label": "github.com/vishesh-mahale",
+      "url": "https://github.com/vishesh-mahale"
+    }
+  ],
+  "certifications": [],
+  "projects": [
+    {
+      "title": "Tata Neuron",
+      "description": "Tata Neuron is a Deep Learning App that is used for predicting new data from the available given data set. This technology has been developed as a solution platform where domain experts can build Deep Learning models, deﬁne various hidden layers and nodes, ﬁne-tune Neural Network controlling parameters, store the trained model as a knowledge base, and use it for future insights and prediction - all these without the need of any software programming knowledge and just data processing.",
+      "project_url": null,
+      "repository_url": null,
+      "started_at": null,
+      "completed_at": null,
+      "technologies": [
+        "Java",
+        "SpringBoot",
+        "Microservices",
+        "AWS cloud",
+        "MySQL",
+        "Angular 8",
+        "CI/CD",
+        "Oracle",
+        "MongoDB"
+      ]
+    },
+    {
+      "title": "Unitrax",
+      "description": "Unitrax is an LTIs SaaS-based product investor record keeping System with more than 190 Clients across Canada including Fund manufacturers, Banks, and Insurance providers to address their ﬁnancial record-keeping needs.",
+      "project_url": null,
+      "repository_url": null,
+      "started_at": null,
+      "completed_at": null,
+      "technologies": [
+        "Java",
+        "SpringBoot",
+        "Microservices",
+        "Kafka",
+        "AWS",
+        "Angular 12",
+        "CI/CD",
+        "Oracle",
+        "Kubernetes",
+        "Sonar",
+        "Junit",
+        "AWS ingress controller",
+        "Argo CD",
+        "Devops",
+        "Dynatrace"
+      ]
+    }
+  ],
+  "languages": [],
+  "awards": []
+}

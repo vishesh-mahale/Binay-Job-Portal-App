@@ -97,8 +97,17 @@ class TestNormalizeUrl:
     def test_none_passthrough(self):
         assert _normalize_url(None) is None
 
-    def test_empty_passthrough(self):
-        assert _normalize_url("") == ""
+    def test_empty_dropped(self):
+        assert _normalize_url("") is None
+        assert _normalize_url("   ") is None
+
+    def test_null_placeholder_strings_dropped(self):
+        for placeholder in ("null", "None", "N/A", "NA", "na", "NULL"):
+            assert _normalize_url(placeholder) is None
+
+    def test_widen_date_rejects_null_placeholder_strings(self):
+        for placeholder in ("null", "None", "N/A", "NA", "na"):
+            assert _widen_date(placeholder) is None
 
 
 class TestMarkCompletedSignature:

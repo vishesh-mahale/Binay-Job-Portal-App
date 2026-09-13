@@ -23,6 +23,7 @@ class ExtractedExperience(BaseModel):
     description: Optional[str] = None
     responsibilities: List[str] = Field(default_factory=list)
     achievements: List[str] = Field(default_factory=list)
+    skills: List[str] = Field(default_factory=list)
 
 
 class ExtractedEducation(BaseModel):
@@ -79,6 +80,14 @@ class ResumeExtractionOutput(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    postal_code: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
+    summary: Optional[str] = None
     skills: List[ExtractedSkill] = Field(default_factory=list)
     experience_years: Optional[float] = None
     current_title: Optional[str] = None
@@ -114,6 +123,8 @@ def validate_extraction_output(raw: Dict[str, Any]) -> ResumeExtractionOutput:
         return filtered
 
     cleaned = dict(raw)
+    if not cleaned.get("phone"):
+        cleaned["phone"] = raw.get("phone_number") or raw.get("mobile") or raw.get("contact_number") or None
     cleaned["skills"] = _filter_items(raw.get("skills", []), ["name"], "skill")
     cleaned["experiences"] = _filter_items(raw.get("experiences", []), ["company_name", "job_title"], "experience")
     cleaned["educations"] = _filter_items(raw.get("educations", []), ["institution_name", "degree"], "education")

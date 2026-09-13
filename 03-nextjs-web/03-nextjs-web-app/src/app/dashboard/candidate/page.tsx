@@ -65,12 +65,24 @@ function CandidateDashboardContent() {
       // Seed editedFacts from existing profile facts so edits always start from current state
       setEditedFacts((prev) => ({
         ...prev,
+        // Seeded empty on purpose: candidate_profiles carries no name/email/phone, and a pre-filled
+        // object here would make mergeIfEmpty() reject the parsed resume's real contact_info below.
+        contact_info: prev.contact_info || {},
         professional_title: prev.professional_title || profile.profile?.professional_title || '',
+        summary: prev.summary || profile.profile?.summary || '',
         skills: Array.isArray(prev.skills) && prev.skills.length > 0 ? prev.skills : (Array.isArray(profile.skills) ? profile.skills : []),
-        experiences: Array.isArray(prev.experiences) && prev.experiences.length > 0 ? prev.experiences : (Array.isArray(profile.experiences) ? profile.experiences : []),
+        experiences: Array.isArray(prev.experiences) && prev.experiences.length > 0 ? prev.experiences : (Array.isArray(profile.experiences) ? profile.experiences : []).map((e: any) => ({
+          ...e,
+          responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities.join('\n') : (typeof e.responsibilities === 'string' ? e.responsibilities : ''),
+          achievements: Array.isArray(e.achievements) ? e.achievements.join('\n') : (typeof e.achievements === 'string' ? e.achievements : ''),
+          skills: Array.isArray(e.skills) ? e.skills.join(', ') : (typeof e.skills === 'string' ? e.skills : ''),
+        })),
         educations: Array.isArray(prev.educations) && prev.educations.length > 0 ? prev.educations : (Array.isArray(profile.educations) ? profile.educations : []),
         certifications: Array.isArray(prev.certifications) && prev.certifications.length > 0 ? prev.certifications : (Array.isArray(profile.certifications) ? profile.certifications : []),
-        projects: Array.isArray(prev.projects) && prev.projects.length > 0 ? prev.projects : (Array.isArray(profile.projects) ? profile.projects : []),
+        projects: Array.isArray(prev.projects) && prev.projects.length > 0 ? prev.projects : (Array.isArray(profile.projects) ? profile.projects : []).map((p: any) => ({
+          ...p,
+          technologies: Array.isArray(p.technologies) ? p.technologies.join(', ') : (typeof p.technologies === 'string' ? p.technologies : ''),
+        })),
         languages: Array.isArray(prev.languages) && prev.languages.length > 0 ? prev.languages : (Array.isArray(profile.languages) ? profile.languages : []),
         awards: Array.isArray(prev.awards) && prev.awards.length > 0 ? prev.awards : (Array.isArray(profile.awards) ? profile.awards : []),
         links: Array.isArray(prev.links) && prev.links.length > 0 ? prev.links : (Array.isArray(profile.links) ? profile.links : []),
@@ -116,17 +128,32 @@ function CandidateDashboardContent() {
           if (!cancelled) {
             setParsedResume(parsed);
             const output = parsed?.normalized_output || {};
-            setEditedFacts({
-              contact_info: output.contact_info || {},
-              professional_title: output.professional_title || '',
-              skills: Array.isArray(output.skills) ? output.skills : [],
-              experiences: Array.isArray(output.experiences) ? output.experiences : [],
-              educations: Array.isArray(output.educations) ? output.educations : [],
-              certifications: Array.isArray(output.certifications) ? output.certifications : [],
-              projects: Array.isArray(output.projects) ? output.projects : [],
-              languages: Array.isArray(output.languages) ? output.languages : [],
-              awards: Array.isArray(output.awards) ? output.awards : [],
-              links: Array.isArray(output.links) ? output.links : [],
+            // Only auto-fill from parsed data if form is empty (no previous auto-fill or user hasn't edited yet)
+            setEditedFacts((prev) => {
+              return {
+                contact_info: output.contact_info || prev.contact_info || {},
+                professional_title: output.professional_title || prev.professional_title || '',
+                summary: output.summary || prev.summary || '',
+                date_of_birth: output.date_of_birth || prev.date_of_birth || '',
+                gender: output.gender || prev.gender || '',
+                experience_years: output.experience_years ?? prev.experience_years ?? null,
+                skills: Array.isArray(output.skills) && output.skills.length > 0 ? output.skills : prev.skills,
+                experiences: (Array.isArray(output.experiences) && output.experiences.length > 0 ? output.experiences : prev.experiences || []).map((e: any) => ({
+                  ...e,
+                  responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities.join('\n') : (typeof e.responsibilities === 'string' ? e.responsibilities : ''),
+                  achievements: Array.isArray(e.achievements) ? e.achievements.join('\n') : (typeof e.achievements === 'string' ? e.achievements : ''),
+                  skills: Array.isArray(e.skills) ? e.skills.join(', ') : (typeof e.skills === 'string' ? e.skills : ''),
+                })),
+                educations: Array.isArray(output.educations) && output.educations.length > 0 ? output.educations : prev.educations,
+                certifications: Array.isArray(output.certifications) && output.certifications.length > 0 ? output.certifications : prev.certifications,
+                projects: (Array.isArray(output.projects) && output.projects.length > 0 ? output.projects : prev.projects || []).map((p: any) => ({
+                  ...p,
+                  technologies: Array.isArray(p.technologies) ? p.technologies.join(', ') : (typeof p.technologies === 'string' ? p.technologies : ''),
+                })),
+                languages: Array.isArray(output.languages) && output.languages.length > 0 ? output.languages : prev.languages,
+                awards: Array.isArray(output.awards) && output.awards.length > 0 ? output.awards : prev.awards,
+                links: Array.isArray(output.links) && output.links.length > 0 ? output.links : prev.links,
+              };
             });
             // First-time: auto-switch to profile tab with pre-filled data
             const freshProfile = await apiClient.getCandidateProfile();
@@ -176,8 +203,26 @@ function CandidateDashboardContent() {
   };
 
   const removeArrayItem = (key: string, index: number) => {
-    setEditedFacts((prev) => ({ ...prev, [key]: ((prev[key] as any[]) || []).filter((_: any, i: number) => i !== index) }));
+    setEditedFacts((prev) => ({ ...prev, [key]: ((prev[key] as any[]) || []).filter((_, i) => i !== index) }));
   };
+
+  // The API stores these columns with toJsonArray(), which turns any non-array into [].
+  // The UI edits them as text, so both save paths must split before sending or the values are wiped.
+  const toCommaArray = (value: unknown) => (typeof value === 'string' ? value.split(',').map((s) => s.trim()).filter(Boolean) : value);
+  const toLineArray = (value: unknown) => (typeof value === 'string' ? value.split('\n').map((s) => s.trim()).filter(Boolean) : value);
+
+  // is_current is deliberately not sent: the field is no longer editable in the UI, and the API
+  // derives it from a blank end_date. Sending the resume's stale value would make it uncorrectable.
+  const toExperiencePayload = (items: any[]) => (items || []).map((item: any) => {
+    const copy: Record<string, unknown> = { ...item };
+    delete copy.is_current;
+    copy.skills = toCommaArray(copy.skills);
+    copy.responsibilities = toLineArray(copy.responsibilities);
+    copy.achievements = toLineArray(copy.achievements);
+    return copy;
+  });
+
+  const toProjectPayload = (items: any[]) => (items || []).map((item: any) => ({ ...item, technologies: toCommaArray(item?.technologies) }));
 
   const renderEditableSection = (title: string, key: string, items: any[], fields: { label: string; field: string; type?: string }[], template: Record<string, unknown>, confidence?: Record<string, number>) => {
     const rows = Array.isArray(items) ? items : [];
@@ -198,12 +243,21 @@ function CandidateDashboardContent() {
               {fields.map(({ label, field, type }) => (
                 <label key={field} className="flex flex-col gap-0.5">
                   <span className="text-xs text-slate-500">{label}</span>
-                  <input
-                    type={type || 'text'}
-                    value={item?.[field] ?? ''}
-                    onChange={(e) => updateArrayItem(key, i, field, type === 'number' ? (e.target.value ? Number(e.target.value) : null) : e.target.value)}
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
-                  />
+                  {type === 'textarea' ? (
+                    <textarea
+                      rows={3}
+                      value={item?.[field] ?? ''}
+                      onChange={(e) => updateArrayItem(key, i, field, e.target.value)}
+                      className="min-w-52 rounded border border-slate-300 px-2 py-1 text-sm"
+                    />
+                  ) : (
+                    <input
+                      type={type || 'text'}
+                      value={item?.[field] ?? ''}
+                      onChange={(e) => updateArrayItem(key, i, field, type === 'number' ? (e.target.value ? Number(e.target.value) : null) : e.target.value)}
+                      className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    />
+                  )}
                 </label>
               ))}
               <button type="button" onClick={() => removeArrayItem(key, i)} className="text-xs text-rose-500 hover:text-rose-700 mb-0.5">Remove</button>
@@ -226,7 +280,7 @@ function CandidateDashboardContent() {
           {['name', 'email', 'phone'].map((f) => (
             <div key={f} className="flex flex-col gap-0.5">
               <span className="text-xs text-slate-500">{f}</span>
-              <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-700">{(ci[f] as string) || '—'}</span>
+              <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-700">{((ci[f] || (f === 'phone' ? (ci.phone_number || ci.mobile || ci.contact_number) : null)) as string) || '—'}</span>
             </div>
           ))}
         </div>
@@ -236,7 +290,7 @@ function CandidateDashboardContent() {
         <input type="text" value={(editedFacts.professional_title as string) || ''} onChange={(e) => updateEditedFacts('professional_title', e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1 text-sm" />
       </div>
       {renderEditableSection('skills', 'skills', editedFacts.skills as any[] || [], [{ label: 'Name', field: 'name' }, { label: 'Proficiency (1-10)', field: 'proficiency_level', type: 'number' }, { label: 'Years', field: 'years_of_experience', type: 'number' }], { name: '' }, confidence)}
-      {renderEditableSection('experiences', 'experiences', editedFacts.experiences as any[] || [], [{ label: 'Company', field: 'company_name' }, { label: 'Title', field: 'job_title' }, { label: 'Start', field: 'start_date', type: 'date' }, { label: 'End (blank = current)', field: 'end_date', type: 'date' }], { company_name: '', job_title: '', start_date: '', end_date: '' }, confidence)}
+      {renderEditableSection('experiences', 'experiences', editedFacts.experiences as any[] || [], [{ label: 'Company', field: 'company_name' }, { label: 'Title', field: 'job_title' }, { label: 'Start', field: 'start_date', type: 'date' }, { label: 'End (blank = current)', field: 'end_date', type: 'date' }, { label: 'Achievements (one per line)', field: 'achievements', type: 'textarea' }], { company_name: '', job_title: '', start_date: '', end_date: '' }, confidence)}
       {renderEditableSection('educations', 'educations', editedFacts.educations as any[] || [], [{ label: 'Institution', field: 'institution_name' }, { label: 'Degree', field: 'degree' }, { label: 'Field', field: 'field_of_study' }, { label: 'Start', field: 'start_date', type: 'date' }, { label: 'End', field: 'end_date', type: 'date' }], { institution_name: '', degree: '' }, confidence)}
       {renderEditableSection('certifications', 'certifications', editedFacts.certifications as any[] || [], [{ label: 'Name', field: 'name' }, { label: 'Issuer', field: 'issuer' }], { name: '' }, confidence)}
       {renderEditableSection('projects', 'projects', editedFacts.projects as any[] || [], [{ label: 'Title', field: 'title' }, { label: 'Description', field: 'description' }], { title: '' }, confidence)}
@@ -251,7 +305,13 @@ function CandidateDashboardContent() {
     if (!candidate || !selectedResumeId || !parsedResume) return;
     const profileKeys = ['professional_title', 'summary', 'current_location', 'city', 'state', 'country', 'postal_code', 'preferred_work_mode', 'willing_to_relocate', 'willing_to_travel', 'remote_experience', 'notice_period_days', 'expected_salary_min', 'expected_salary_max', 'work_authorization', 'visa_sponsorship_needed', 'is_open_to_work', 'available_from'];
     const profile = Object.fromEntries(profileKeys.filter((key) => editedFacts[key] !== undefined).map((key) => [key, editedFacts[key]]));
-    const facts = Object.fromEntries(['skills', 'experiences', 'educations', 'certifications', 'projects', 'languages', 'awards', 'links'].filter((key) => Array.isArray(editedFacts[key]) && editedFacts[key].length > 0).map((key) => [key, editedFacts[key]]));
+    const facts = Object.fromEntries(['skills', 'experiences', 'educations', 'certifications', 'projects', 'languages', 'awards', 'links']
+      .filter((key) => Array.isArray(editedFacts[key]) && editedFacts[key].length > 0)
+      .map((key) => [key, key === 'experiences'
+        ? toExperiencePayload(editedFacts[key] as any[])
+        : key === 'projects'
+          ? toProjectPayload(editedFacts[key] as any[])
+          : editedFacts[key]]));
     setConfirming(true); setError(null); setMessage(null);
     try {
       const result = await apiClient.confirmResume(selectedResumeId, { expected_profile_revision: candidate.profile.profile_revision, profile, facts });
@@ -319,9 +379,12 @@ function CandidateDashboardContent() {
       const profileResult = await apiClient.updateCandidateProfile(profilePayload);
       // Save all facts (skills, experiences, etc.) via the dedicated endpoint
       const factsPayload: Record<string, unknown> = { expected_profile_revision: profileResult.profile_revision };
-      for (const key of ['skills', 'experiences', 'educations', 'certifications', 'projects', 'languages', 'awards', 'links']) {
+      for (const key of ['skills', 'educations', 'certifications', 'languages', 'awards', 'links']) {
         if (Array.isArray(editedFacts[key])) factsPayload[key] = editedFacts[key];
       }
+      // Experiences & projects: convert the UI's comma/newline-separated text into arrays
+      if (Array.isArray(editedFacts.experiences)) factsPayload.experiences = toExperiencePayload(editedFacts.experiences as any[]);
+      if (Array.isArray(editedFacts.projects)) factsPayload.projects = toProjectPayload(editedFacts.projects as any[]);
       const factsResult = await apiClient.updateCandidateFacts(factsPayload as any);
       // If first-time and parsedResume exists, also confirm the resume document
       if (parsedResume && selectedResumeId) {
@@ -392,14 +455,16 @@ function CandidateDashboardContent() {
         {section === 'overview' && <div className="space-y-4"><Card><CardHeader><CardTitle>Profile</CardTitle><CardDescription>Revision {candidate.profile.profile_revision}</CardDescription></CardHeader><CardContent><p className="font-medium">{candidate.profile.professional_title || 'Add a professional title'}</p><p className="text-sm text-slate-500">{candidate.profile.summary || 'Complete your profile to improve applications.'}</p></CardContent></Card><div className="grid gap-4 md:grid-cols-2"><Card><CardHeader><CardTitle>Resumes</CardTitle><CardDescription>{resumes.length} uploaded</CardDescription></CardHeader><CardContent><p className="text-sm">{resumes.some((resume) => resume.is_current) ? 'Active resume selected' : 'Your resume is the starting point'}</p>{resumes.length === 0 && <Button className="mt-3" onClick={() => setSection('resumes')}>Upload your first resume</Button>}</CardContent></Card><Card><CardHeader><CardTitle>Applications</CardTitle><CardDescription>{applications.length} submitted</CardDescription></CardHeader><CardContent><p className="text-sm">Track your application status here.</p></CardContent></Card></div></div>}
         {section === 'profile' && <Card><CardHeader><CardTitle>Candidate Profile</CardTitle><CardDescription>{parsedResume ? 'Your resume has been parsed. Review and edit the pre-filled data below, then save.' : 'Manual edits are always available.'}</CardDescription></CardHeader><CardContent><form key={parsedResume ? `prefill-${JSON.stringify(editedFacts.professional_title)}` : 'empty'} className="grid gap-4 md:grid-cols-2" onSubmit={saveProfile}>
           <label className="text-sm">Professional title<Input name="professional_title" defaultValue={(editedFacts.professional_title as string) || candidate.profile.professional_title || ''} /></label>
-          <label className="text-sm">Current location<Input name="current_location" defaultValue={candidate.profile.current_location || ''} /></label>
-          <label className="text-sm">City<Input name="city" defaultValue={candidate.profile.city || ''} /></label>
-          <label className="text-sm">State<Input name="state" defaultValue={candidate.profile.state || ''} /></label>
-          <label className="text-sm">Country<Input name="country" defaultValue={candidate.profile.country || ''} /></label>
-          <label className="text-sm">Postal code<Input name="postal_code" defaultValue={candidate.profile.postal_code || ''} /></label>
-          <label className="text-sm md:col-span-2">Summary<textarea name="summary" defaultValue={candidate.profile.summary || ''} className="min-h-28 w-full rounded-lg border border-slate-300 p-3 text-sm" /></label>
-          <label className="text-sm">Date of birth<Input type="date" name="date_of_birth" defaultValue={candidate.profile.date_of_birth || ''} /></label>
-          <label className="text-sm">Gender<select name="gender" defaultValue={candidate.profile.gender || ''} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="non_binary">Non-binary</option><option value="prefer_not_to_say">Prefer not to say</option></select></label>
+          <label className="text-sm">Phone number<Input name="phone" defaultValue={(editedFacts.contact_info as any)?.phone || (editedFacts.contact_info as any)?.phone_number || (editedFacts.contact_info as any)?.mobile || ''} placeholder="Extracted phone number" onChange={(e) => updateEditedFacts('contact_info.phone', e.target.value)} /></label>
+          <label className="text-sm">Current location<Input name="current_location" defaultValue={(editedFacts.contact_info as any)?.address || (editedFacts.contact_info as any)?.location || candidate.profile.current_location || ''} /></label>
+          <label className="text-sm">City<Input name="city" defaultValue={(editedFacts.contact_info as any)?.city || candidate.profile.city || ''} /></label>
+          <label className="text-sm">State<Input name="state" defaultValue={(editedFacts.contact_info as any)?.state || candidate.profile.state || ''} /></label>
+          <label className="text-sm">Country<Input name="country" defaultValue={(editedFacts.contact_info as any)?.country || candidate.profile.country || ''} /></label>
+          <label className="text-sm">Postal code<Input name="postal_code" defaultValue={(editedFacts.contact_info as any)?.postal_code || candidate.profile.postal_code || ''} /></label>
+          <label className="text-sm">Total experience (years)<Input type="number" step="0.1" name="experience_years" defaultValue={(editedFacts.experience_years as any) ?? candidate.profile.total_experience_years ?? ''} placeholder="e.g. 5.5" onChange={(e) => updateEditedFacts('experience_years', e.target.value ? Number(e.target.value) : null)} /></label>
+          <label className="text-sm md:col-span-2">Summary<textarea name="summary" defaultValue={(editedFacts.summary as string) || candidate.profile.summary || ''} className="min-h-28 w-full rounded-lg border border-slate-300 p-3 text-sm" /></label>
+          <label className="text-sm">Date of birth<Input type="date" name="date_of_birth" defaultValue={(editedFacts.date_of_birth as string) || candidate.profile.date_of_birth || ''} /></label>
+          <label className="text-sm">Gender<select name="gender" defaultValue={(editedFacts.gender as string) || candidate.profile.gender || ''} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="non_binary">Non-binary</option><option value="prefer_not_to_say">Prefer not to say</option></select></label>
           <label className="text-sm">Nationality<Input name="nationality" defaultValue={candidate.profile.nationality || ''} /></label>
           <label className="text-sm">Preferred work mode<select name="preferred_work_mode" defaultValue={candidate.profile.preferred_work_mode || ''} className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3"><option value="">Select</option><option value="onsite">On-site</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option></select></label>
           <label className="text-sm">Work authorization<Input name="work_authorization" defaultValue={candidate.profile.work_authorization || ''} placeholder="e.g. US Citizen, H1B, OPT" /></label>
@@ -420,10 +485,10 @@ function CandidateDashboardContent() {
           </div>}
           <div className="md:col-span-2 space-y-4">
             {renderEditableSection('Skills', 'skills', (editedFacts.skills as any[]) || [], [{ label: 'Name', field: 'name' }, { label: 'Proficiency (1-10)', field: 'proficiency_level', type: 'number' }, { label: 'Years', field: 'years_of_experience', type: 'number' }], { name: '' })}
-            {renderEditableSection('Experience', 'experiences', (editedFacts.experiences as any[]) || [], [{ label: 'Company', field: 'company_name' }, { label: 'Title', field: 'job_title' }, { label: 'Employment Type', field: 'employment_type' }, { label: 'Location', field: 'location' }, { label: 'Start', field: 'start_date', type: 'date' }, { label: 'End', field: 'end_date', type: 'date' }, { label: 'Description', field: 'description' }], { company_name: '', job_title: '', start_date: '' })}
+            {renderEditableSection('Experience', 'experiences', (editedFacts.experiences as any[]) || [], [{ label: 'Company', field: 'company_name' }, { label: 'Title', field: 'job_title' }, { label: 'Employment Type', field: 'employment_type' }, { label: 'Location', field: 'location' }, { label: 'Start', field: 'start_date', type: 'date' }, { label: 'End (blank = current)', field: 'end_date', type: 'date' }, { label: 'Description', field: 'description', type: 'textarea' }, { label: 'Responsibilities (one per line)', field: 'responsibilities', type: 'textarea' }, { label: 'Achievements (one per line)', field: 'achievements', type: 'textarea' }, { label: 'Skills (comma-separated)', field: 'skills' }], { company_name: '', job_title: '', start_date: '' })}
             {renderEditableSection('Education', 'educations', (editedFacts.educations as any[]) || [], [{ label: 'Institution', field: 'institution_name' }, { label: 'Degree', field: 'degree' }, { label: 'Field of Study', field: 'field_of_study' }, { label: 'Start', field: 'start_date', type: 'date' }, { label: 'End', field: 'end_date', type: 'date' }, { label: 'Grade', field: 'grade' }, { label: 'Description', field: 'description' }], { institution_name: '', degree: '' })}
             {renderEditableSection('Certifications', 'certifications', (editedFacts.certifications as any[]) || [], [{ label: 'Name', field: 'name' }, { label: 'Issuer', field: 'issuer' }, { label: 'Credential ID', field: 'credential_id' }, { label: 'Credential URL', field: 'credential_url' }, { label: 'Issued', field: 'issued_at', type: 'date' }, { label: 'Expires', field: 'expires_at', type: 'date' }], { name: '' })}
-            {renderEditableSection('Projects', 'projects', (editedFacts.projects as any[]) || [], [{ label: 'Title', field: 'title' }, { label: 'Description', field: 'description' }, { label: 'Project URL', field: 'project_url' }, { label: 'Start', field: 'started_at', type: 'date' }, { label: 'End', field: 'completed_at', type: 'date' }], { title: '' })}
+            {renderEditableSection('Projects', 'projects', (editedFacts.projects as any[]) || [], [{ label: 'Title', field: 'title' }, { label: 'Description', field: 'description' }, { label: 'Project URL', field: 'project_url' }, { label: 'Technologies (comma-separated)', field: 'technologies' }, { label: 'Start', field: 'started_at', type: 'date' }, { label: 'End', field: 'completed_at', type: 'date' }], { title: '' })}
             {renderEditableSection('Languages', 'languages', (editedFacts.languages as any[]) || [], [{ label: 'Language', field: 'language_name' }, { label: 'Proficiency', field: 'proficiency' }], { language_name: '' })}
             {renderEditableSection('Awards', 'awards', (editedFacts.awards as any[]) || [], [{ label: 'Title', field: 'title' }, { label: 'Issuer', field: 'issuer' }, { label: 'Date', field: 'awarded_at', type: 'date' }, { label: 'Description', field: 'description' }], { title: '' })}
             {renderEditableSection('Links', 'links', (editedFacts.links as any[]) || [], [{ label: 'URL', field: 'url' }, { label: 'Type', field: 'link_type' }, { label: 'Label', field: 'label' }], { url: '' })}

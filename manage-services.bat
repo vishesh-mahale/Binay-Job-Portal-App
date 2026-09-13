@@ -18,6 +18,8 @@ echo   [6] START ALL SERVICES
 echo   [7] STOP ALL SERVICES
 echo   [8] RESTART ALL SERVICES
 echo.
+echo   [9] RUN STANDALONE TEST PARSER (test_parser.py)
+echo.
 echo   [0] EXIT
 echo.
 echo ============================================================
@@ -31,6 +33,7 @@ if "%choice%"=="5" goto RESTART_WAKE
 if "%choice%"=="6" goto START_ALL
 if "%choice%"=="7" goto STOP_ALL
 if "%choice%"=="8" goto RESTART_ALL
+if "%choice%"=="9" goto RUN_TEST_PARSER
 if "%choice%"=="0" goto EXIT
 echo Invalid choice! Press any key to try again...
 pause >nul
@@ -93,6 +96,24 @@ echo Starting Wake Loop...
 start "Wake Loop - 10 sec" cmd /k "pushd C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App && powershell.exe -ExecutionPolicy Bypass -File wake-dispatcher.ps1"
 echo Done! Wake Loop restarted.
 timeout /t 2 >nul
+goto MENU
+
+:RUN_TEST_PARSER
+echo.
+echo ============================================================
+echo        RUN STANDALONE RESUME PARSER (test_parser.py)
+echo ============================================================
+echo.
+set /p rpath="Enter resume file path (or drag & drop resume file here): "
+if "%rpath%"=="" goto MENU
+set rpath=%rpath:&=%
+set rpath=%rpath:'=%
+set rpath=%rpath:"=%
+echo.
+echo Starting Test Parser in a new window...
+start "Test Parser - Standalone LLM Test" cmd /k "pushd C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App\07-fastapi-ai-worker && .venv\Scripts\python.exe test_parser.py "%rpath%""
+echo Done! Test Parser opened in a separate window.
+timeout /t 3 >nul
 goto MENU
 
 REM ============================================================

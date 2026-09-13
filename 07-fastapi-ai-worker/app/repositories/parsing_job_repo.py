@@ -77,7 +77,7 @@ class ResumeParsingJobRepository:
                 locked_at = NULL,
                 locked_by = NULL,
                 error_details = :error_details,
-                available_at = CASE WHEN :retryable THEN NOW() + (LEAST(attempt_number, 5) * INTERVAL '30 seconds') ELSE NULL END,
+                available_at = CASE WHEN :retryable THEN NOW() + (LEAST(attempt_number, 5) * INTERVAL '30 seconds') ELSE available_at END,
                 updated_at = NOW()
             WHERE id = :job_id
         """
