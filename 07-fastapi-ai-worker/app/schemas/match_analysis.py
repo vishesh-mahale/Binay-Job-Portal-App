@@ -23,7 +23,7 @@ class SkillMatchDetail(BaseModel):
     skill_name: str
     matched: bool
     importance: str = Field(default="required", description="'required' or 'preferred'")
-    candidate_source: Optional[str] = Field(default=None, description="'confirmed_profile', 'resume', or None")
+    candidate_source: Optional[str] = Field(default=None, description="'candidate_manual', 'resume', or None")
 
 
 class ExperienceMatchDetail(BaseModel):

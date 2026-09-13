@@ -536,6 +536,10 @@ export class ApiClient {
     });
   }
 
+  public async updateCandidateFacts(data: { expected_profile_revision: number; skills?: any[]; experiences?: any[]; educations?: any[]; certifications?: any[]; projects?: any[]; languages?: any[]; awards?: any[]; links?: any[] }): Promise<{ candidate_id: string; profile_revision: number; projection_queued: boolean }> {
+    return this.request('/api/v1/candidates/me/facts', { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
   public async applyToJob(jobId: string, data: SubmitApplicationRequest): Promise<ApplicationDetail> {
     return this.request<ApplicationDetail>(`/api/v1/jobs/${encodeURIComponent(jobId)}/apply`, {
       method: 'POST',

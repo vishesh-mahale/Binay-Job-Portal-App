@@ -2,7 +2,8 @@ import { BadRequestException, ConflictException, Controller, Delete, Get, Inject
 import { randomUUID } from 'crypto';
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth';
 import { UserContextClient, SystemClient } from '../../infrastructure/database/clients';
-import { Allow, IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { Allow, IsBoolean, IsInt, IsNumber, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { clampText, toEnumValue, toSmallInt, toDecimal41, toIsoDate, normalizeLinkUrl, toJsonArray, textOrNull, EMPLOYMENT_TYPES } from './resume';
 
 export class UpdateCandidateProfileDto {
   @Allow() @IsInt() @Min(1) expected_profile_revision!: number;
@@ -32,6 +33,19 @@ export class UpdateCandidateProfileDto {
 
 export class ArchiveCandidateFactDto {
   @Allow() @IsInt() @Min(1) expected_profile_revision!: number;
+}
+
+export class UpdateCandidateFactsDto {
+  @Allow() @IsInt() @Min(1) expected_profile_revision!: number;
+  @Allow() @IsOptional() @IsObject() skills?: any[];
+  @Allow() @IsOptional() @IsObject() experiences?: any[];
+  @Allow() @IsOptional() @IsObject() educations?: any[];
+  @Allow() @IsOptional() @IsObject() certifications?: any[];
+  @Allow() @IsOptional() @IsObject() projects?: any[];
+  @Allow() @IsOptional() @IsObject() languages?: any[];
+  @Allow() @IsOptional() @IsObject() awards?: any[];
+  @Allow() @IsOptional() @IsObject() links?: any[];
+  [key: string]: unknown;
 }
 
 @Injectable()
@@ -144,18 +158,8 @@ export class CandidateService {
     if (!row) throw new NotFoundException('NOT_FOUND');
     if (String(row.security_scan_status) !== 'clean') throw new NotFoundException('NOT_FOUND');
     const raw = row.normalized_output && typeof row.normalized_output === 'object' ? row.normalized_output : {};
-    let source: Record<string, unknown> = raw;
-    if (raw.ai && typeof raw.ai === 'object') {
-      const ai = raw.ai as Record<string, unknown>;
-      source = {
-        contact_info: { name: ai.name, email: ai.email, phone: ai.phone },
-        professional_title: ai.current_title,
-        skills: ai.skills ?? [],
-        experiences: ai.experience_years ? [{ years_total: ai.experience_years }] : [],
-        educations: Array.isArray(ai.education) ? ai.education.map((e: string) => ({ raw: e })) : [],
-      };
-    }
-    const allowed = ['contact_info', 'professional_title', 'summary', 'skills', 'experiences', 'educations', 'certifications', 'languages'];
+    const source: Record<string, unknown> = raw;
+    const allowed = ['contact_info', 'professional_title', 'summary', 'skills', 'experiences', 'educations', 'certifications', 'projects', 'languages', 'awards', 'links'];
     const normalized_output = Object.fromEntries(allowed.filter((key) => Object.prototype.hasOwnProperty.call(source, key)).map((key) => [key, source[key]]));
     return {
       document_id: row.document_id,
@@ -249,6 +253,112 @@ export class CandidateService {
       return { candidate_id: profile.id, profile_revision: newRevision, archived_fact_type: factType, archived_fact_id: factId, projection_queued: true };
     });
   }
+
+  async updateOwnFacts(request: AuthenticatedRequest, body: UpdateCandidateFactsDto) {
+    if (!Number.isInteger(body?.expected_profile_revision) || body.expected_profile_revision < 1) {
+      throw new BadRequestException('VALIDATION_ERROR');
+    }
+    const source = 'candidate_manual';
+    return this.system.transaction(async (client) => {
+      const current = await client.query(`SELECT cp.* FROM public.candidate_profiles cp WHERE cp.user_id = $1 AND cp.deleted_at IS NULL FOR UPDATE`, [request.user?.sub]);
+      if (!current.rows[0]) throw new NotFoundException('NOT_FOUND');
+      const profile = current.rows[0];
+      if (Number(profile.profile_revision) !== body.expected_profile_revision) throw new ConflictException('STALE_REVISION');
+      const candidateId = profile.id;
+      // Soft-delete existing facts and insert new ones for each provided type
+      if (Array.isArray(body.skills)) {
+        await client.query(`UPDATE public.candidate_skills SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.skills) {
+          const rawName = typeof item === 'string' ? item : item?.name;
+          const skillName = clampText(rawName, 150);
+          if (!skillName) continue;
+          const proficiencyLevel = toSmallInt(typeof item === 'object' ? item.proficiency_level : null, 1, 10);
+          const yearsOfExperience = toDecimal41(typeof item === 'object' ? item.years_of_experience : null);
+          const skill = await client.query('SELECT id FROM public.skills WHERE slug = LOWER($1) AND is_active = TRUE LIMIT 1', [skillName.trim().toLowerCase().replace(/\s+/g, '-')]);
+          const matchedSkillId = skill.rows[0]?.id ?? null;
+          const skillConflict = matchedSkillId
+            ? `ON CONFLICT (candidate_id, skill_id) WHERE deleted_at IS NULL AND skill_id IS NOT NULL DO UPDATE SET proficiency_level = EXCLUDED.proficiency_level, years_of_experience = EXCLUDED.years_of_experience, candidate_confirmed_at = NOW()`
+            : `ON CONFLICT (candidate_id, lower(btrim(custom_skill_name))) WHERE deleted_at IS NULL AND skill_id IS NULL DO UPDATE SET proficiency_level = EXCLUDED.proficiency_level, years_of_experience = EXCLUDED.years_of_experience, candidate_confirmed_at = NOW()`;
+          await client.query(`INSERT INTO public.candidate_skills (candidate_id, skill_id, custom_skill_name, proficiency_level, years_of_experience, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,'candidate_confirmed',NOW()) ${skillConflict}`, [candidateId, matchedSkillId, matchedSkillId ? null : skillName.trim(), proficiencyLevel, yearsOfExperience, source]);
+        }
+      }
+      if (Array.isArray(body.experiences)) {
+        await client.query(`UPDATE public.candidate_experiences SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.experiences) {
+          const companyName = clampText(item?.company_name, 255);
+          const jobTitle = clampText(item?.job_title, 255);
+          const startDate = toIsoDate(item?.start_date);
+          if (!companyName || !jobTitle || !startDate) continue;
+          const endDate = toIsoDate(item?.end_date);
+          const isCurrent = endDate === null && (item.is_current ?? true);
+          await client.query(`INSERT INTO public.candidate_experiences (candidate_id, company_name, job_title, employment_type, location, start_date, end_date, is_current, description, responsibilities, achievements, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,'candidate_confirmed',NOW())`, [candidateId, companyName, jobTitle, toEnumValue(item.employment_type, EMPLOYMENT_TYPES), clampText(item.location, 255), startDate, endDate, isCurrent, textOrNull(item.description), toJsonArray(item.responsibilities), toJsonArray(item.achievements), source]);
+        }
+      }
+      if (Array.isArray(body.educations)) {
+        await client.query(`UPDATE public.candidate_educations SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.educations) {
+          const institutionName = clampText(item?.institution_name, 255);
+          const degree = clampText(item?.degree, 255);
+          if (!institutionName || !degree) continue;
+          const eduStart = toIsoDate(item.start_date);
+          const eduEnd = toIsoDate(item.end_date);
+          await client.query(`INSERT INTO public.candidate_educations (candidate_id, institution_name, degree, field_of_study, start_date, end_date, is_current, grade, description, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'candidate_confirmed',NOW())`, [candidateId, institutionName, degree, clampText(item.field_of_study, 255), eduStart, eduEnd, item.is_current ?? false, clampText(item.grade, 100), textOrNull(item.description), source]);
+        }
+      }
+      if (Array.isArray(body.certifications)) {
+        await client.query(`UPDATE public.candidate_certifications SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.certifications) {
+          const name = clampText(item?.name, 255);
+          if (!name) continue;
+          const issuedAt = toIsoDate(item.issued_at);
+          const expiresAt = toIsoDate(item.expires_at);
+          const doesNotExpire = expiresAt === null && (item.does_not_expire ?? false);
+          await client.query(`INSERT INTO public.candidate_certifications (candidate_id, name, issuer, credential_id, credential_url, issued_at, expires_at, does_not_expire, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'candidate_confirmed',NOW())`, [candidateId, name, clampText(item.issuer, 255), clampText(item.credential_id, 255), normalizeLinkUrl(item.credential_url), issuedAt, expiresAt, doesNotExpire, source]);
+        }
+      }
+      if (Array.isArray(body.projects)) {
+        await client.query(`UPDATE public.candidate_projects SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.projects) {
+          const title = clampText(item?.title, 255);
+          if (!title) continue;
+          const startedAt = toIsoDate(item.started_at);
+          const completedAt = toIsoDate(item.completed_at);
+          await client.query(`INSERT INTO public.candidate_projects (candidate_id, title, description, project_url, repository_url, started_at, completed_at, technologies, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,'candidate_confirmed',NOW())`, [candidateId, title, textOrNull(item.description), normalizeLinkUrl(item.project_url), normalizeLinkUrl(item.repository_url), startedAt, completedAt, toJsonArray(item.technologies), source]);
+        }
+      }
+      if (Array.isArray(body.languages)) {
+        await client.query(`UPDATE public.candidate_languages SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.languages) {
+          const languageName = clampText(item?.language_name, 100);
+          if (!languageName) continue;
+          await client.query(`INSERT INTO public.candidate_languages (candidate_id, language_name, proficiency, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,'candidate_confirmed',NOW()) ON CONFLICT (candidate_id, lower(btrim(language_name))) WHERE deleted_at IS NULL DO UPDATE SET proficiency = EXCLUDED.proficiency, candidate_confirmed_at = NOW()`, [candidateId, languageName, clampText(item.proficiency, 50), source]);
+        }
+      }
+      if (Array.isArray(body.awards)) {
+        await client.query(`UPDATE public.candidate_awards SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.awards) {
+          const title = clampText(item?.title, 255);
+          if (!title) continue;
+          await client.query(`INSERT INTO public.candidate_awards (candidate_id, title, issuer, awarded_at, description, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,$6,'candidate_confirmed',NOW())`, [candidateId, title, clampText(item.issuer, 255), toIsoDate(item.awarded_at), textOrNull(item.description), source]);
+        }
+      }
+      if (Array.isArray(body.links)) {
+        await client.query(`UPDATE public.candidate_links SET deleted_at = NOW() WHERE candidate_id = $1 AND deleted_at IS NULL`, [candidateId]);
+        for (const item of body.links) {
+          const url = normalizeLinkUrl(item?.url);
+          if (!url) continue;
+          const linkType = clampText(item.link_type, 50) || 'other';
+          const label = clampText(item.label, 100);
+          await client.query(`INSERT INTO public.candidate_links (candidate_id, link_type, label, url, primary_source_type, verification_status, candidate_confirmed_at) VALUES ($1,$2,$3,$4,$5,'candidate_confirmed',NOW()) ON CONFLICT (candidate_id, lower(btrim(link_type)), lower(btrim(url))) WHERE deleted_at IS NULL DO NOTHING`, [candidateId, linkType, label, url, source]);
+        }
+      }
+      const revision = await client.query(`SELECT public.bump_candidate_profile_revision($1) AS revision`, [candidateId]);
+      const newRevision = Number(revision.rows[0].revision);
+      const eventId = randomUUID();
+      await client.query(`INSERT INTO public.outbox_events (id, aggregate_type, aggregate_id, event_type, schema_version, payload, correlation_id, causation_id) VALUES ($1,'candidate',$2,'candidate.profile.changed',1,$3::jsonb,$1,$1)`, [eventId, candidateId, JSON.stringify({ schema_version: 1, event_id: eventId, aggregate_id: candidateId, trace_id: eventId, change_type: 'facts_updated' })]);
+      return { candidate_id: candidateId, profile_revision: newRevision, projection_queued: true };
+    });
+  }
 }
 
 @Controller('api/v1/candidates')
@@ -261,6 +371,11 @@ export class CandidateController {
   @Patch('me')
   async update(@Req() request: AuthenticatedRequest, @Body() body: UpdateCandidateProfileDto) {
     return this.candidate.updateOwnProfile(request, body);
+  }
+
+  @Patch('me/facts')
+  async updateFacts(@Req() request: AuthenticatedRequest, @Body() body: UpdateCandidateFactsDto) {
+    return this.candidate.updateOwnFacts(request, body);
   }
 
   @Delete('me/facts/:factType/:factId')

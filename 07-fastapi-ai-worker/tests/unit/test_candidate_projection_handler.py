@@ -55,7 +55,7 @@ def test_candidate_projection_success_returns_200(test_app):
             {
                 "skill_id": "s1111111-1111-1111-1111-111111111111",
                 "master_skill_name": "Python",
-                "primary_source_type": "confirmed_profile",
+                "primary_source_type": "candidate_manual",
             }
         ],
         experiences=[
@@ -159,7 +159,7 @@ def test_candidate_projection_ai_provider_error_returns_503(test_app):
             {
                 "skill_id": "s1111111-1111-1111-1111-111111111111",
                 "master_skill_name": "Python",
-                "primary_source_type": "confirmed_profile",
+                "primary_source_type": "candidate_manual",
             }
         ],
         experiences=[

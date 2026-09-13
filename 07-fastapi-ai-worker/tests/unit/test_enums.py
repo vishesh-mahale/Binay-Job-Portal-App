@@ -94,11 +94,14 @@ class TestDocumentEnums:
 
 class TestProfileEnums:
     def test_profile_fact_source_values(self):
-        assert ProfileFactSource.MANUAL_ENTRY == "manual_entry"
-        assert ProfileFactSource.CONFIRMED_PROFILE == "confirmed_profile"
-        assert ProfileFactSource.LATEST_ACTIVE_RESUME == "latest_active_resume"
-        assert ProfileFactSource.INTERVIEW_FEEDBACK == "interview_feedback"
-        assert ProfileFactSource.SYSTEM_INFERRED == "system_inferred"
+        assert ProfileFactSource.CANDIDATE_MANUAL == "candidate_manual"
+        assert ProfileFactSource.RESUME_AI == "resume_ai"
+        assert ProfileFactSource.CANDIDATE_CORRECTED == "candidate_corrected"
+        assert ProfileFactSource.ASSESSMENT == "assessment"
+        assert ProfileFactSource.RECRUITER_VERIFIED == "recruiter_verified"
+        assert ProfileFactSource.ADMIN_IMPORT == "admin_import"
+        assert ProfileFactSource.EXTERNAL_IMPORT == "external_import"
+        assert ProfileFactSource.SYSTEM == "system"
 
 
 class TestJobEnums:

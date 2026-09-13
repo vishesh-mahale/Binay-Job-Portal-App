@@ -52,8 +52,8 @@ class CandidateProjectionService:
         Merge canonical profile facts with latest active resume parsed data.
         
         Conforms strictly to PD-002:
-        - Confirmed canonical facts take highest precedence (source: 'confirmed_profile').
-        - Active resume facts are included as supplements (source: 'latest_active_resume').
+        - Confirmed canonical facts take highest precedence (source: 'candidate_manual').
+        - Active resume facts are included as supplements (source: 'resume_ai').
         - Origin of every fact is tracked in fact_sources JSONB.
         """
         fact_sources: Dict[str, Any] = {
@@ -82,7 +82,7 @@ class CandidateProjectionService:
                 if norm_key not in skill_name_set:
                     skill_name_set.add(norm_key)
                     confirmed_skills.append(name)
-                    source_label = cs.get("primary_source_type") or "confirmed_profile"
+                    source_label = cs.get("primary_source_type") or "candidate_manual"
                     fact_sources["skills"][name] = str(source_label)
 
         # Resume extracted skills
@@ -98,7 +98,7 @@ class CandidateProjectionService:
                     if norm_key not in skill_name_set:
                         skill_name_set.add(norm_key)
                         resume_skills.append(s_name)
-                        fact_sources["skills"][s_name] = "latest_active_resume"
+                        fact_sources["skills"][s_name] = "resume_ai"
 
         all_skill_names = confirmed_skills + resume_skills
 
@@ -111,7 +111,7 @@ class CandidateProjectionService:
             norm_t = title.lower()
             normalized_titles_set.add(norm_t)
             titles_list.append(title)
-            fact_sources["titles"][title] = "confirmed_profile"
+            fact_sources["titles"][title] = "candidate_manual"
 
         for exp in aggregate.experiences:
             job_title = (exp.get("job_title") or "").strip()
@@ -120,7 +120,7 @@ class CandidateProjectionService:
                 if norm_t not in normalized_titles_set:
                     normalized_titles_set.add(norm_t)
                     titles_list.append(job_title)
-                    fact_sources["titles"][job_title] = "confirmed_profile"
+                    fact_sources["titles"][job_title] = "candidate_manual"
 
         # 3. Locations
         loc_set: Set[str] = set()
@@ -134,23 +134,39 @@ class CandidateProjectionService:
 
         # 4. Total Experience Years Calculation
         total_exp_years = self._calculate_experience_years(aggregate.experiences)
-        if total_exp_years is None and ai_data.get("experience_years") is not None:
+        if total_exp_years is None and ai_data.get("experiences"):
+            try:
+                exp_list = ai_data["experiences"]
+                if isinstance(exp_list, list) and exp_list:
+                    total_exp_years = float(exp_list[0].get("years_total")) if exp_list[0].get("years_total") is not None else None
+                    fact_sources["experiences"]["total_years"] = "resume_ai"
+            except (ValueError, TypeError, IndexError):
+                total_exp_years = None
+        elif total_exp_years is None and ai_data.get("experience_years") is not None:
             try:
                 total_exp_years = float(ai_data["experience_years"])
-                fact_sources["experiences"]["total_years"] = "latest_active_resume"
+                fact_sources["experiences"]["total_years"] = "resume_ai"
             except (ValueError, TypeError):
                 total_exp_years = None
         else:
-            fact_sources["experiences"]["total_years"] = "confirmed_profile"
+            fact_sources["experiences"]["total_years"] = "candidate_manual"
 
         # 5. Highest Education Level
         highest_edu = self._determine_highest_education(aggregate.educations)
-        if not highest_edu and ai_data.get("education"):
+        if not highest_edu and ai_data.get("educations"):
+            edu_raw = ai_data["educations"]
+            if isinstance(edu_raw, list) and edu_raw:
+                highest_edu = edu_raw[0].get("raw") or edu_raw[0].get("degree") or str(edu_raw[0])
+                fact_sources["education"]["highest_level"] = "resume_ai"
+            elif edu_raw:
+                highest_edu = str(edu_raw)
+                fact_sources["education"]["highest_level"] = "resume_ai"
+        elif not highest_edu and ai_data.get("education"):
             edu_raw = ai_data["education"]
             highest_edu = str(edu_raw[0]) if isinstance(edu_raw, list) and edu_raw else str(edu_raw)
-            fact_sources["education"]["highest_level"] = "latest_active_resume"
+            fact_sources["education"]["highest_level"] = "resume_ai"
         else:
-            fact_sources["education"]["highest_level"] = "confirmed_profile"
+            fact_sources["education"]["highest_level"] = "candidate_manual"
 
         # 6. Certifications
         certifications: List[str] = []
@@ -242,12 +258,12 @@ class CandidateProjectionService:
         )
 
     def _calculate_experience_years(self, experiences: List[Dict[str, Any]]) -> Optional[float]:
-        """Calculate total non-overlapping experience in years."""
+        """Calculate total non-overlapping experience in years by merging date ranges."""
         if not experiences:
             return None
 
-        total_days = 0
         today = date.today()
+        ranges: list[tuple[date, date]] = []
 
         for exp in experiences:
             start_raw = exp.get("start_date")
@@ -269,8 +285,21 @@ class CandidateProjectionService:
                     end = today
 
             if end >= start:
-                total_days += (end - start).days
+                ranges.append((start, end))
 
+        if not ranges:
+            return None
+
+        ranges.sort(key=lambda r: r[0])
+        merged: list[tuple[date, date]] = [ranges[0]]
+        for start, end in ranges[1:]:
+            prev_start, prev_end = merged[-1]
+            if start <= prev_end:
+                merged[-1] = (prev_start, max(prev_end, end))
+            else:
+                merged.append((start, end))
+
+        total_days = sum((end - start).days for start, end in merged)
         years = total_days / 365.25
         return round(years, 1) if years > 0 else 0.0
 

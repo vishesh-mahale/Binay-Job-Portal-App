@@ -1,0 +1,1234 @@
+{
+  "info": {
+    "name": "Binay Job Portal - NestJS API",
+    "_postman_id": "binay-job-portal-api",
+    "description": "Complete API collection for the Binay Job Portal.\n\n## Authentication\n\nThis API uses **HTTP-only cookies** for auth. Cookies are set automatically by the server on login/signup/refresh.\n\n### How to use in Postman:\n1. **Login first** via `POST /api/v1/auth/login` — server sets cookies automatically\n2. All subsequent requests will include cookies automatically (Postman handles this)\n3. **Alternatively**, extract `access_token` from login response and use `Authorization: Bearer <token>` header\n4. Cookie priority: `binay_access_token` > `Authorization: Bearer`\n\n### Cookies set by server:\n| Cookie | Purpose | Path |\n|--------|---------|------|\n| `binay_access_token` | JWT access token | `/` |\n| `binay_refresh_token` | Refresh token | `/api/v1/auth/refresh` |\n| `binay_presence_session` | Presence tracking | `/api/v1` |\n\n### Flow:\n`Signup` → `Login` → `Refresh` (when token expires) → `Logout`\n\nBase URL: `http://localhost:3002`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3002"
+    },
+    {
+      "key": "companyId",
+      "value": ""
+    },
+    {
+      "key": "jobId",
+      "value": ""
+    },
+    {
+      "key": "candidateId",
+      "value": ""
+    },
+    {
+      "key": "applicationId",
+      "value": ""
+    },
+    {
+      "key": "resumeId",
+      "value": ""
+    },
+    {
+      "key": "invitationId",
+      "value": ""
+    },
+    {
+      "key": "interviewId",
+      "value": ""
+    },
+    {
+      "key": "memberId",
+      "value": ""
+    },
+    {
+      "key": "branchId",
+      "value": ""
+    },
+    {
+      "key": "deptId",
+      "value": ""
+    },
+    {
+      "key": "teamId",
+      "value": ""
+    },
+    {
+      "key": "guestSessionId",
+      "value": ""
+    },
+    {
+      "key": "guestUploadToken",
+      "value": ""
+    },
+    {
+      "key": "documentId",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "Cookie",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "binay_access_token={{access_token}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0. Health",
+      "item": [
+        {
+          "name": "Liveness Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health/liveness",
+            "description": "Returns OK if server is running. No auth required."
+          }
+        },
+        {
+          "name": "Readiness Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health/readiness",
+            "description": "Returns OK if DB is connected. No auth required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Authentication",
+      "description": "Signup, Login, Refresh, Logout flow.\n\n**Postman Setup:**\n1. Call `Login` → cookies are auto-set\n2. All other requests will use those cookies automatically\n3. Or extract `access_token` from response and use Bearer header",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/signup",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"TestPassword123!\",\n  \"register_as\": \"candidate\"\n}"
+            },
+            "description": "Create a new user account. Sets cookies if Supabase auto-confirm is on.\n\n**Body:**\n- `email` (required)\n- `password` (required)\n- `register_as`: `candidate` | `recruiter`"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"TestPassword123!\"\n}"
+            },
+            "description": "Login with email/password. Server sets 3 cookies:\n- `binay_access_token`\n- `binay_refresh_token`\n- `binay_presence_session`\n\n**Postman:** Go to Cookies tab to see them, or extract `access_token` from response body for Bearer auth."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "description": "Refreshes access token using `binay_refresh_token` cookie.\n\n**Important:** The refresh token cookie path is `/api/v1/auth/refresh`, so Postman must send it. If using cookies, it works automatically. If using Bearer, pass the refresh token separately."
+          }
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/me",
+            "description": "Returns current authenticated user profile.\n\nRequires: `binay_access_token` cookie or `Authorization: Bearer <token>`"
+          }
+        },
+        {
+          "name": "List Sessions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/sessions",
+            "description": "List all active sessions for the current user."
+          }
+        },
+        {
+          "name": "Revoke Session",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/sessions/revoke",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"<session-uuid>\"\n}"
+            },
+            "description": "Revoke a presence session by session ID."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/change-password",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"OldPassword123!\",\n  \"new_password\": \"NewPassword456!\"\n}"
+            },
+            "description": "Change password for authenticated user. Invalidates all existing tokens."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/forgot-password",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\"\n}"
+            },
+            "description": "Send password reset email. No auth required."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/reset-password",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recovery_token\": \"<token-from-email>\",\n  \"new_password\": \"NewPassword789!\"\n}"
+            },
+            "description": "Reset password using recovery token from email. No auth required."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/logout",
+            "description": "Logout and clear all cookies. Marks session as offline."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Company Setup",
+      "description": "Create and manage your company. After signup, recruiter creates a company first.",
+      "item": [
+        {
+          "name": "Create Company",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Company\",\n  \"slug\": \"my-company\",\n  \"email\": \"hr@mycompany.com\",\n  \"phone\": \"+91-9876543210\"\n}"
+            },
+            "description": "Create a new company. The creator becomes the owner."
+          }
+        },
+        {
+          "name": "Get My Company",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/me",
+            "description": "Get the current user's company."
+          }
+        },
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}",
+            "description": "Get company details by ID."
+          }
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Company Name\",\n  \"description\": \"We are a tech company\"\n}"
+            },
+            "description": "Update company details. Only owner/admin can update."
+          }
+        },
+        {
+          "name": "Get Company Settings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/settings",
+            "description": "Get company settings."
+          }
+        },
+        {
+          "name": "Update Company Settings",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/settings",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_approval_required\": true\n}"
+            },
+            "description": "Update company settings."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Organization Structure",
+      "description": "Manage branches, departments, and teams within a company.",
+      "item": [
+        {
+          "name": "List Branches",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/branches"
+          }
+        },
+        {
+          "name": "Create Branch",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/branches",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mumbai Office\",\n  \"city\": \"Mumbai\",\n  \"country\": \"India\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Branch",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/branches/{{branchId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mumbai HQ\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Departments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/departments"
+          }
+        },
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/departments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering\",\n  \"description\": \"Software engineering team\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Department",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/departments/{{deptId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering & Product\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Teams",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/teams"
+          }
+        },
+        {
+          "name": "Create Team",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/teams",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department_id\": \"<dept-uuid>\",\n  \"name\": \"Backend Team\",\n  \"description\": \"Backend engineering\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Team",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/teams/{{teamId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Backend & Platform Team\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Company Membership",
+      "description": "Invite, accept, leave, rejoin, deactivate members.",
+      "item": [
+        {
+          "name": "Invite Member",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/invitations",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newmember@example.com\",\n  \"title\": \"Software Engineer\"\n}"
+            },
+            "description": "Send invitation to join company. Creates a pending invitation."
+          }
+        },
+        {
+          "name": "List Invitations",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/invitations"
+          }
+        },
+        {
+          "name": "Resend Invitation",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/invitations/{{invitationId}}/resend"
+          }
+        },
+        {
+          "name": "Revoke Invitation",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/invitations/{{invitationId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Position filled\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Invitation Token",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/invitations/verify?token=<raw-token>",
+            "description": "Verify invitation token. No auth required."
+          }
+        },
+        {
+          "name": "Signup with Invite",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/signup-with-invite",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<invite-token>\",\n  \"password\": \"Password123!\",\n  \"full_name\": \"John Doe\"\n}"
+            },
+            "description": "Sign up using invitation token. No auth required."
+          }
+        },
+        {
+          "name": "Add Member (Direct)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/members",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"existing@example.com\"\n}"
+            },
+            "description": "Add an existing user directly to the company."
+          }
+        },
+        {
+          "name": "Accept Membership",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/membership/accept"
+          }
+        },
+        {
+          "name": "Leave Company",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/membership/leave"
+          }
+        },
+        {
+          "name": "Request Rejoin",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/membership/rejoin"
+          }
+        },
+        {
+          "name": "Approve Rejoin",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/members/{{memberId}}/approve-rejoin"
+          }
+        },
+        {
+          "name": "Deactivate Member",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/members/{{memberId}}/deactivate"
+          }
+        },
+        {
+          "name": "Transfer Ownership",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/ownership-transfer",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_owner_user_id\": \"<user-uuid>\"\n}"
+            },
+            "description": "Transfer company ownership to another member."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Jobs (Public)",
+      "description": "Public job endpoints. No auth required.",
+      "item": [
+        {
+          "name": "Search Jobs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs?q=developer&employment_type=full_time&work_mode=remote&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "jobs"],
+              "query": [
+                { "key": "q", "value": "developer", "description": "Search keyword" },
+                { "key": "employment_type", "value": "full_time", "description": "full_time|part_time|contract|internship" },
+                { "key": "work_mode", "value": "remote", "description": "remote|hybrid|onsite" },
+                { "key": "country", "value": "India", "description": "Country filter" },
+                { "key": "category_id", "value": "", "description": "Category UUID" },
+                { "key": "limit", "value": "10", "description": "Results per page" },
+                { "key": "cursor", "value": "", "description": "Pagination cursor" }
+              ]
+            },
+            "description": "Search and filter jobs. No auth required."
+          }
+        },
+        {
+          "name": "Get Job by Slug",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/jobs/slug/{{jobSlug}}"
+          }
+        },
+        {
+          "name": "Get Job by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}"
+          }
+        },
+        {
+          "name": "Get Public Job by Company+Slug",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companySlugOrId}}/jobs/public/{{jobSlug}}"
+          }
+        },
+        {
+          "name": "List Job Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/job-categories"
+          }
+        },
+        {
+          "name": "List Skills",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/skills"
+          }
+        },
+        {
+          "name": "List Cities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/cities"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Jobs (Company - Recruiter)",
+      "description": "Job management for recruiters. Auth required.",
+      "item": [
+        {
+          "name": "List Company Jobs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs"
+          }
+        },
+        {
+          "name": "Create Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Backend Developer\",\n  \"slug\": \"senior-backend-developer\",\n  \"description\": \"We are looking for a senior backend developer...\",\n  \"employment_type\": \"full_time\",\n  \"work_mode\": \"remote\",\n  \"country\": \"India\",\n  \"city\": \"Mumbai\",\n  \"salary_min\": 1500000,\n  \"salary_max\": 3000000,\n  \"salary_currency\": \"INR\",\n  \"experience_min_years\": 5,\n  \"experience_max_years\": 10\n}"
+            },
+            "description": "Create a new job posting. Starts in `draft` status."
+          }
+        },
+        {
+          "name": "Get Company Job",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}"
+          }
+        },
+        {
+          "name": "Update Job",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Job Title\",\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit for Approval",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/submit-for-approval",
+            "description": "Submit draft job for admin approval (if job_approval_required is true)."
+          }
+        },
+        {
+          "name": "Approve Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/approve",
+            "description": "Approve a pending job. Owner/admin only."
+          }
+        },
+        {
+          "name": "Reject Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/reject",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Job description needs more details\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Publish Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/publish",
+            "description": "Publish a draft/approved job. Makes it visible to candidates."
+          }
+        },
+        {
+          "name": "Pause Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/pause",
+            "description": "Pause a published job. Hides from search but keeps data."
+          }
+        },
+        {
+          "name": "Resume Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/resume",
+            "description": "Resume a paused job."
+          }
+        },
+        {
+          "name": "Close Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/close",
+            "description": "Close a job. No longer accepts applications."
+          }
+        },
+        {
+          "name": "Archive Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/jobs/{{jobId}}/archive",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Position filled\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Candidate Profile",
+      "description": "Candidate profile management. Auth required.",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/candidates/me",
+            "description": "Get full candidate profile with skills, experiences, education, etc."
+          }
+        },
+        {
+          "name": "Update Profile Fields",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/candidates/me",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"professional_title\": \"Senior Full Stack Developer\",\n  \"summary\": \"Experienced developer with 9+ years...\",\n  \"current_location\": \"Mumbai\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"country\": \"India\",\n  \"preferred_work_mode\": \"remote\",\n  \"notice_period_days\": 30,\n  \"expected_salary_min\": 1500000,\n  \"expected_salary_max\": 3000000,\n  \"salary_currency\": \"INR\",\n  \"is_open_to_work\": true\n}"
+            },
+            "description": "Update candidate profile fields. Must include `expected_profile_revision` for optimistic concurrency."
+          }
+        },
+        {
+          "name": "Update Candidate Facts (Skills/Experience/etc)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/candidates/me/facts",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expected_profile_revision\": 1,\n  \"skills\": [\n    { \"name\": \"Java\", \"proficiency_level\": 8, \"years_of_experience\": 9 },\n    { \"name\": \"Angular\", \"proficiency_level\": 8, \"years_of_experience\": 7 }\n  ],\n  \"experiences\": [\n    {\n      \"company_name\": \"TCS\",\n      \"job_title\": \"Senior Developer\",\n      \"employment_type\": \"full_time\",\n      \"start_date\": \"2020-01\",\n      \"end_date\": null,\n      \"is_current\": true,\n      \"responsibilities\": [\"Led team of 5\"],\n      \"achievements\": []\n    }\n  ],\n  \"educations\": [\n    {\n      \"institution_name\": \"University of Mumbai\",\n      \"degree\": \"B.E.\",\n      \"field_of_study\": \"Computer Science\",\n      \"start_date\": \"2011\",\n      \"end_date\": \"2015\"\n    }\n  ],\n  \"certifications\": [],\n  \"projects\": [],\n  \"languages\": [\n    { \"language_name\": \"English\", \"proficiency\": \"Fluent\" }\n  ],\n  \"awards\": [],\n  \"links\": []\n}"
+            },
+            "description": "Update all candidate facts at once. Soft-deletes existing facts and inserts new ones.\n\nSupported factTypes: skills, experiences, educations, certifications, projects, languages, awards, links."
+          }
+        },
+        {
+          "name": "Delete Single Fact",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/candidates/me/facts/{{factType}}/{{factId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expected_profile_revision\": 1\n}"
+            },
+            "description": "Delete a single fact by type and ID.\n\nfactType: skills|experiences|educations|certifications|projects|languages|awards|links"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Resumes",
+      "description": "Resume upload, confirm, and management. Auth required.",
+      "item": [
+        {
+          "name": "Upload Resume",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/resumes/upload",
+            "header": [
+              { "key": "Content-Type", "value": "multipart/form-data" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select PDF/DOCX file"
+                },
+                {
+                  "key": "set_as_active",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "description": "Upload a resume file (PDF/DOCX). Triggers security scan + AI parsing.\n\nResponse includes `document_id` and `parsing_job_id`. Use those to poll status."
+          }
+        },
+        {
+          "name": "List My Resumes",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/resumes",
+            "description": "List all uploaded resumes with processing status and stage."
+          }
+        },
+        {
+          "name": "Get Resume Status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/resumes/{{resumeId}}/status",
+            "description": "Get detailed processing status of a resume."
+          }
+        },
+        {
+          "name": "Get Parsed Resume Data",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/resumes/{{resumeId}}/parsed-data",
+            "description": "Get AI-extracted structured data from the resume."
+          }
+        },
+        {
+          "name": "Confirm Resume & Auto-fill Profile",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/resumes/{{resumeId}}/confirm",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expected_profile_revision\": 1,\n  \"profile\": {\n    \"professional_title\": \"Senior Full Stack Developer\",\n    \"summary\": \"...\",\n    \"current_location\": \"Mumbai\"\n  },\n  \"facts\": {\n    \"skills\": [],\n    \"experiences\": [],\n    \"educations\": [],\n    \"certifications\": [],\n    \"projects\": [],\n    \"languages\": [],\n    \"awards\": [],\n    \"links\": []\n  }\n}"
+            },
+            "description": "Confirm resume and optionally auto-fill profile on first time.\n\nOn first resume (profile_completed_at IS NULL): auto-fills profile + facts from resume AI data.\nOn subsequent resumes: only sets the resume as active, no auto-fill."
+          }
+        },
+        {
+          "name": "Delete Resume",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/resumes/{{resumeId}}",
+            "description": "Soft-delete a resume. Cannot delete the active resume."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Guest Sessions",
+      "description": "Guest (non-authenticated) resume upload and job application flow.",
+      "item": [
+        {
+          "name": "Create Guest Session",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/guest-sessions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"<job-uuid>\",\n  \"email\": \"guest@example.com\"\n}"
+            },
+            "description": "Create a guest session for applying without an account. Returns session_id and upload token."
+          }
+        },
+        {
+          "name": "Upload Guest Resume",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/guest-sessions/{{guestSessionId}}/resumes",
+            "header": [
+              { "key": "x-guest-upload-token", "value": "{{guestUploadToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "description": "Upload resume as guest. Requires x-guest-upload-token header."
+          }
+        },
+        {
+          "name": "Get Guest Resume Status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/guest-sessions/{{documentId}}/status",
+            "header": [
+              { "key": "x-guest-upload-token", "value": "{{guestUploadToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Get Guest Parsed Data",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/guest-sessions/{{documentId}}/parsed-data",
+            "header": [
+              { "key": "x-guest-upload-token", "value": "{{guestUploadToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "Submit Guest Application",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/guest-sessions/apply",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"<job-uuid>\",\n  \"session_id\": \"<session-uuid>\",\n  \"document_id\": \"<document-uuid>\",\n  \"name\": \"Guest User\",\n  \"email\": \"guest@example.com\",\n  \"token\": \"<upload-token>\",\n  \"cover_letter\": \"I am interested...\"\n}"
+            },
+            "description": "Submit application as guest. Converts guest to real user if email matches."
+          }
+        },
+        {
+          "name": "Claim Guest Application",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/guest-sessions/claims",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claim_token\": \"<claim-token>\"\n}"
+            },
+            "description": "Claim a guest application after creating an account. Auth required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Applications (Candidate)",
+      "description": "Candidate application management.",
+      "item": [
+        {
+          "name": "Apply to Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}/apply",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document_id\": \"<resume-document-uuid>\",\n  \"cover_letter\": \"I am very interested in this position...\",\n  \"consent\": true\n}"
+            },
+            "description": "Apply to a job as an authenticated candidate."
+          }
+        },
+        {
+          "name": "List My Applications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/me/applications",
+            "description": "List all applications submitted by the current candidate."
+          }
+        },
+        {
+          "name": "Get Application Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/me/applications/{{applicationId}}"
+          }
+        },
+        {
+          "name": "Get Application History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/me/applications/{{applicationId}}/history",
+            "description": "Get status change history of an application."
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Applications (Recruiter)",
+      "description": "Company application management for recruiters.",
+      "item": [
+        {
+          "name": "List Company Applications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/applications"
+          }
+        },
+        {
+          "name": "Get Company Application Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/applications/{{applicationId}}"
+          }
+        },
+        {
+          "name": "Change Application Status",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/applications/{{applicationId}}/status",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"shortlisted\",\n  \"reason\": \"Strong profile\"\n}"
+            },
+            "description": "Update application status. Values: applied|screening|shortlisted|interview|offer|rejected|hired|withdrawn"
+          }
+        },
+        {
+          "name": "Save Candidate",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/saved-candidates/{{candidateId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"private_note\": \"Great Java skills, follow up later\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Saved Candidates",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/saved-candidates"
+          }
+        },
+        {
+          "name": "Remove Saved Candidate",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/saved-candidates/{{candidateId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Interviews",
+      "description": "Interview scheduling and management.",
+      "item": [
+        {
+          "name": "Schedule Interview (Recruiter)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/applications/{{applicationId}}/interviews",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Technical Round 1\",\n  \"type\": \"video\",\n  \"round\": 1,\n  \"scheduled_at\": \"2026-09-20T10:00:00Z\",\n  \"duration_minutes\": 60,\n  \"timezone\": \"Asia/Kolkata\",\n  \"meeting_link\": \"https://meet.google.com/abc-defg-hij\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Company Interviews",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/interviews"
+          }
+        },
+        {
+          "name": "Update Interview (Recruiter)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/companies/{{companyId}}/interviews/{{interviewId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rescheduled\",\n  \"scheduled_at\": \"2026-09-22T14:00:00Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List My Interviews (Candidate)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/me/interviews"
+          }
+        },
+        {
+          "name": "Get Interview Detail (Candidate)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/me/interviews/{{interviewId}}"
+          }
+        },
+        {
+          "name": "Confirm Interview (Candidate)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/me/interviews/{{interviewId}}/confirm"
+          }
+        },
+        {
+          "name": "Decline Interview (Candidate)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/me/interviews/{{interviewId}}/decline",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Schedule conflict\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Admin",
+      "description": "Admin-only endpoints.",
+      "item": [
+        {
+          "name": "List All Companies (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/companies",
+            "description": "List all companies. Admin only."
+          }
+        },
+        {
+          "name": "Verify/Reject Company (Admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/admin/companies/{{companyId}}/verification",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verification_status\": \"verified\",\n  \"rejection_reason\": null\n}"
+            },
+            "description": "Verify or reject a company. Admin only."
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Analytics & Feedback",
+      "item": [
+        {
+          "name": "Track Event",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/analytics/events",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"<unique-uuid>\",\n  \"event_name\": \"page_view\",\n  \"event_category\": \"navigation\",\n  \"event_data\": { \"page\": \"dashboard\" }\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Feedback",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/feedback",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"bug\",\n  \"subject\": \"Upload issue\",\n  \"message\": \"File upload fails for large files\",\n  \"rating\": 3\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

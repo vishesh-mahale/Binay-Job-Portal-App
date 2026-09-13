@@ -7,16 +7,25 @@
 -- confirmed canonical facts and are never the source of truth.
 --
 -- TABLE GROUPS CREATED HERE:
---   Identity/Documents: candidate_profiles, candidate_profile_documents
---   Canonical facts:    candidate_links, candidate_skills,
---                       candidate_experiences, candidate_educations,
---                       candidate_certifications, candidate_projects,
---                       candidate_languages, candidate_awards
---   Evidence:           candidate_skill_evidence,
---                       candidate_experience_evidence,
---                       candidate_education_evidence,
+--   Identity/Documents: candidate_profiles
+--                       candidate_profile_documents                   -- resume versioning v1,2,3,4,5, cover letters, certificates, portfolios
+
+--   Canonical facts:    candidate_links
+--                       candidate_skills
+--                       candidate_experiences
+--                       candidate_educations
+--                       candidate_certifications
+--                       candidate_projects
+--                       candidate_languages
+--                       candidate_awards
+
+--   Evidence:           candidate_skill_evidence
+--                       candidate_experience_evidence
+--                       candidate_education_evidence
 --                       candidate_certification_evidence
---   Derived/Audit:      candidate_search_profiles, profile_change_history
+
+--   Derived/Audit:       candidate_search_profiles
+--                        profile_change_history
 --
 -- FUNCTIONS CREATED HERE:
 --   1. bump_candidate_profile_revision()   -> called exactly once per logical

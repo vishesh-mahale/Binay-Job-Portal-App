@@ -87,4 +87,5 @@ export interface ResumeConfirmationResponse {
   active_document_id: string;
   projection_queued: boolean;
   already_confirmed?: boolean;
+  skipped_facts?: Record<string, number>;
 }

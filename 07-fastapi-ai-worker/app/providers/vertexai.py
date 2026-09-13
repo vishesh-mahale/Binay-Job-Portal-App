@@ -71,7 +71,7 @@ class VertexAILLMProvider(LLMProvider):
             raise ValueError("max_tokens must be at least 100")
 
     async def _run_sync(self, func, *args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
+        return await asyncio.wait_for(asyncio.to_thread(func, *args, **kwargs), timeout=120)
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         self.validate_request(request)
@@ -112,26 +112,20 @@ class VertexAILLMProvider(LLMProvider):
     ) -> Dict[str, Any]:
         client = self._get_client()
         try:
-            temperature = kwargs.get("temperature", 0.2)
             max_tokens = kwargs.get("max_tokens", 8192)
 
             config = types.GenerateContentConfig(
-                temperature=temperature,
+                temperature=kwargs.get("temperature", 0.0),
                 max_output_tokens=max_tokens,
                 response_mime_type="application/json",
-            )
-
-            system_instruction = (
-                f"{prompt}\n\n"
-                f"You MUST strictly format your output as a valid JSON object matching this schema:\n"
-                f"{json.dumps(response_schema, indent=2)}\n"
-                f"Do not include markdown code block formatting (```json), return ONLY raw valid JSON."
+                response_schema=response_schema,
+                system_instruction=prompt,
             )
 
             def _call():
                 resp = client.models.generate_content(
                     model=self._model_name,
-                    contents=f"{system_instruction}\n\n{user_input}",
+                    contents=user_input,
                     config=config,
                 )
                 return getattr(resp, "text", "") or "{}"
@@ -193,7 +187,7 @@ class VertexAIEmbeddingProvider(EmbeddingProvider):
         return self._client
 
     async def _run_sync(self, func, *args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
+        return await asyncio.wait_for(asyncio.to_thread(func, *args, **kwargs), timeout=120)
 
     async def embed(self, request: EmbeddingRequest | str) -> EmbeddingResponse:
         if isinstance(request, str):

@@ -25,12 +25,12 @@ async def test_merge_facts_deduplication_and_precedence():
             {
                 "skill_id": "s1111111-1111-1111-1111-111111111111",
                 "master_skill_name": "Python",
-                "primary_source_type": "confirmed_profile",
+                "primary_source_type": "candidate_manual",
             },
             {
                 "skill_id": None,
                 "custom_skill_name": "FastAPI",
-                "primary_source_type": "manual_entry",
+                "primary_source_type": "candidate_manual",
             },
         ],
         experiences=[
@@ -55,8 +55,8 @@ async def test_merge_facts_deduplication_and_precedence():
         active_resume_parsed_data={
             "normalized_output": {
                 "ai": {
-                    # "Python" is already in canonical; should NOT duplicate and keep confirmed_profile source
-                    # "Docker" and "Kubernetes" are new; should be marked latest_active_resume
+                    # "Python" is already in canonical; should NOT duplicate and keep candidate_manual source
+                    # "Docker" and "Kubernetes" are new; should be marked resume_ai
                     "skills": ["python", "Docker", "Kubernetes"],
                     "experience_years": 5.0,
                 }
@@ -79,10 +79,10 @@ async def test_merge_facts_deduplication_and_precedence():
     assert len(merged.skill_names) == 4
 
     # Fact sources check
-    assert merged.fact_sources["skills"]["Python"] == "confirmed_profile"
-    assert merged.fact_sources["skills"]["FastAPI"] == "manual_entry"
-    assert merged.fact_sources["skills"]["Docker"] == "latest_active_resume"
-    assert merged.fact_sources["skills"]["Kubernetes"] == "latest_active_resume"
+    assert merged.fact_sources["skills"]["Python"] == "candidate_manual"
+    assert merged.fact_sources["skills"]["FastAPI"] == "candidate_manual"
+    assert merged.fact_sources["skills"]["Docker"] == "resume_ai"
+    assert merged.fact_sources["skills"]["Kubernetes"] == "resume_ai"
 
     # Normalized titles: lowercase, trimmed, deduplicated
     assert "senior python developer" in merged.normalized_titles

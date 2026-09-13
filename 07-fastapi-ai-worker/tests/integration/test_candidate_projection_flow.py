@@ -59,7 +59,7 @@ async def test_candidate_projection_task_end_to_end(test_app):
             {
                 "skill_id": "s1111111-1111-1111-1111-111111111111",
                 "master_skill_name": "Python",
-                "primary_source_type": "confirmed_profile",
+                "primary_source_type": "candidate_manual",
             }
         ],
         experiences=[

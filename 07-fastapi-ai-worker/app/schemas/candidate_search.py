@@ -12,7 +12,7 @@ class FactSourcesSchema(BaseModel):
 
     skills: Dict[str, str] = Field(
         default_factory=dict,
-        description="Mapping of skill name to source label ('confirmed_profile', 'latest_active_resume', etc.)"
+        description="Mapping of skill name to source label ('candidate_manual', 'resume_ai', etc.)"
     )
     titles: Dict[str, str] = Field(
         default_factory=dict,

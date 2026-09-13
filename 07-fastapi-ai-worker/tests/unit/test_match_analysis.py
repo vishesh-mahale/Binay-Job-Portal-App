@@ -25,7 +25,7 @@ def test_match_schemas_validation():
     assert payload.schema_version == 1
     assert payload.aggregate_id == "a1111111-1111-1111-1111-111111111111"
 
-    skill = SkillMatchDetail(skill_name="Python", matched=True, importance="required", candidate_source="confirmed_profile")
+    skill = SkillMatchDetail(skill_name="Python", matched=True, importance="required", candidate_source="candidate_manual")
     assert skill.matched is True
 
     gap = GapItem(category="skill", description="Missing Kubernetes", severity="high")
@@ -44,7 +44,7 @@ async def test_match_service_success():
         "experience_match_score": 80.0,
         "domain_match_score": 85.0,
         "skills_breakdown": [
-            {"skill_name": "Python", "matched": True, "importance": "required", "candidate_source": "confirmed_profile"},
+            {"skill_name": "Python", "matched": True, "importance": "required", "candidate_source": "candidate_manual"},
             {"skill_name": "AWS", "matched": False, "importance": "required", "candidate_source": None},
         ],
         "experience_breakdown": {

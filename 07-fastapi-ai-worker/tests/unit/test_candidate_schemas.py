@@ -14,14 +14,14 @@ from app.schemas.candidate_search import (
 def test_fact_sources_schema():
     """Test FactSourcesSchema serialization."""
     sources = FactSourcesSchema(
-        skills={"Python": "confirmed_profile", "FastAPI": "latest_active_resume"},
-        titles={"Backend Engineer": "confirmed_profile"},
-        experiences={"total_years": "confirmed_profile"},
-        education={"highest_level": "confirmed_profile"},
+        skills={"Python": "candidate_manual", "FastAPI": "resume_ai"},
+        titles={"Backend Engineer": "candidate_manual"},
+        experiences={"total_years": "candidate_manual"},
+        education={"highest_level": "candidate_manual"},
     )
     d = sources.model_dump()
-    assert d["skills"]["Python"] == "confirmed_profile"
-    assert d["skills"]["FastAPI"] == "latest_active_resume"
+    assert d["skills"]["Python"] == "candidate_manual"
+    assert d["skills"]["FastAPI"] == "resume_ai"
 
 
 def test_candidate_search_profile_upsert_vector_validation():
@@ -37,7 +37,7 @@ def test_candidate_search_profile_upsert_vector_validation():
         skill_ids=["22222222-2222-2222-2222-222222222222"],
         skill_names=["Python", "FastAPI"],
         locations=["Bengaluru"],
-        fact_sources={"skills": {"Python": "confirmed_profile"}},
+        fact_sources={"skills": {"Python": "candidate_manual"}},
         total_experience_years=4.5,
         highest_education_level="B.Tech",
         searchable_text="Python Developer Bengaluru",

@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     
     MOCK_AI_PROVIDER: bool = Field(False, description="Force mock provider for testing")
 
+    RESUME_PROMPT_VERSION: str = Field("2.0", description="Prompt version for resume extraction LLM")
+    RESUME_EXTRACTION_VERSION: str = Field("2.0", description="Schema version for resume extraction output")
+
     # ========================================================================
     # Document Processing
     # ========================================================================

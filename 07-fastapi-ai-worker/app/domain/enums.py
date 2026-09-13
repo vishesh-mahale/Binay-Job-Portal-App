@@ -90,12 +90,15 @@ class UploadedDocumentStatus(str, Enum):
 # ============================================================================
 
 class ProfileFactSource(str, Enum):
-    """Source of candidate profile fact."""
-    MANUAL_ENTRY = "manual_entry"
-    CONFIRMED_PROFILE = "confirmed_profile"
-    LATEST_ACTIVE_RESUME = "latest_active_resume"
-    INTERVIEW_FEEDBACK = "interview_feedback"
-    SYSTEM_INFERRED = "system_inferred"
+    """Source of candidate profile fact (mirrors SQL profile_fact_source enum)."""
+    CANDIDATE_MANUAL = "candidate_manual"
+    RESUME_AI = "resume_ai"
+    CANDIDATE_CORRECTED = "candidate_corrected"
+    ASSESSMENT = "assessment"
+    RECRUITER_VERIFIED = "recruiter_verified"
+    ADMIN_IMPORT = "admin_import"
+    EXTERNAL_IMPORT = "external_import"
+    SYSTEM = "system"
 
 
 # ============================================================================

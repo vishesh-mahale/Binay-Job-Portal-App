@@ -41,7 +41,7 @@ class GeminiLLMProvider(LLMProvider):
             raise ValueError("max_tokens must be at least 100")
 
     async def _run_sync(self, func, *args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
+        return await asyncio.wait_for(asyncio.to_thread(func, *args, **kwargs), timeout=120)
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         self.validate_request(request)
@@ -134,7 +134,7 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
             raise ValueError(f"Expected 768-dimensional vector, got {len(embedding)}")
 
     async def _run_sync(self, func, *args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
+        return await asyncio.wait_for(asyncio.to_thread(func, *args, **kwargs), timeout=120)
 
     async def embed(self, text: str) -> List[float]:
         if not text:

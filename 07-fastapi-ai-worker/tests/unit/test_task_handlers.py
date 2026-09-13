@@ -124,7 +124,7 @@ def test_resume_parse_ai_provider_error_returns_503(test_app):
             doc_result.mappings.return_value.first.return_value = {"storage_path": "uploads/d3", "security_scan_status": "clean"}
             candidate_result = MagicMock()
             candidate_result.mappings.return_value.first.return_value = {"candidate_id": "cand-1"}
-            mock_session.execute = AsyncMock(side_effect=[doc_result, candidate_result])
+            mock_session.execute = AsyncMock(side_effect=[doc_result, candidate_result, MagicMock()])
 
             response = client.post("/internal/tasks/resume/parse", json=payload)
             assert response.status_code == 503

@@ -198,15 +198,13 @@ class AIResponseValidationError(WorkerException):
         )
 
 
-class RateLimitError(WorkerException):
+class RateLimitError(AIProviderError):
     """AI provider rate limit exceeded."""
     
     def __init__(self, provider: str = "ai_provider", retry_after_seconds: Optional[int] = None):
-        super().__init__(
-            message=f"{provider} rate limit exceeded",
-            http_status=503,
-            internal_code="RATE_LIMIT_ERROR"
-        )
+        super().__init__(provider=provider, reason="rate limit exceeded", retryable=True)
+        self.internal_code = "RATE_LIMIT_ERROR"
+        self.retry_after_seconds = retry_after_seconds
 
 
 # ============================================================================

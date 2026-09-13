@@ -78,7 +78,7 @@ async def test_merge_facts_with_resume_skills():
             {
                 "skill_id": "s1",
                 "master_skill_name": "Python",
-                "primary_source_type": "confirmed_profile",
+                "primary_source_type": "candidate_manual",
             }
         ],
         experiences=[],
@@ -101,8 +101,8 @@ async def test_merge_facts_with_resume_skills():
     merged = service.merge_facts(aggregate)
     assert "Python" in merged.skill_names
     assert "PostgreSQL" in merged.skill_names
-    assert merged.fact_sources["skills"]["Python"] == "confirmed_profile"
-    assert merged.fact_sources["skills"]["PostgreSQL"] == "latest_active_resume"
+    assert merged.fact_sources["skills"]["Python"] == "candidate_manual"
+    assert merged.fact_sources["skills"]["PostgreSQL"] == "resume_ai"
 
 
 @pytest.mark.asyncio
@@ -133,7 +133,7 @@ async def test_generate_projection_returns_upsert_data():
             {
                 "skill_id": "s1",
                 "master_skill_name": "Python",
-                "primary_source_type": "confirmed_profile",
+                "primary_source_type": "candidate_manual",
             }
         ],
         experiences=[],

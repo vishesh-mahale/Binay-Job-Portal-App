@@ -41,7 +41,9 @@ class ResumeParsingJobRepository:
                 attempt_number = attempt_number + 1,
                 updated_at = NOW()
             WHERE id = :job_id
-              AND status NOT IN ('completed', 'cancelled')
+              AND status NOT IN ('completed', 'cancelled', 'failed')
+              AND attempt_number < max_attempts
+              AND (available_at IS NULL OR available_at <= NOW())
               AND (locked_at IS NULL OR locked_at < NOW() - INTERVAL '10 minutes')
             RETURNING id, document_id, status, attempt_number, max_attempts, locked_by, locked_at
         """
@@ -61,16 +63,21 @@ class ResumeParsingJobRepository:
                 await session.close()
 
     async def mark_failed(
-        self, job_id: str, error_details: dict[str, Any], session: Optional[AsyncSession] = None
+        self, job_id: str, error_details: dict[str, Any], session: Optional[AsyncSession] = None, retryable: bool = False,
     ) -> None:
-        """Mark a parsing job as failed."""
+        """Mark a parsing job as failed. If retryable, set status='queued' with backoff for retry."""
+        if retryable:
+            status = "queued"
+        else:
+            status = "failed"
         query = """
             UPDATE resume_parsing_jobs
-            SET status = 'failed',
-                failed_at = NOW(),
+            SET status = CAST(:status AS parsing_job_status),
+                failed_at = CASE WHEN :is_failed THEN NOW() ELSE failed_at END,
                 locked_at = NULL,
                 locked_by = NULL,
                 error_details = :error_details,
+                available_at = CASE WHEN :retryable THEN NOW() + (LEAST(attempt_number, 5) * INTERVAL '30 seconds') ELSE NULL END,
                 updated_at = NOW()
             WHERE id = :job_id
         """
@@ -78,17 +85,18 @@ class ResumeParsingJobRepository:
         async for s in self._with_session(session):
             try:
                 err_payload = json.dumps(error_details) if isinstance(error_details, dict) else error_details
-                await s.execute(text(query), {"job_id": job_id, "error_details": err_payload})
+                is_failed = status == "failed"
+                await s.execute(text(query), {"job_id": job_id, "error_details": err_payload, "status": status, "is_failed": is_failed, "retryable": retryable})
             except Exception:
                 if session is None:
                     await s.rollback()
                 raise
 
-    async def mark_completed(self, job_id: str, session: Optional[AsyncSession] = None) -> None:
-        """Mark a parsing job as completed."""
+    async def mark_completed(self, job_id: str, session: Optional[AsyncSession] = None, status: str = "completed") -> None:
+        """Mark a parsing job as completed or partial."""
         query = """
             UPDATE resume_parsing_jobs
-            SET status = 'completed',
+            SET status = CAST(:status AS parsing_job_status),
                 completed_at = NOW(),
                 locked_at = NULL,
                 locked_by = NULL,
@@ -98,7 +106,7 @@ class ResumeParsingJobRepository:
 
         async for s in self._with_session(session):
             try:
-                await s.execute(text(query), {"job_id": job_id})
+                await s.execute(text(query), {"job_id": job_id, "status": status})
             except Exception:
                 if session is None:
                     await s.rollback()
