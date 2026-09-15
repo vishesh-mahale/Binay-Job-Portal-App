@@ -27,6 +27,89 @@ from app.providers.base import (
 logger = get_logger(__name__)
 
 
+def _repair_json(raw_text: str) -> Dict[str, Any]:
+    """Parse JSON with automated repair for truncated strings, unescaped quotes, or open brackets."""
+    cleaned = (raw_text or "").strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    if cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    in_string = False
+    escaped = False
+    stack = []
+
+    for char in cleaned:
+        if escaped:
+            escaped = False
+            continue
+        if char == '\\':
+            escaped = True
+            continue
+        if char == '"':
+            in_string = not in_string
+            continue
+        if not in_string:
+            if char in '{[':
+                stack.append('}' if char == '{' else ']')
+            elif char in '}]':
+                if stack and stack[-1] == char:
+                    stack.pop()
+
+    repaired = cleaned
+    if in_string:
+        repaired += '"'
+
+    while stack:
+        repaired += stack.pop()
+
+    try:
+        return json.loads(repaired)
+    except json.JSONDecodeError:
+        pass
+
+    for cutoff in range(len(cleaned) - 1, 0, -1):
+        if cleaned[cutoff] in ("}", "]"):
+            candidate = cleaned[: cutoff + 1]
+            c_stack = []
+            c_in_str = False
+            c_esc = False
+            for ch in candidate:
+                if c_esc:
+                    c_esc = False
+                    continue
+                if ch == '\\':
+                    c_esc = True
+                    continue
+                if ch == '"':
+                    c_in_str = not c_in_str
+                    continue
+                if not c_in_str:
+                    if ch in '{[':
+                        c_stack.append('}' if ch == '{' else ']')
+                    elif ch in '}]':
+                        if c_stack and c_stack[-1] == ch:
+                            c_stack.pop()
+            if c_in_str:
+                candidate += '"'
+            while c_stack:
+                candidate += c_stack.pop()
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+
+    raise ValueError("Could not repair malformed JSON")
+
+
 class VertexAILLMProvider(LLMProvider):
     """Google Cloud Vertex AI LLM Provider with 0-Key IAM authentication."""
 
@@ -131,18 +214,11 @@ class VertexAILLMProvider(LLMProvider):
                 return getattr(resp, "text", "") or "{}"
 
             raw_text = await self._run_sync(_call)
-            cleaned = raw_text.strip()
-            if cleaned.startswith("```json"):
-                cleaned = cleaned[7:]
-            if cleaned.startswith("```"):
-                cleaned = cleaned[3:]
-            if cleaned.endswith("```"):
-                cleaned = cleaned[:-3]
-            cleaned = cleaned.strip()
-
-            return json.loads(cleaned)
+            return _repair_json(raw_text)
         except json.JSONDecodeError as exc:
-            raise AIProviderError("vertexai", f"Invalid JSON returned: {exc}", retryable=False) from exc
+            raise AIProviderError("vertexai", f"Invalid JSON returned: {exc}", retryable=True) from exc
+        except ValueError as exc:
+            raise AIProviderError("vertexai", f"Invalid JSON returned: {exc}", retryable=True) from exc
         except Exception as exc:
             if "429" in str(exc) or "ResourceExhausted" in str(type(exc).__name__):
                 raise RateLimitError("vertexai") from exc

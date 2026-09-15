@@ -215,13 +215,18 @@ export class ResumeService {
 
   async confirm(request: AuthenticatedRequest, documentId: string, body: ConfirmResumeDto) {
     if (!/^[0-9a-f-]{36}$/i.test(documentId) || !Number.isInteger(body?.expected_profile_revision)) throw new BadRequestException('VALIDATION_ERROR');
-    const ALLOWED_PROFILE_FIELDS = new Set(['professional_title','summary','current_location','city','state','country','postal_code','preferred_work_mode','willing_to_relocate','willing_to_travel','remote_experience','notice_period_days','expected_salary_min','expected_salary_max','work_authorization','visa_sponsorship_needed','is_open_to_work','available_from']);
+    const ALLOWED_PROFILE_FIELDS = new Set(['professional_title','summary','current_location','city','state','country','postal_code','preferred_work_mode','willing_to_relocate','willing_to_travel','remote_experience','notice_period_days','expected_salary_min','expected_salary_max','work_authorization','visa_sponsorship_needed','is_open_to_work','available_from','resume_phone','years_of_experience','first_name','middle_name','last_name']);
     const profileInput = body.profile && typeof body.profile === 'object' ? body.profile : body;
     const supplied = [...ALLOWED_PROFILE_FIELDS].filter((field) => Object.prototype.hasOwnProperty.call(profileInput, field));
     const facts = body.facts && typeof body.facts === 'object' ? body.facts : {};
     const hasFacts = Object.keys(facts).some((key) => Array.isArray(facts[key]) && facts[key].length > 0);
     if (!supplied.length && !hasFacts) throw new BadRequestException('VALIDATION_ERROR');
     return this.system.transaction(async (client) => {
+      if (profileInput.first_name !== undefined || profileInput.middle_name !== undefined || profileInput.last_name !== undefined) {
+        await client.query(`UPDATE public.users SET first_name = COALESCE($1, first_name), middle_name = $2, last_name = COALESCE($3, last_name), updated_at = NOW() WHERE id = $4`, [
+          profileInput.first_name || null, profileInput.middle_name || null, profileInput.last_name || null, request.user?.sub
+        ]);
+      }
       const source = await client.query(`SELECT d.id, d.processing_status, d.security_scan_status, cp.id AS candidate_id, cp.profile_revision, cp.profile_completed_at FROM public.uploaded_documents d JOIN public.candidate_profiles cp ON cp.user_id = d.uploaded_by_user_id JOIN public.candidate_profile_documents cpd ON cpd.candidate_id = cp.id AND cpd.document_id = d.id AND cpd.document_role = 'resume' AND cpd.unlinked_at IS NULL WHERE d.id = $1 AND d.uploaded_by_user_id = $2 AND d.deleted_at IS NULL FOR UPDATE OF d, cp, cpd`, [documentId, request.user?.sub]);
       if (!source.rows[0]) throw new NotFoundException('NOT_FOUND');
       const row = source.rows[0];
@@ -238,7 +243,7 @@ export class ResumeService {
       if (Number(row.profile_revision) !== body.expected_profile_revision) throw new ConflictException('STALE_REVISION');
       const isFirstTime = !row.profile_completed_at;
       if (isFirstTime) {
-        const nonNullSupplied = supplied.filter((field) => profileInput[field] !== null && profileInput[field] !== undefined);
+        const nonNullSupplied = supplied.filter((field) => profileInput[field] !== null && profileInput[field] !== undefined && field !== 'first_name' && field !== 'middle_name' && field !== 'last_name');
         if (!nonNullSupplied.length && !hasFacts) {
           throw new BadRequestException('NO_CONFIRMATION_DATA');
         }

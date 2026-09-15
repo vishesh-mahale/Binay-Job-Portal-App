@@ -2,34 +2,19 @@
   "name": "AYUSH KUKAL",
   "email": "iayushkukkal07@gmail.com",
   "phone": "+91 7000748221",
-  "address": "H.no 2094 Narsingh Nagar near Mastana chowk Ranjhi Basti, Jabalpur, M.P- 482005",
-  "city": "Jabalpur",
+  "address": "H.no 2094 Narsingh Nagar near Mastana chowk Ranjhi Basti",
+  "city": "Pune",
   "state": "M.P",
   "country": "India",
   "postal_code": "482005",
   "date_of_birth": null,
   "gender": null,
-  "summary": "Aspire to render the best of my skills and expertise for a challenging job opportunity in software development which provides me with demanding technological responsibilities, important for the growth of the organization and self.\nA self-motivated and determined professional with 5.7 years of experience as a JAVA Developer (Cloud, Microservices & API).\nHighly skilled in working individually as well as with teams, proposing multiple potential solutions, planning, and providing solutions for the needs of the organization & clients.\nAdept stakeholder management while maintaining excellent relationships within and outside the core team.\nAn effective communicator with strong analytical skills and people management & leadership skills.",
-  "experience_years": 5.7,
+  "summary": "Aspire to render the best of my skills and expertise for a challenging job opportunity in software development which provides me with demanding technological responsibilities, important for the growth of the organization and self. A self-motivated and determined professional with 5.7 years of experience as a JAVA Developer (Cloud, Microservices & API). Highly skilled in working individually as well as with teams, proposing multiple potential solutions, planning, and providing solutions for the needs of the organization & clients. Adept stakeholder management while maintaining excellent relationships within and outside the core team. An effective communicator with strong analytical skills and people management & leadership skills.",
+  "experience_years": 5.9,
   "current_title": "JAVA Developer",
   "skills": [
     {
       "name": "JAVA",
-      "proficiency_level": null,
-      "years_of_experience": null
-    },
-    {
-      "name": "Cloud",
-      "proficiency_level": null,
-      "years_of_experience": null
-    },
-    {
-      "name": "Microservices",
-      "proficiency_level": null,
-      "years_of_experience": null
-    },
-    {
-      "name": "API",
       "proficiency_level": null,
       "years_of_experience": null
     },
@@ -92,6 +77,21 @@
       "name": "Splunk",
       "proficiency_level": null,
       "years_of_experience": null
+    },
+    {
+      "name": "Cloud",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "Microservices",
+      "proficiency_level": null,
+      "years_of_experience": null
+    },
+    {
+      "name": "API",
+      "proficiency_level": null,
+      "years_of_experience": null
     }
   ],
   "experiences": [
@@ -120,25 +120,13 @@
       ],
       "achievements": [],
       "skills": [
-        "JAVA",
+        "Java",
         "Cloud",
         "Microservices",
         "API",
-        "COBOL",
-        "JDEV",
-        "POSTGRE",
-        "JPA",
-        "JIRA",
-        "CONFLUENCE",
-        "DYNATRACE",
-        "PRIVX",
-        "KIBANA",
-        "CLOUDWATCH",
-        "ECS",
-        "Splunk",
         "Software Development",
         "Software Testing",
-        "Troubleshooting"
+        "Debugging"
       ]
     }
   ],
@@ -154,7 +142,7 @@
       "description": null
     },
     {
-      "institution_name": "St Gabriel’s Sr Sec School, Jabalpur",
+      "institution_name": "St Gabriel’s Sr Sec School",
       "degree": "12th",
       "field_of_study": "General Studies",
       "start_date": "2012-04-01",
@@ -179,28 +167,15 @@
   "projects": [
     {
       "title": "Customer Relationship Management System",
-      "description": "If a customer wants to create any account in a bank or if he wants to have any kind of relationship with the bank First step is that a relationship is created between the customer and the bank this is called the Relationship Id or The profile id which can be related to the customer id or the Bank id, only after the Relationship id or the profile id or the ICM Id is created the next set of actions like creation of the accounts for different products are carried out. The enquiry of customer is done in three ways. Customer Profile Enquiry, Customer Profile Pre-Fetch Enquiry, Customer Choice Enquiry",
+      "description": "If a customer wants to create any account in a bank or if he wants to have any kind of relationship with the bank First step is that a relationship is created between the customer and the bank this is called the Relationship Id or The profile id which can be related to the customer id or the Bank id, only after the Relationship id or the profile id or the ICM Id is created the next set of actions like creation of the accounts for different products are carried out. The enquiry of customer is done in three ways: Customer Profile Enquiry, Customer Profile Pre-Fetch Enquiry, Customer Choice Enquiry.",
       "project_url": null,
       "repository_url": null,
       "started_at": null,
       "completed_at": null,
       "technologies": [
         "JAVA",
-        "Cloud",
         "Microservices",
-        "API",
-        "COBOL",
-        "JDEV",
-        "POSTGRE",
-        "JPA",
-        "JIRA",
-        "CONFLUENCE",
-        "DYNATRACE",
-        "PRIVX",
-        "KIBANA",
-        "CLOUDWATCH",
-        "ECS",
-        "Splunk"
+        "API"
       ]
     }
   ],

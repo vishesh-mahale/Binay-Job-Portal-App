@@ -28,7 +28,12 @@ export class UpdateCandidateProfileDto {
   @Allow() @IsOptional() @IsString() date_of_birth?: string | null;
   @Allow() @IsOptional() @IsString() gender?: string | null;
   @Allow() @IsOptional() @IsString() nationality?: string | null;
+  @Allow() @IsOptional() @IsString() resume_phone?: string | null;
+  @Allow() @IsOptional() @IsNumber() years_of_experience?: number | null;
   @Allow() @IsOptional() @IsString() salary_currency?: string | null;
+  @Allow() @IsOptional() @IsString() first_name?: string | null;
+  @Allow() @IsOptional() @IsString() middle_name?: string | null;
+  @Allow() @IsOptional() @IsString() last_name?: string | null;
 }
 
 export class ArchiveCandidateFactDto {
@@ -86,7 +91,7 @@ export class CandidateService {
     const token = request.rawAccessToken ?? '';
     const result = await this.userClient.queryAsUser(token, `
       SELECT jsonb_build_object(
-        'profile', to_jsonb(cp) - ARRAY['deleted_at','user_id'],
+        'profile', (to_jsonb(cp) - ARRAY['deleted_at','user_id']) || jsonb_build_object('first_name', u.first_name, 'middle_name', u.middle_name, 'last_name', u.last_name),
         'links', COALESCE((SELECT jsonb_agg(to_jsonb(x) - ARRAY['deleted_at','source_document_id','source_parsing_result_id','primary_source_type','verification_status','candidate_confirmed_at'] ORDER BY x.created_at) FROM public.candidate_links x WHERE x.candidate_id = cp.id AND x.deleted_at IS NULL), '[]'::jsonb),
         'skills', COALESCE((SELECT jsonb_agg(to_jsonb(x) - ARRAY['deleted_at','source_document_id','source_parsing_result_id','primary_source_type','verification_status','candidate_confirmed_at'] ORDER BY x.created_at) FROM public.candidate_skills x WHERE x.candidate_id = cp.id AND x.deleted_at IS NULL), '[]'::jsonb),
         'experiences', COALESCE((SELECT jsonb_agg(to_jsonb(x) - ARRAY['deleted_at','source_document_id','source_parsing_result_id','primary_source_type','verification_status','candidate_confirmed_at'] ORDER BY x.created_at) FROM public.candidate_experiences x WHERE x.candidate_id = cp.id AND x.deleted_at IS NULL), '[]'::jsonb),
@@ -97,6 +102,7 @@ export class CandidateService {
         'awards', COALESCE((SELECT jsonb_agg(to_jsonb(x) - ARRAY['deleted_at','source_document_id','source_parsing_result_id','primary_source_type','verification_status','candidate_confirmed_at'] ORDER BY x.created_at) FROM public.candidate_awards x WHERE x.candidate_id = cp.id AND x.deleted_at IS NULL), '[]'::jsonb)
       ) AS profile
       FROM public.candidate_profiles cp
+      JOIN public.users u ON u.id = cp.user_id
       WHERE cp.user_id = $1 AND cp.deleted_at IS NULL
     `, [request.user?.sub]);
     if (!result.rows[0]) throw new NotFoundException('NOT_FOUND');
@@ -188,14 +194,25 @@ export class CandidateService {
       visa_sponsorship_needed: 'visa_sponsorship_needed', is_open_to_work: 'is_open_to_work',
       available_from: 'available_from', date_of_birth: 'date_of_birth',
       gender: 'gender', nationality: 'nationality', salary_currency: 'salary_currency',
+      resume_phone: 'resume_phone', years_of_experience: 'years_of_experience',
     };
     const fields = Object.keys(allowed).filter((key) => Object.prototype.hasOwnProperty.call(body, key));
-    if (fields.length === 0) throw new BadRequestException('VALIDATION_ERROR');
+    const userFields = ['first_name', 'middle_name', 'last_name'].filter((key) => Object.prototype.hasOwnProperty.call(body, key));
+    if (fields.length === 0 && userFields.length === 0) throw new BadRequestException('VALIDATION_ERROR');
     return this.system.transaction(async (client) => {
       const current = await client.query(`SELECT cp.* FROM public.candidate_profiles cp WHERE cp.user_id = $1 AND cp.deleted_at IS NULL FOR UPDATE`, [request.user?.sub]);
       if (!current.rows[0]) throw new NotFoundException('NOT_FOUND');
       const profile = current.rows[0];
       if (Number(profile.profile_revision) !== body.expected_profile_revision) throw new ConflictException('STALE_REVISION');
+      if (userFields.length > 0) {
+        await client.query(`UPDATE public.users SET first_name = COALESCE($1, first_name), middle_name = $2, last_name = COALESCE($3, last_name), updated_at = NOW() WHERE id = $4`, [
+          body.first_name || null, body.middle_name || null, body.last_name || null, request.user?.sub
+        ]);
+      }
+      if (fields.length === 0) {
+        const revision = await client.query(`SELECT public.bump_candidate_profile_revision($1) AS revision`, [profile.id]);
+        return { candidate_id: profile.id, profile_revision: Number(revision.rows[0].revision), projection_queued: true };
+      }
       const before = { ...profile };
       const values: unknown[] = [];
       const sets = fields.map((field, index) => { values.push((body as any)[field]); return `\"${allowed[field]}\" = $${index + 1}`; });

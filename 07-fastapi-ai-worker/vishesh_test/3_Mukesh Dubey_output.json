@@ -1,0 +1,411 @@
+{
+  "name": "MUKESH KUMAR DUBEY",
+  "email": "mkdmukesh899@gmail.com",
+  "phone": "+91-8114521001",
+  "address": "Vill + Post - Sipaya P.S. - Bisambharpur Dist - GopalGanj , Bihar",
+  "city": "GopalGanj",
+  "state": "Bihar",
+  "country": "India",
+  "postal_code": "841501",
+  "date_of_birth": "1992-04-08",
+  "gender": "Male",
+  "summary": "Aim to be associated with a Progressive organization that gives me the scope to share my knowledge and skills in accordance with the latest trends and be a part of team that dynamically works towards the growth of organization and gives the satisfaction thereof.Having 5+ years of IT experience in software development life cycle in developing web-based Client/Server applications using Java, J2EE and spring. Extensive experience in design, development and implementation of MVC architecture using Spring frameworkExperience with spring Boot and Micro services.Experience with Object-Relational Mapping (ORM) tools like Hibernate and Java database connectivity mechanisms like JDBCHaving good Knowledge in Agile model process.Strong knowledge in Object-Oriented Design, Analysis, Development, TestingGood team member, Positive attitude and result oriented self-motivated, quick learner willing to adapt new challenges and new technologies.",
+  "skills": [
+    {
+      "name": "Windows",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "JDBC",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "JSP",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Servlets",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Hibernate",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Spring",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Microservices",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Web Services",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Spring Boot",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "JBoss",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Tomcat",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Eureka",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Oracle",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "MySQL",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "STS",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Eclipse",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "IntelliJ IDEA",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Maven",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Log4j",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "JUnit",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "GitHub",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Bamboo",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Jira",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Bitbucket",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Java",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "J2EE",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "JPA",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "REST",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "MVC",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "IOC",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    },
+    {
+      "name": "Spring MVC",
+      "proficiency_level": 8,
+      "years_of_experience": 5
+    }
+  ],
+  "experience_years": 5,
+  "current_title": "Senior Software Engineer",
+  "educations": [
+    {
+      "institution_name": "Kalinga University, Raipur",
+      "degree": "Master in Computer Applications",
+      "field_of_study": "Computer Applications",
+      "start_date": null,
+      "end_date": "2016",
+      "is_current": false,
+      "grade": null,
+      "description": null
+    },
+    {
+      "institution_name": "Sikkim Manipal University",
+      "degree": "Bachelors in Computer Applications",
+      "field_of_study": "Computer Applications",
+      "start_date": null,
+      "end_date": "2014",
+      "is_current": false,
+      "grade": null,
+      "description": null
+    }
+  ],
+  "experiences": [
+    {
+      "company_name": "Mphasis ltd",
+      "job_title": "Senior Software Engineer",
+      "employment_type": "part_time",
+      "location": null,
+      "start_date": "2022-08",
+      "end_date": null,
+      "is_current": true,
+      "description": null,
+      "responsibilities": [],
+      "achievements": [],
+      "skills": [
+        "Java",
+        "J2EE",
+        "Windows",
+        "JDBC",
+        "JSP",
+        "Servlets",
+        "Hibernate",
+        "Spring",
+        "Microservices",
+        "Web Services",
+        "Spring Boot",
+        "JBoss",
+        "Tomcat",
+        "Eureka",
+        "Oracle",
+        "MySQL",
+        "STS",
+        "Eclipse",
+        "IntelliJ IDEA",
+        "Maven",
+        "Log4j",
+        "JUnit",
+        "GitHub",
+        "Bamboo",
+        "Jira",
+        "Bitbucket",
+        "JPA",
+        "REST",
+        "MVC",
+        "IOC",
+        "Spring MVC"
+      ]
+    },
+    {
+      "company_name": "Coforge ltd",
+      "job_title": "Software Engineer",
+      "employment_type": "full_time",
+      "location": null,
+      "start_date": "2019-09",
+      "end_date": "2022-08",
+      "is_current": false,
+      "description": null,
+      "responsibilities": [],
+      "achievements": [],
+      "skills": [
+        "Java",
+        "J2EE",
+        "Windows",
+        "JDBC",
+        "JSP",
+        "Servlets",
+        "Hibernate",
+        "Spring",
+        "Microservices",
+        "Web Services",
+        "Spring Boot",
+        "JBoss",
+        "Tomcat",
+        "Eureka",
+        "Oracle",
+        "MySQL",
+        "STS",
+        "Eclipse",
+        "IntelliJ IDEA",
+        "Maven",
+        "Log4j",
+        "JUnit",
+        "GitHub",
+        "Bamboo",
+        "Jira",
+        "Bitbucket",
+        "JPA",
+        "REST",
+        "MVC",
+        "IOC",
+        "Spring MVC"
+      ]
+    },
+    {
+      "company_name": "Virtusa consulting",
+      "job_title": "Associate Engineer",
+      "employment_type": "full_time",
+      "location": null,
+      "start_date": "2018-01",
+      "end_date": "2019-08",
+      "is_current": false,
+      "description": null,
+      "responsibilities": [],
+      "achievements": [],
+      "skills": [
+        "Java",
+        "J2EE",
+        "Windows",
+        "JDBC",
+        "JSP",
+        "Servlets",
+        "Hibernate",
+        "Spring",
+        "Microservices",
+        "Web Services",
+        "Spring Boot",
+        "JBoss",
+        "Tomcat",
+        "Eureka",
+        "Oracle",
+        "MySQL",
+        "STS",
+        "Eclipse",
+        "IntelliJ IDEA",
+        "Maven",
+        "Log4j",
+        "JUnit",
+        "GitHub",
+        "Bamboo",
+        "Jira",
+        "Bitbucket",
+        "JPA",
+        "REST",
+        "MVC",
+        "IOC",
+        "Spring MVC"
+      ]
+    }
+  ],
+  "certifications": [],
+  "projects": [
+    {
+      "title": "DaRT-Marketing Dev.",
+      "description": "The Charles Schwab Corporation provides a full range of brokerage, banking and financial advisory services through its operating subsidiaries. Its broker-dealer subsidiary, Charles Schwab & Co., Inc., offers investment services and products, including Schwab brokerage accounts. Its banking subsidiary, Charles Schwab Bank, SSB (member FDIC and an Equal Housing Lender), provides deposit and lending services and products. Access to Electronic Services may be limited or unavailable during periods of peak demand, market volatility, systems upgrade, maintenance, or for other reasons.Involved in Requirement Analysis (both functional & technical) with Client.Developing the modules as per the requirement and coding standards.Involved in design and developing functional specification documentation.Writing the Services and Business logic for the Service Layer to interact with the backend database.",
+      "project_url": null,
+      "repository_url": null,
+      "started_at": null,
+      "completed_at": null,
+      "technologies": [
+        "Java",
+        "JPA",
+        "Web Service (Rest)",
+        "Micro services",
+        "Spring Boot",
+        "Eureka"
+      ]
+    },
+    {
+      "title": "Brandix Shop Flore Ctrl",
+      "description": "Brandix Lanka Limited, through its subsidiaries, engages in developing, manufacturing, and marketing apparel in Sri Lanka. It offers woven, knitted, and printed fabrics; casuals, sleepwear and lounge wear, briefs, bras and accessories, including hangers, buttons, and threads. It is engaged in developing, manufacturing and marketing end-to-end apparel solutions to global fashion super brands.",
+      "project_url": null,
+      "repository_url": null,
+      "started_at": null,
+      "completed_at": null,
+      "technologies": [
+        "MySQL",
+        "Java",
+        "Spring",
+        "MVC",
+        "IOC",
+        "Hibernate",
+        "Web Services(Rest)",
+        "Tomcat"
+      ]
+    },
+    {
+      "title": "FedEx Avis AU",
+      "description": "APAC Vendor Integration System, in short “AVIS”, is an APAC-wide solution for Countries. SCAC (Standard Carrier Alpha Code) is a unique code used to identify transportation companies. Services include Standard, providing pickup by noon and delivery by the end of the day, or Priority, providing delivery within two hours. Specializes in residential delivery Tuesday through Saturday and offers delivery options to provide more flexibility for residential recipients. The logo includes a drawing of a dog carrying a package. FedEx Home Delivery only operates in the Australia. In the US it is not uncommon for Home Delivery packages to be delivered by standard Ground trucks. To make up the difference, FedEx Ground in Australia performs the business deliveries and residential deliveries.",
+      "project_url": null,
+      "repository_url": null,
+      "started_at": null,
+      "completed_at": null,
+      "technologies": [
+        "Java",
+        "Hibernate",
+        "Web Service (Rest)",
+        "Spring mvc",
+        "mysql"
+      ]
+    },
+    {
+      "title": "Glace EMR (Electronic Medical Record)",
+      "description": "GlaceEMR replaces manual process of maintaining patient records and keeping track of all the services taken by the patient. It is highly flexible, customizable and has robust clinical documentation software that makes the practice of medicine easier for the physician and staff and helps increase practice revenue. Targeted at Healthcare practitioners, the basic version of this product is used by more than 300 clients. Modules involved are: Patient Record, Glace MessagingResponsibilities:Designed JSP’s as per the Requirement.Written Controller Classes as per the JSP Requirement.Injected Spring Services into Controller classes.Written Hibernate Mapping Document & Persistence ClassesInvolved in fixing bugs which was raised by testing team.",
+      "project_url": null,
+      "repository_url": null,
+      "started_at": null,
+      "completed_at": null,
+      "technologies": [
+        "Java",
+        "JSP",
+        "Hibernate",
+        "Spring",
+        "Oracle",
+        "Jboss"
+      ]
+    }
+  ],
+  "languages": [
+    {
+      "language_name": "English",
+      "proficiency": null
+    },
+    {
+      "language_name": "Hindi",
+      "proficiency": null
+    }
+  ],
+  "awards": [],
+  "links": []
+}

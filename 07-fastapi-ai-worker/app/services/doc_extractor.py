@@ -41,10 +41,25 @@ def extract_doc_text(content: bytes) -> str:
     text_bytes = word_stream[fc_min:]
 
     try:
-        text = text_bytes.decode("utf-16-le", errors="replace")
-        text = _clean_control_chars(text)
-        if len(text.strip()) > 10:
-            return text.strip()
+        text_utf16 = text_bytes.decode("utf-16-le", errors="replace")
+        cleaned_u16 = _clean_control_chars(text_utf16)
+        cjk_count = sum(1 for ch in cleaned_u16 if 0x3400 <= ord(ch) <= 0x9FFF or 0xAC00 <= ord(ch) <= 0xD7AF)
+        ascii_count = sum(1 for ch in cleaned_u16 if ch.isascii() and ch.isalpha())
+        if cjk_count > 10 and cjk_count > ascii_count:
+            text_ansi = text_bytes.decode("cp1252", errors="replace")
+            cleaned_ansi = _clean_control_chars(text_ansi)
+            if len(cleaned_ansi.strip()) > 10:
+                return cleaned_ansi.strip()
+        elif len(cleaned_u16.strip()) > 10:
+            return cleaned_u16.strip()
+    except Exception:
+        pass
+
+    try:
+        text_ansi = text_bytes.decode("cp1252", errors="replace")
+        cleaned_ansi = _clean_control_chars(text_ansi)
+        if len(cleaned_ansi.strip()) > 10:
+            return cleaned_ansi.strip()
     except Exception:
         pass
 

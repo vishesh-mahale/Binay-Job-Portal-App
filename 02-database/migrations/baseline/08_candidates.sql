@@ -82,6 +82,8 @@ CREATE TABLE candidate_profiles (
     profile_revision        BIGINT NOT NULL DEFAULT 1 CHECK (profile_revision > 0),
     profile_completed_at    TIMESTAMPTZ,
     last_profile_change_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resume_phone            VARCHAR(50),
+    years_of_experience     DECIMAL(4,1),
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at              TIMESTAMPTZ,

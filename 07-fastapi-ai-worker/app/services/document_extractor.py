@@ -42,7 +42,8 @@ class DocumentExtractor:
             if not content.startswith(b"PK"):
                 raise ValueError("Invalid DOCX file: magic bytes do not match ZIP archive")
         elif name.endswith(".doc"):
-            raise ValueError("Legacy .doc format is not supported. Please convert to .docx and re-upload.")
+            if not content.startswith(b"\xd0\xcf\x11\xe0"):
+                raise ValueError("Invalid .doc file: magic bytes do not match OLE2 format")
         elif name.endswith(".txt"):
             return
 
@@ -94,6 +95,9 @@ class DocumentExtractor:
         elif name.endswith(".docx"):
             self._validate_docx_zip(raw)
             extracted_text = self._extract_docx_text(raw)
+        elif name.endswith(".doc"):
+            from app.services.doc_extractor import extract_doc_text
+            extracted_text = extract_doc_text(raw)
         elif name.endswith(".txt"):
             extracted_text = raw.decode("utf-8", errors="replace")
         else:
@@ -132,44 +136,21 @@ class DocumentExtractor:
             raise ValueError(f"Failed to extract PDF text: {exc}") from exc
 
     def _extract_docx_text(self, content: bytes) -> str:
-        """Extract text from DOCX including paragraphs, nested tables, and headers/footers."""
+        """Extract text from DOCX including paragraphs and tables."""
         try:
             stream = io.BytesIO(content)
             document = DocxDocument(stream)
             parts = []
 
-            for section in document.sections:
-                for header_footer in [section.header, section.footer]:
-                    if header_footer is not None:
-                        for para in header_footer.paragraphs:
-                            if para.text.strip():
-                                parts.append(para.text)
-
             for para in document.paragraphs:
                 if para.text.strip():
                     parts.append(para.text)
 
-            def _extract_table(table) -> list[str]:
-                lines = []
-                for row in table.rows:
-                    row_cells = []
-                    for cell in row.cells:
-                        if cell.tables:
-                            nested = []
-                            for nt in cell.tables:
-                                nested.extend(_extract_table(nt))
-                            if nested:
-                                row_cells.append("\n".join(nested))
-                        else:
-                            txt = cell.text.strip()
-                            if txt:
-                                row_cells.append(txt)
-                    if row_cells:
-                        lines.append(" | ".join(row_cells))
-                return lines
-
             for table in document.tables:
-                parts.extend(_extract_table(table))
+                for row in table.rows:
+                    row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+                    if row_text:
+                        parts.append(row_text)
 
             return "\n".join(parts).strip()
         except Exception as exc:  # pragma: no cover - fallback path
