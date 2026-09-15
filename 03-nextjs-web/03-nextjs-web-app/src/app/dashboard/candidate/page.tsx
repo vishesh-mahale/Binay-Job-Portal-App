@@ -78,7 +78,7 @@ function CandidateDashboardContent() {
         state: (isConfirmed ? profile.profile?.state : prev.state || profile.profile?.state) || '',
         country: (isConfirmed ? profile.profile?.country : prev.country || profile.profile?.country) || '',
         postal_code: (isConfirmed ? profile.profile?.postal_code : prev.postal_code || profile.profile?.postal_code) || '',
-        skills: isConfirmed ? (Array.isArray(profile.skills) ? profile.skills : []) : (Array.isArray(prev.skills) && prev.skills.length > 0 ? prev.skills : (Array.isArray(profile.skills) ? profile.skills : [])),
+        skills: (isConfirmed ? (Array.isArray(profile.skills) ? profile.skills : []) : (Array.isArray(prev.skills) && prev.skills.length > 0 ? prev.skills : (Array.isArray(profile.skills) ? profile.skills : []))).map((s: any) => typeof s === 'string' ? { name: s } : { ...s, name: s?.name || s?.custom_skill_name || '' }),
         experiences: (isConfirmed ? (Array.isArray(profile.experiences) ? profile.experiences : []) : (Array.isArray(prev.experiences) && prev.experiences.length > 0 ? prev.experiences : (Array.isArray(profile.experiences) ? profile.experiences : []))).map((e: any) => ({
           ...e,
           responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities.join('\n') : (typeof e.responsibilities === 'string' ? e.responsibilities : ''),
