@@ -36,9 +36,10 @@ export function parseJwtPayloadUnchecked(token: string): Record<string, any> | n
   }
 }
 
-const FAILURE_REASONS = new Set(['invalid_password','user_not_found','account_locked','email_not_verified','too_many_attempts','suspended','banned','invalid_oauth_token','unknown']);
+const FAILURE_REASONS = new Set(['invalid_password','user_not_found','account_locked','email_not_verified','too_many_attempts','suspended','banned','invalid_oauth_token','user_already_exists','unknown']);
 export function mapFailureReason(payload: Record<string, any>): string {
   const raw = `${payload.error_code ?? ''} ${payload.error ?? ''} ${payload.msg ?? ''} ${payload.message ?? ''}`.toLowerCase();
+  if (raw.includes('already registered') || raw.includes('user_already_exists') || raw.includes('already exists') || raw.includes('already in use')) return 'user_already_exists';
   if (raw.includes('not_confirmed') || raw.includes('not confirmed') || raw.includes('email_not_verified')) return 'email_not_verified';
   if (raw.includes('invalid_grant') || raw.includes('invalid login') || raw.includes('invalid password') || raw.includes('password')) return 'invalid_password';
   if (raw.includes('user not found') || raw.includes('user_not_found')) return 'user_not_found';
@@ -60,6 +61,10 @@ export class SupabaseAuthProvider implements AuthProvider {
     if (!response.ok) {
       console.error(`[SupabaseAuth] Path: ${path}, Status: ${response.status}, ErrorCode: ${payload.error_code || payload.error || 'unknown'}`);
       throw new AuthProviderError(mapFailureReason(payload), response.status);
+    }
+    if (path === '/signup' && Array.isArray(payload.user?.identities) && payload.user.identities.length === 0) {
+      console.warn(`[SupabaseAuth] Signup called for existing user with empty identities: ${payload.user?.id}`);
+      throw new AuthProviderError('user_already_exists', 422);
     }
     const userId = typeof payload.user?.id === 'string' ? payload.user.id : (typeof payload.id === 'string' ? payload.id : null);
     return { accessToken: typeof payload.access_token === 'string' ? payload.access_token : null, refreshToken: typeof payload.refresh_token === 'string' ? payload.refresh_token : null, userId, requiresVerification: !payload.access_token };
@@ -209,6 +214,31 @@ export class SupabaseAuthProvider implements AuthProvider {
       throw new ServiceUnavailableException('DEPENDENCY_UNAVAILABLE');
     }
   }
+  async resendVerification(email: string): Promise<void> {
+    const secretKey = this.config.SUPABASE_SECRET_KEY || this.config.SUPABASE_SERVICE_ROLE_KEY;
+    if (!this.config.SUPABASE_URL || !secretKey) throw new ServiceUnavailableException('DEPENDENCY_UNAVAILABLE');
+    const payload = {
+      type: 'signup',
+      email,
+      options: {
+        email_redirect_to: `${this.config.FRONTEND_URL}/verify-email`
+      }
+    };
+    try {
+      const res = await fetch(`${this.config.SUPABASE_URL.replace(/\/$/, '')}/auth/v1/resend`, {
+        method: 'POST',
+        headers: { apikey: secretKey, Authorization: `Bearer ${secretKey}`, 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const errPayload = await res.json().catch(() => ({}));
+        throw new AuthProviderError(mapFailureReason(errPayload), res.status);
+      }
+    } catch (err) {
+      if (err instanceof AuthProviderError) throw err;
+      throw new ServiceUnavailableException('DEPENDENCY_UNAVAILABLE');
+    }
+  }
   async changePassword(userId: string, email: string, currentPassword: string, newPassword: string): Promise<void> {
     let session: AuthSession;
     try {
@@ -257,8 +287,11 @@ export class SupabaseAuthProvider implements AuthProvider {
   }
 }
 
+import { Transform } from 'class-transformer';
+
 export class SignupDto {
   @Allow()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsEmail()
   email!: string;
 
@@ -273,10 +306,20 @@ export class SignupDto {
   register_as?: AllowedSignupRole;
 }
 
-export class LoginDto { @Allow() @IsEmail() email!: string; @Allow() @IsString() password!: string; }
+export class LoginDto {
+  @Allow()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsEmail()
+  email!: string;
+
+  @Allow()
+  @IsString()
+  password!: string;
+}
 
 export class ForgotPasswordDto {
   @Allow()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsEmail()
   email!: string;
 }
@@ -304,12 +347,12 @@ export class ResetPasswordDto {
 }
 
 export function setSessionCookies(response: Response, session: AuthSession, secure: boolean) {
-  if (session.accessToken) response.cookie('binay_access_token', session.accessToken, { httpOnly: true, secure, sameSite: 'lax', path: '/' });
-  if (session.refreshToken) response.cookie('binay_refresh_token', session.refreshToken, { httpOnly: true, secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
+  if (session.accessToken) response.cookie('collabfor_access_token', session.accessToken, { httpOnly: true, secure, sameSite: 'lax', path: '/' });
+  if (session.refreshToken) response.cookie('collabfor_refresh_token', session.refreshToken, { httpOnly: true, secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
 }
 
 export function setPresenceCookie(response: Response, sessionId: string, secure: boolean) {
-  response.cookie('binay_presence_session', sessionId, { httpOnly: true, secure, sameSite: 'lax', path: '/api/v1' });
+  response.cookie('collabfor_presence_session', sessionId, { httpOnly: true, secure, sameSite: 'lax', path: '/api/v1' });
 }
 
 @Controller('api/v1/auth')
@@ -319,25 +362,28 @@ export class AuthProviderController {
   @Post('signup') @HttpCode(HttpStatus.CREATED)
   async signup(@Body() body: SignupDto, @Res({ passthrough: true }) response: Response) {
     if (!body.email || !body.password) throw new BadRequestException('VALIDATION_ERROR');
+    const userEmail = body.email.trim().toLowerCase();
     const requestedRole: AllowedSignupRole = body.register_as === 'employer' ? 'employer' : 'candidate';
     let session: AuthSession;
     try {
       session = await this.provider.signup({
-        email: body.email.trim().toLowerCase(),
+        email: userEmail,
         password: body.password,
         register_as: requestedRole
       });
     } catch (error) {
       if (error instanceof AuthProviderError) {
+        if (error.failureReason === 'user_already_exists') {
+          throw new BadRequestException('User already registered. Please sign in instead.');
+        }
         if (error.userId) {
           let fallbackSuccess = false;
           const cleanupSuccess = error.cleanupSuccess ?? false;
           if (!cleanupSuccess) {
             try {
-              const userEmail = body.email.trim().toLowerCase();
               const fallbackFirstName = userEmail.split('@')[0] || 'User';
               await this.system.query(
-                `INSERT INTO public.users (id, email, first_name, last_name, role, status) VALUES ($1, $2, $3, '', $4::public.user_role, 'suspended'::public.account_status) ON CONFLICT (id) DO UPDATE SET status = 'suspended'::public.account_status`,
+                `INSERT INTO public.users (id, email, first_name, last_name, role, status) VALUES ($1, $2, $3, '', $4::public.user_role, 'suspended'::public.account_status) ON CONFLICT (email) DO UPDATE SET status = 'suspended'::public.account_status`,
                 [error.userId, userEmail, fallbackFirstName, requestedRole]
               );
               fallbackSuccess = true;
@@ -351,12 +397,19 @@ export class AuthProviderController {
             ? 'Role/auto-confirm provisioning failed during signup; compensating cleanup failed, durable suspended state persisted'
             : 'Role/auto-confirm provisioning failed during signup; compensating cleanup failed and suspended state persistence failed';
 
-          await this.audit.knownUserSecurityEvent({
-            userId: error.userId,
-            eventType: 'account_suspended',
-            description,
-            metadata: { register_as: requestedRole, cleanup_success: cleanupSuccess, fallback_success: fallbackSuccess, error: error.failureReason }
-          });
+          try {
+            await this.audit.knownUserSecurityEvent({
+              userId: error.userId,
+              eventType: 'account_suspended',
+              description,
+              metadata: { register_as: requestedRole, cleanup_success: cleanupSuccess, fallback_success: fallbackSuccess, error: error.failureReason }
+            });
+          } catch (auditErr) {
+            console.error('[SignupProvisioning] Audit logging failed:', auditErr);
+          }
+        }
+        if (error.failureReason === 'user_already_exists') {
+          throw new BadRequestException('User already registered. Please sign in instead.');
         }
         if (error.failureReason === 'admin_update_failed' || error.httpStatus === 503) {
           throw new ServiceUnavailableException('ROLE_PROVISIONING_FAILED');
@@ -388,18 +441,31 @@ export class AuthProviderController {
           );
         }
         if (!updateRes || updateRes.rowCount !== 1) {
+          const existingUser = await this.system.query<{ id: string }>('SELECT id FROM public.users WHERE email = $1 LIMIT 1', [userEmail]).catch(() => null);
+          if (existingUser?.rows?.[0]) {
+            await this.provider.deleteAdminUser(session.userId);
+            throw new AuthProviderError('user_already_exists', 400);
+          }
           throw new Error(`Role provisioning failed: expected 1 row updated, got ${updateRes?.rowCount ?? 0}`);
         }
       } catch (err) {
+        if (err instanceof AuthProviderError) {
+          if (err.failureReason === 'user_already_exists') {
+            throw new BadRequestException('User already registered. Please sign in instead.');
+          }
+          if (err.failureReason === 'admin_update_failed' || err.httpStatus === 503) {
+            throw new ServiceUnavailableException('ROLE_PROVISIONING_FAILED');
+          }
+          throw err;
+        }
         console.error('[SignupProvisioning] Failed to update public.users.role for user:', session.userId, err);
         const cleaned = await this.provider.deleteAdminUser(session.userId);
         let fallbackSuccess = false;
         if (!cleaned) {
           try {
-            const userEmail = body.email.trim().toLowerCase();
             const fallbackFirstName = userEmail.split('@')[0] || 'User';
             await this.system.query(
-              `INSERT INTO public.users (id, email, first_name, last_name, role, status) VALUES ($1, $2, $3, '', $4::public.user_role, 'suspended'::public.account_status) ON CONFLICT (id) DO UPDATE SET status = 'suspended'::public.account_status`,
+              `INSERT INTO public.users (id, email, first_name, last_name, role, status) VALUES ($1, $2, $3, '', $4::public.user_role, 'suspended'::public.account_status) ON CONFLICT (email) DO UPDATE SET status = 'suspended'::public.account_status`,
               [session.userId, userEmail, fallbackFirstName, requestedRole]
             );
             fallbackSuccess = true;
@@ -413,12 +479,16 @@ export class AuthProviderController {
           ? 'Role provisioning failed during signup; compensating cleanup failed, durable suspended state persisted'
           : 'Role provisioning failed during signup; compensating cleanup failed and suspended state persistence failed';
 
-        await this.audit.knownUserSecurityEvent({
-          userId: session.userId,
-          eventType: 'account_suspended',
-          description,
-          metadata: { register_as: requestedRole, cleanup_success: cleaned, fallback_success: fallbackSuccess, error: String(err) }
-        });
+        try {
+          await this.audit.knownUserSecurityEvent({
+            userId: session.userId,
+            eventType: 'account_suspended',
+            description,
+            metadata: { register_as: requestedRole, cleanup_success: cleaned, fallback_success: fallbackSuccess, error: String(err) }
+          });
+        } catch (auditErr) {
+          console.error('[SignupProvisioning] Audit logging failed:', auditErr);
+        }
         throw new ServiceUnavailableException('ROLE_PROVISIONING_FAILED');
       }
     }
@@ -461,15 +531,15 @@ export class AuthProviderController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    const refreshToken = (request as Request & { cookies?: Record<string, string> }).cookies?.binay_refresh_token;
+    const refreshToken = (request as Request & { cookies?: Record<string, string> }).cookies?.collabfor_refresh_token;
     if (!refreshToken) throw new UnauthorizedException('UNAUTHORIZED');
     let session: AuthSession;
     try {
       session = await this.provider.refresh(refreshToken);
     } catch {
-      response.clearCookie('binay_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' });
-      response.clearCookie('binay_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
-      response.clearCookie('binay_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' });
+      response.clearCookie('collabfor_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' });
+      response.clearCookie('collabfor_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
+      response.clearCookie('collabfor_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' });
       throw new UnauthorizedException('UNAUTHORIZED');
     }
     if (!session.userId) throw new UnauthorizedException('UNAUTHORIZED');
@@ -479,9 +549,9 @@ export class AuthProviderController {
     );
     const account = result.rows[0];
     if (!account || account.deleted_at || account.status !== 'active' || (account.locked_until && new Date(account.locked_until).getTime() > Date.now())) {
-      response.clearCookie('binay_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' });
-      response.clearCookie('binay_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
-      response.clearCookie('binay_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' });
+      response.clearCookie('collabfor_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' });
+      response.clearCookie('collabfor_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
+      response.clearCookie('collabfor_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' });
       throw new UnauthorizedException('UNAUTHORIZED');
     }
     if (account.last_password_changed_at && session.accessToken) {
@@ -489,9 +559,9 @@ export class AuthProviderController {
       const decoded = parseJwtPayloadUnchecked(session.accessToken);
       const tokenIat = typeof decoded?.iat === 'number' ? decoded.iat : undefined;
       if (typeof tokenIat === 'number' && tokenIat < cutoffSeconds) {
-        response.clearCookie('binay_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' });
-        response.clearCookie('binay_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
-        response.clearCookie('binay_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' });
+        response.clearCookie('collabfor_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' });
+        response.clearCookie('collabfor_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' });
+        response.clearCookie('collabfor_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' });
         throw new UnauthorizedException('UNAUTHORIZED');
       }
     }
@@ -503,9 +573,9 @@ export class AuthProviderController {
   @UseGuards(AuthGuard)
   async logout(@Req() request: any, @Res({ passthrough: true }) response: Response) {
     const userId = request.user?.sub;
-    const presenceId = request.cookies?.binay_presence_session;
+    const presenceId = request.cookies?.collabfor_presence_session;
     if (userId && presenceId) await this.system.query(`UPDATE public.user_sessions SET is_online = FALSE, socket_id = NULL, updated_at = NOW() WHERE id = $1 AND user_id = $2 AND is_online = TRUE`, [presenceId, userId]);
-    response.clearCookie('binay_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' }); response.clearCookie('binay_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' }); response.clearCookie('binay_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' }); return { status: 'logged_out' };
+    response.clearCookie('collabfor_access_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/' }); response.clearCookie('collabfor_refresh_token', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1/auth/refresh' }); response.clearCookie('collabfor_presence_session', { httpOnly: true, secure: this.secure, sameSite: 'lax', path: '/api/v1' }); return { status: 'logged_out' };
   }
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
@@ -522,12 +592,31 @@ export class AuthProviderController {
       message: 'If an account exists with that email address, a password reset link has been sent.'
     };
   }
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(@Body() body: ForgotPasswordDto) {
+    if (!body.email) throw new BadRequestException('VALIDATION_ERROR');
+    const email = body.email.trim().toLowerCase();
+    try {
+      await this.provider.resendVerification(email);
+    } catch (err) {
+      if (err instanceof AuthProviderError && (err.httpStatus === 429 || err.failureReason === 'too_many_attempts')) {
+        throw new HttpException({ success: false, data: null, error: { code: 'TOO_MANY_REQUESTS', message: 'Email rate limit exceeded. Please wait a few minutes before requesting another confirmation email.' }, schema_version: 1 }, HttpStatus.TOO_MANY_REQUESTS);
+      }
+      if (err instanceof ServiceUnavailableException) throw err;
+    }
+    return {
+      success: true,
+      message: 'If an unverified account exists with that email address, a new verification link has been sent.'
+    };
+  }
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
   async changePassword(@Req() request: any, @Body() body: ChangePasswordDto) {
     if (!body.current_password || !body.new_password) throw new BadRequestException('VALIDATION_ERROR');
     if (body.new_password.length < 8) throw new BadRequestException('VALIDATION_ERROR');
+    if (body.current_password === body.new_password) throw new BadRequestException('New password must be different from current password.');
     const userId = request.user?.sub;
     if (!userId) throw new UnauthorizedException('UNAUTHORIZED');
 
@@ -543,6 +632,8 @@ export class AuthProviderController {
       }
       throw err;
     }
+
+    await this.system.query(`UPDATE public.users SET last_password_changed_at = NOW() WHERE id = $1`, [userId]).catch(() => null);
 
     await this.audit.knownUserSecurityEvent({
       userId,
@@ -561,6 +652,10 @@ export class AuthProviderController {
     if (body.new_password.length < 8) throw new BadRequestException('VALIDATION_ERROR');
     try {
       await this.provider.resetPasswordWithToken(body.recovery_token, body.new_password);
+      const decoded = parseJwtPayloadUnchecked(body.recovery_token);
+      if (decoded?.sub) {
+        await this.system.query(`UPDATE public.users SET last_password_changed_at = NOW() WHERE id = $1`, [decoded.sub]).catch(() => null);
+      }
     } catch (err) {
       if (err instanceof AuthProviderError) {
         throw new BadRequestException(err.message);

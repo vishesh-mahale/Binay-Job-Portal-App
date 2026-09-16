@@ -209,9 +209,9 @@ Frontend role guess ya client-supplied role trust nahi karta.
 
 ## 6. Cookies aur refresh
 
-- Access: `binay_access_token`, HttpOnly, path `/`
-- Refresh: `binay_refresh_token`, HttpOnly, path `/api/v1/auth/refresh`
-- Presence: `binay_presence_session`, HttpOnly, path `/api/v1`
+- Access: `collabfor_access_token`, HttpOnly, path `/`
+- Refresh: `collabfor_refresh_token`, HttpOnly, path `/api/v1/auth/refresh`
+- Presence: `collabfor_presence_session`, HttpOnly, path `/api/v1`
 
 Browser cookies request ke saath automatically bhejta hai. Access token expire hone par frontend refresh endpoint call karta hai:
 

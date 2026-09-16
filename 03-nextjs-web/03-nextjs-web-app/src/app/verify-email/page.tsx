@@ -3,10 +3,13 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
 import { parseVerifyEmailHash } from '@/lib/verify-email-parser';
+import { apiClient } from '@/lib/api-client';
 
 function VerifyEmailContent() {
   const [result, setResult] = useState<{
@@ -17,6 +20,11 @@ function VerifyEmailContent() {
     return parseVerifyEmailHash(window.location.hash);
   });
 
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash;
@@ -24,6 +32,26 @@ function VerifyEmailContent() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResendMsg(null);
+    setResendError(null);
+    const trimmed = resendEmail.trim();
+    if (!trimmed) {
+      setResendError('Please enter your email address to resend link.');
+      return;
+    }
+    setResending(true);
+    try {
+      const res = await apiClient.resendVerification(trimmed);
+      setResendMsg(res.message || 'Verification link sent successfully.');
+    } catch (err: any) {
+      setResendError(err.message || 'Failed to resend verification link.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const { status, errorMessage } = result;
 
@@ -89,6 +117,42 @@ function VerifyEmailContent() {
             )}
             {status === 'pending' && (
               <p>Please click the link in your email to verify your account before logging in.</p>
+            )}
+
+            {status !== 'success' && (
+              <form onSubmit={handleResend} className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800 text-left" data-testid="resend-verification-form">
+                {resendMsg && (
+                  <Alert variant="success" data-testid="resend-success-alert">
+                    {resendMsg}
+                  </Alert>
+                )}
+                {resendError && (
+                  <Alert variant="error" data-testid="resend-error-alert">
+                    {resendError}
+                  </Alert>
+                )}
+                <div className="space-y-1">
+                  <Label htmlFor="resend-email" className="text-xs font-medium">Didn't receive the email? Enter your email:</Label>
+                  <Input
+                    id="resend-email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    disabled={resending}
+                    data-testid="resend-email-input"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full text-xs"
+                  disabled={resending}
+                  data-testid="resend-submit-button"
+                >
+                  {resending ? 'Sending New Link...' : 'Resend Verification Email'}
+                </Button>
+              </form>
             )}
           </CardContent>
 

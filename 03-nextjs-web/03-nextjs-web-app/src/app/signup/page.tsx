@@ -17,6 +17,7 @@ export default function SignupPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [registerAs, setRegisterAs] = useState<'candidate' | 'employer'>('candidate');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -51,6 +52,10 @@ export default function SignupPage() {
     }
     if (password.length < 8) {
       setValidationError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setValidationError('Passwords do not match.');
       return;
     }
 
@@ -154,6 +159,20 @@ export default function SignupPage() {
                 data-testid="signup-password-input"
               />
               <p className="text-xs text-slate-500">Must be at least 8 characters long.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={submitting}
+                autoComplete="new-password"
+                data-testid="signup-confirm-password-input"
+              />
             </div>
           </CardContent>
 

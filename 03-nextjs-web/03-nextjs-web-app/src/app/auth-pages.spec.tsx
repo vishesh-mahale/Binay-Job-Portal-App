@@ -248,6 +248,7 @@ describe('Batch 2 Auth Pages & Flow Test Suite', () => {
 
       fireEvent.change(screen.getByTestId('signup-email-input'), { target: { value: 'newuser@example.com' } });
       fireEvent.change(screen.getByTestId('signup-password-input'), { target: { value: 'short' } });
+      fireEvent.change(screen.getByTestId('signup-confirm-password-input'), { target: { value: 'short' } });
 
       const form = screen.getByTestId('signup-form');
       await act(async () => {
@@ -257,6 +258,31 @@ describe('Batch 2 Auth Pages & Flow Test Suite', () => {
       await waitFor(() => {
         expect(screen.getByTestId('signup-error-alert')).toBeInTheDocument();
         expect(screen.getByText('Password must be at least 8 characters long.')).toBeInTheDocument();
+      });
+    });
+
+    it('enforces password mismatch validation error when passwords do not match', async () => {
+      await act(async () => {
+        render(
+          <AuthProvider>
+            <SignupPage />
+          </AuthProvider>
+        );
+      });
+
+      fireEvent.change(screen.getByTestId('signup-email-input'), { target: { value: 'newuser@example.com' } });
+      fireEvent.change(screen.getByTestId('signup-password-input'), { target: { value: 'ValidPass123!' } });
+      fireEvent.change(screen.getByTestId('signup-confirm-password-input'), { target: { value: 'DifferentPass123!' } });
+
+      const form = screen.getByTestId('signup-form');
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('signup-error-alert')).toBeInTheDocument();
+        expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
+        expect(apiClient.signup).not.toHaveBeenCalled();
       });
     });
 
@@ -273,6 +299,7 @@ describe('Batch 2 Auth Pages & Flow Test Suite', () => {
 
       fireEvent.change(screen.getByTestId('signup-email-input'), { target: { value: 'candidate@example.com' } });
       fireEvent.change(screen.getByTestId('signup-password-input'), { target: { value: 'ValidPass123!' } });
+      fireEvent.change(screen.getByTestId('signup-confirm-password-input'), { target: { value: 'ValidPass123!' } });
 
       const form = screen.getByTestId('signup-form');
       await act(async () => {
@@ -303,6 +330,7 @@ describe('Batch 2 Auth Pages & Flow Test Suite', () => {
       fireEvent.click(screen.getByTestId('role-employer-button'));
       fireEvent.change(screen.getByTestId('signup-email-input'), { target: { value: 'employer@example.com' } });
       fireEvent.change(screen.getByTestId('signup-password-input'), { target: { value: 'ValidPass123!' } });
+      fireEvent.change(screen.getByTestId('signup-confirm-password-input'), { target: { value: 'ValidPass123!' } });
 
       const form = screen.getByTestId('signup-form');
       await act(async () => {

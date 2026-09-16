@@ -8,7 +8,7 @@ import { SystemClient } from '../../infrastructure/database/clients';
 export type RequestUser = VerifiedJwtUser;
 export type AuthenticatedRequest = Request & { user?: RequestUser; rawAccessToken?: string; cookies?: Record<string, string> };
 export async function verifyBearer(request: Request, key: JwtVerificationKey, verifier: JwtVerifier = new JoseJwtVerifier(), options: Pick<JWTVerifyOptions, 'issuer' | 'audience'> = {}): Promise<RequestUser> {
-  const cookieToken = (request as Request & { cookies?: Record<string, string> }).cookies?.binay_access_token;
+  const cookieToken = (request as Request & { cookies?: Record<string, string> }).cookies?.collabfor_access_token;
   const header = request.header('authorization');
   const headerToken = header?.startsWith('Bearer ') ? header.slice(7) : undefined;
   const token = cookieToken || headerToken;
@@ -26,7 +26,7 @@ export class AuthGuard implements CanActivate {
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const cookieToken = req.cookies?.binay_access_token;
+    const cookieToken = req.cookies?.collabfor_access_token;
     const header = req.header('authorization');
     const headerToken = header?.startsWith('Bearer ') ? header.slice(7) : undefined;
     req.rawAccessToken = cookieToken || headerToken;

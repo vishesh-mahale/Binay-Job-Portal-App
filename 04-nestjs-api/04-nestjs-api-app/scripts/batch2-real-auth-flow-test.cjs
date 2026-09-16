@@ -67,14 +67,14 @@ async function runRealAuthFlow() {
   });
 
   assert.equal(loginRes.status, 201, `Login failed with status ${loginRes.status}`);
-  assert.ok(loginRes.cookies.cookieMap.has('binay_access_token'), 'Login must set binay_access_token cookie');
-  assert.ok(loginRes.cookies.cookieMap.has('binay_refresh_token'), 'Login must set binay_refresh_token cookie');
+  assert.ok(loginRes.cookies.cookieMap.has('collabfor_access_token'), 'Login must set collabfor_access_token cookie');
+  assert.ok(loginRes.cookies.cookieMap.has('collabfor_refresh_token'), 'Login must set collabfor_refresh_token cookie');
 
   // Verify HttpOnly cookie attributes
-  const accessAttrs = loginRes.cookies.attributesMap.get('binay_access_token') || [];
+  const accessAttrs = loginRes.cookies.attributesMap.get('collabfor_access_token') || [];
   assert.ok(
     accessAttrs.some((a) => a.toLowerCase() === 'httponly'),
-    'binay_access_token cookie MUST have HttpOnly attribute'
+    'collabfor_access_token cookie MUST have HttpOnly attribute'
   );
 
   // Verify NO token in login response body
@@ -106,7 +106,7 @@ async function runRealAuthFlow() {
   });
 
   assert.equal(refreshRes.status, 201, `POST /auth/refresh failed with status ${refreshRes.status}`);
-  assert.ok(refreshRes.cookies.cookieMap.has('binay_access_token'), 'Refresh must rotate access cookie');
+  assert.ok(refreshRes.cookies.cookieMap.has('collabfor_access_token'), 'Refresh must rotate access cookie');
   assert.equal(refreshRes.body.access_token, undefined, 'Refresh body MUST NOT leak access_token');
   console.log('   -> Cookie refresh success: rotated HttpOnly access cookie (Pass)');
 

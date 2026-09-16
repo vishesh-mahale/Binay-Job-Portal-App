@@ -33,8 +33,8 @@ async function main() {
     body: JSON.stringify({ email, password }),
   });
   assert.equal(login.response.status, 201, `login failed: ${login.response.status}`);
-  assert.ok(login.setCookies.includes('binay_access_token='), 'login must set access cookie');
-  assert.ok(login.setCookies.includes('binay_refresh_token='), 'login must set refresh cookie');
+  assert.ok(login.setCookies.includes('collabfor_access_token='), 'login must set access cookie');
+  assert.ok(login.setCookies.includes('collabfor_refresh_token='), 'login must set refresh cookie');
 
   const me = await request('/api/v1/auth/me', { headers: { cookie: login.setCookies } });
   assert.equal(me.response.status, 200, `me failed: ${me.response.status}`);
@@ -42,7 +42,7 @@ async function main() {
 
   const refresh = await request('/api/v1/auth/refresh', { method: 'POST', headers: { cookie: login.setCookies } });
   assert.equal(refresh.response.status, 201, `refresh failed: ${refresh.response.status}`);
-  assert.ok(refresh.setCookies.includes('binay_access_token='), 'refresh must rotate access cookie');
+  assert.ok(refresh.setCookies.includes('collabfor_access_token='), 'refresh must rotate access cookie');
 
   const refreshedCookies = refresh.setCookies || login.setCookies;
   const logout = await request('/api/v1/auth/logout', { method: 'POST', headers: { cookie: `${login.setCookies}; ${refreshedCookies}` } });

@@ -19,9 +19,9 @@ test('logout deactivates only the authenticated presence session', async () => {
   const audit = {} as any;
   const controller = new AuthProviderController(provider, system, audit);
   const response = { clearCookie: jest.fn() } as any;
-  await controller.logout({ user: { sub: 'u1' }, cookies: { binay_presence_session: 's1' } }, response);
+  await controller.logout({ user: { sub: 'u1' }, cookies: { collabfor_presence_session: 's1' } }, response);
   expect(system.query).toHaveBeenCalledWith(expect.stringContaining('WHERE id = $1 AND user_id = $2'), ['s1', 'u1']);
-  expect(response.clearCookie).toHaveBeenCalledWith('binay_presence_session', expect.objectContaining({ path: '/api/v1' }));
+  expect(response.clearCookie).toHaveBeenCalledWith('collabfor_presence_session', expect.objectContaining({ path: '/api/v1' }));
 });
 
 test('signup provisions candidate role and active status when AUTH_AUTO_CONFIRM_EMAIL is true', async () => {
@@ -359,11 +359,11 @@ test('refresh endpoint rejects old refresh token when refreshed token iat is bef
   const controller = new AuthProviderController(provider, system, audit);
   const response = { clearCookie: jest.fn() } as any;
 
-  await expect(controller.refresh({ cookies: { binay_refresh_token: 'old_refresh_token' } } as any, response))
+  await expect(controller.refresh({ cookies: { collabfor_refresh_token: 'old_refresh_token' } } as any, response))
     .rejects.toThrow('UNAUTHORIZED');
 
-  expect(response.clearCookie).toHaveBeenCalledWith('binay_access_token', expect.any(Object));
-  expect(response.clearCookie).toHaveBeenCalledWith('binay_refresh_token', expect.any(Object));
+  expect(response.clearCookie).toHaveBeenCalledWith('collabfor_access_token', expect.any(Object));
+  expect(response.clearCookie).toHaveBeenCalledWith('collabfor_refresh_token', expect.any(Object));
 });
 
 test('changePassword throws GLOBAL_LOGOUT_FAILED when login returns missing accessToken', async () => {

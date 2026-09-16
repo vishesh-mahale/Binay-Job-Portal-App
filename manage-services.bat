@@ -60,7 +60,7 @@ echo Stopping NestJS API (Port 3000)...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do taskkill /PID %%a /F >nul 2>&1
 timeout /t 2 >nul
 echo Starting NestJS API...
-start "NestJS API - Port 3000" cmd /k "pushd C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App\04-nestjs-api\04-nestjs-api-app && node dist\src\main.js"
+start "NestJS API - Port 3000" cmd /k "pushd C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App\04-nestjs-api\04-nestjs-api-app && npm run build && node dist\src\main.js"
 echo Done! NestJS API restarted on Port 3000.
 timeout /t 2 >nul
 goto MENU
@@ -140,7 +140,7 @@ goto :eof
 
 :START_NESTJS_SILENT
 echo   Starting NestJS API (Port 3000)...
-start "NestJS API - Port 3000" cmd /k "pushd C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App\04-nestjs-api\04-nestjs-api-app && node dist\src\main.js"
+start "NestJS API - Port 3000" cmd /k "pushd C:\Users\ADMIN\Desktop\Vishesh\Binay-Job-Portal-App\04-nestjs-api\04-nestjs-api-app && npm run build && node dist\src\main.js"
 goto :eof
 
 :START_DISPATCHER_SILENT

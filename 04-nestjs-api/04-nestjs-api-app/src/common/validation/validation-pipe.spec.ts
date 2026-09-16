@@ -1,7 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { CreateCompanyDto } from '../../modules/identity/companies';
 import { CreateBranchDto, UpdateBranchDto, CreateDepartmentDto, UpdateDepartmentDto, CreateTeamDto, UpdateTeamDto } from '../../modules/identity/organization';
-import { SignupDto, LoginDto } from '../../modules/auth/auth-provider';
+import { SignupDto, LoginDto, ChangePasswordDto, ResetPasswordDto } from '../../modules/auth/auth-provider';
 import { AddCompanyMemberDto } from '../../modules/identity/membership';
 import { TransferOwnershipDto } from '../../modules/identity/ownership';
 import { RevokePresenceSessionDto } from '../../modules/identity/identity-company';
@@ -95,5 +95,68 @@ describe('global ValidationPipe DTO whitelist contract', () => {
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
     await expect(pipe.transform({ schedule_block_id: 'bad', interviewer_id: '00000000-0000-4000-8000-000000000002', title: 'Round', type: 'video', scheduled_at: '2030-01-01T10:00:00Z', duration_minutes: 60, timezone: 'Asia/Kolkata' }, { type: 'body', metatype: ScheduleInterviewDto, data: '' }))
       .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+  });
+
+  describe('Comprehensive Email Validation & Normalization Matrix (20 Test Cases)', () => {
+    const invalidEmailCases = [
+      'test',
+      'test@',
+      '@gmail.com',
+      'test@gmail',
+      'test@domain',
+      'test@gmail.',
+      '.test@gmail.com',
+      'test..abc@gmail.com',
+      'test @gmail.com',
+      'test@@gmail.com',
+      'test@gmail,com',
+      '123',
+      '',
+    ];
+
+    test.each(invalidEmailCases)('ValidationPipe rejects invalid email input: %p', async (email) => {
+      await expect(pipe.transform({ email, password: 'password123' }, { type: 'body', metatype: SignupDto, data: '' }))
+        .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    });
+
+    const validEmailCases = [
+      'test@gmail.com',
+      'john.doe+test@gmail.com',
+      'user_name@gmail.com',
+      'TEST@GMAIL.COM',
+      'test@gmail.com ',
+      ' test@gmail.com',
+    ];
+
+    test.each(validEmailCases)('ValidationPipe accepts valid email input: %p', async (email) => {
+      const result = await pipe.transform({ email, password: 'password123' }, { type: 'body', metatype: SignupDto, data: '' });
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('Comprehensive Password Validation Matrix (Signup, Change, Reset)', () => {
+    const weakPasswords = ['123', '123456', 'pass', 'P@ss1', 'Pass1!', 'Ab1!', ''];
+    const validPasswords = ['password123', 'Password@123', 'MyJob@2026', 'Abcdefgh1!'];
+
+    test.each(weakPasswords)('SignupDto rejects weak password (< 8 chars): %p', async (password) => {
+      await expect(pipe.transform({ email: 'user@example.com', password }, { type: 'body', metatype: SignupDto, data: '' }))
+        .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    });
+
+    test.each(weakPasswords)('ChangePasswordDto rejects weak new_password (< 8 chars): %p', async (new_password) => {
+      await expect(pipe.transform({ current_password: 'oldpassword123', new_password }, { type: 'body', metatype: ChangePasswordDto, data: '' }))
+        .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    });
+
+    test.each(weakPasswords)('ResetPasswordDto rejects weak new_password (< 8 chars): %p', async (new_password) => {
+      await expect(pipe.transform({ recovery_token: 'valid-token', new_password }, { type: 'body', metatype: ResetPasswordDto, data: '' }))
+        .rejects.toMatchObject({ response: expect.objectContaining({ statusCode: 400 }) });
+    });
+
+    test.each(validPasswords)('SignupDto, ChangePasswordDto, ResetPasswordDto accept valid passwords: %p', async (pwd) => {
+      await expect(pipe.transform({ email: 'user@example.com', password: pwd }, { type: 'body', metatype: SignupDto, data: '' })).resolves.toBeDefined();
+      await expect(pipe.transform({ current_password: 'oldpassword123', new_password: pwd }, { type: 'body', metatype: ChangePasswordDto, data: '' })).resolves.toBeDefined();
+      await expect(pipe.transform({ recovery_token: 'tok', new_password: pwd }, { type: 'body', metatype: ResetPasswordDto, data: '' })).resolves.toBeDefined();
+    });
   });
 });

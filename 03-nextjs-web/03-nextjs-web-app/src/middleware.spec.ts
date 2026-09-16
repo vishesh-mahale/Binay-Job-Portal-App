@@ -15,18 +15,18 @@ describe('Edge Middleware Protected Routes', () => {
     );
   });
 
-  it('allows request through when binay_access_token cookie is present', () => {
+  it('allows request through when collabfor_access_token cookie is present', () => {
     const request = new NextRequest('http://localhost:3001/dashboard/candidate');
-    request.cookies.set('binay_access_token', 'mock.jwt.token');
+    request.cookies.set('collabfor_access_token', 'mock.jwt.token');
 
     const response = middleware(request);
 
     expect(response.status).toBe(200); // NextResponse.next() default
   });
 
-  it('allows request through when binay_presence_session cookie is present', () => {
+  it('allows request through when collabfor_presence_session cookie is present', () => {
     const request = new NextRequest('http://localhost:3001/dashboard/employer');
-    request.cookies.set('binay_presence_session', 'sess-123');
+    request.cookies.set('collabfor_presence_session', 'sess-123');
 
     const response = middleware(request);
 

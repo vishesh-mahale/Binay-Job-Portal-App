@@ -179,27 +179,27 @@ async function runPhase09BIntegrationTest() {
       // 1.2 Public Signup for Candidate
       const candRes = await performPublicSignup(candEmail, testPassword, 'candidate');
       console.log("Candidate Public Signup Status:", candRes.statusCode);
-      candCookies.access = extractCookie(candRes.setCookies, 'binay_access_token');
-      candCookies.refresh = extractCookie(candRes.setCookies, 'binay_refresh_token');
+      candCookies.access = extractCookie(candRes.setCookies, 'collabfor_access_token');
+      candCookies.refresh = extractCookie(candRes.setCookies, 'collabfor_refresh_token');
 
       // 1.3 Public Signup for Employer 1
       const emp1Res = await performPublicSignup(emp1Email, testPassword, 'employer');
       console.log("Employer 1 Public Signup Status:", emp1Res.statusCode);
-      emp1Cookies.access = extractCookie(emp1Res.setCookies, 'binay_access_token');
-      emp1Cookies.refresh = extractCookie(emp1Res.setCookies, 'binay_refresh_token');
+      emp1Cookies.access = extractCookie(emp1Res.setCookies, 'collabfor_access_token');
+      emp1Cookies.refresh = extractCookie(emp1Res.setCookies, 'collabfor_refresh_token');
       emp1SignupCookies = emp1Res.setCookies || [];
 
       // 1.4 Public Signup for Employer 2
       const emp2Res = await performPublicSignup(emp2Email, testPassword, 'employer');
       console.log("Employer 2 Public Signup Status:", emp2Res.statusCode);
-      emp2Cookies.access = extractCookie(emp2Res.setCookies, 'binay_access_token');
-      emp2Cookies.refresh = extractCookie(emp2Res.setCookies, 'binay_refresh_token');
+      emp2Cookies.access = extractCookie(emp2Res.setCookies, 'collabfor_access_token');
+      emp2Cookies.refresh = extractCookie(emp2Res.setCookies, 'collabfor_refresh_token');
 
       // 1.5 Public Signup for Employer 3
       const emp3Res = await performPublicSignup(emp3Email, testPassword, 'employer');
       console.log("Employer 3 Public Signup Status:", emp3Res.statusCode);
-      emp3Cookies.access = extractCookie(emp3Res.setCookies, 'binay_access_token');
-      emp3Cookies.refresh = extractCookie(emp3Res.setCookies, 'binay_refresh_token');
+      emp3Cookies.access = extractCookie(emp3Res.setCookies, 'collabfor_access_token');
+      emp3Cookies.refresh = extractCookie(emp3Res.setCookies, 'collabfor_refresh_token');
 
       // 1.6 Call GET /api/v1/auth/me with session cookie
       const meRes = await makeRequest({ path: '/api/v1/auth/me', method: 'GET' }, null, emp1Cookies.access);
@@ -440,8 +440,8 @@ async function runPhase09BIntegrationTest() {
 
       // --- GATE 7: Strict Set-Cookie Security Attributes Assertion & Logout ---
       console.log("\n--- GATE 7: Strict Set-Cookie Attribute Parsing & Security Assertions ---");
-      const rawAccessCookieStr = emp1SignupCookies.find(s => s.startsWith('binay_access_token='));
-      const rawRefreshCookieStr = emp1SignupCookies.find(s => s.startsWith('binay_refresh_token='));
+      const rawAccessCookieStr = emp1SignupCookies.find(s => s.startsWith('collabfor_access_token='));
+      const rawRefreshCookieStr = emp1SignupCookies.find(s => s.startsWith('collabfor_refresh_token='));
       
       const parsedAccessCookie = parseCookieHeader(rawAccessCookieStr);
       const parsedRefreshCookie = parseCookieHeader(rawRefreshCookieStr);

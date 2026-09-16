@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.addEventListener('auth:unauthorized', handleUnauthorized);
 
       try {
-        bc = new BroadcastChannel('binay_auth_channel');
+        bc = new BroadcastChannel('collabfor_auth_channel');
         bc.onmessage = (event) => {
           if (event.data?.type === 'LOGOUT') {
             handleSignoutSync();
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       if (typeof window !== 'undefined') {
         try {
-          const bc = new BroadcastChannel('binay_auth_channel');
+          const bc = new BroadcastChannel('collabfor_auth_channel');
           bc.postMessage({ type: 'LOGIN' });
           bc.close();
         } catch {}
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (typeof window !== 'undefined') {
         try {
-          const bc = new BroadcastChannel('binay_auth_channel');
+          const bc = new BroadcastChannel('collabfor_auth_channel');
           bc.postMessage({ type: 'LOGOUT' });
           bc.close();
         } catch {}

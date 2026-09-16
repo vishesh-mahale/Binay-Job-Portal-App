@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
 
   // Protect /dashboard routes
   if (pathname.startsWith('/dashboard')) {
-    const accessToken = request.cookies.get('binay_access_token');
+    const accessToken = request.cookies.get('collabfor_access_token');
 
     // If no access token cookie is present in request headers
     if (!accessToken) {

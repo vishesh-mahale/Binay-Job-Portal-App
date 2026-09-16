@@ -17,7 +17,7 @@ jest.mock('@/lib/api-client', () => ({ apiClient: {
   applyToJob: jest.fn(),
 } }));
 
-const profile = { profile: { id: 'candidate-1', professional_title: 'Engineer', summary: 'Builds systems', current_location: 'Delhi', city: 'Delhi', state: null, country: 'India', postal_code: null, preferred_work_mode: 'remote', willing_to_relocate: false, willing_to_travel: false, remote_experience: true, notice_period_days: 30, expected_salary_min: null, expected_salary_max: null, salary_currency: 'INR', work_authorization: null, visa_sponsorship_needed: false, is_open_to_work: true, available_from: null, profile_revision: 2, profile_completed_at: null }, links: [], skills: [], experiences: [], educations: [], certifications: [], projects: [], languages: [], awards: [] };
+const profile = { profile: { id: 'candidate-1', professional_title: 'Engineer', summary: 'Builds systems', current_location: 'Delhi', city: 'Delhi', state: null, country: 'India', postal_code: null, preferred_work_mode: 'remote', willing_to_relocate: false, willing_to_travel: false, remote_experience: true, notice_period_days: 30, expected_salary_min: null, expected_salary_max: null, salary_currency: 'INR', work_authorization: null, visa_sponsorship_needed: false, is_open_to_work: true, available_from: null, profile_revision: 2, profile_completed_at: '2026-09-01' }, links: [], skills: [], experiences: [], educations: [], certifications: [], projects: [], languages: [], awards: [] };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -54,7 +54,7 @@ describe('Candidate dashboard', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Resumes' }));
     expect(await screen.findByText('Selected resume status: REVIEW_READY')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Your answer'), { target: { value: 'I enjoy backend systems.' } });
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByLabelText('I consent to share this profile and resume for this application.'));
     fireEvent.click(screen.getByRole('button', { name: 'Submit Application' }));
     await waitFor(() => expect(apiClient.applyToJob).toHaveBeenCalledWith('job-1', expect.objectContaining({ document_id: 'doc-1', consent: true, answers_to_screening_questions: [{ question_id: 'q_0', answer: 'I enjoy backend systems.' }] })));
   });

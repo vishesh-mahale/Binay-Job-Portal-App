@@ -94,8 +94,8 @@ describe('CompanyInvitationService Automatic Authenticated Acceptance & Security
 
     setSessionCookies(mockRes, session, false);
 
-    expect(mockRes.cookie).toHaveBeenCalledWith('binay_access_token', 'access_abc', { httpOnly: true, secure: false, sameSite: 'lax', path: '/' });
-    expect(mockRes.cookie).toHaveBeenCalledWith('binay_refresh_token', 'refresh_xyz', { httpOnly: true, secure: false, sameSite: 'lax', path: '/api/v1/auth/refresh' });
+    expect(mockRes.cookie).toHaveBeenCalledWith('collabfor_access_token', 'access_abc', { httpOnly: true, secure: false, sameSite: 'lax', path: '/' });
+    expect(mockRes.cookie).toHaveBeenCalledWith('collabfor_refresh_token', 'refresh_xyz', { httpOnly: true, secure: false, sameSite: 'lax', path: '/api/v1/auth/refresh' });
   });
 
   it('5. Successfully executes atomic PostgreSQL acceptance & returns safe response without raw token or secret leaks', async () => {
